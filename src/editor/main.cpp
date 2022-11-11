@@ -15,6 +15,7 @@ static IDXGISwapChain*          g_pSwapChain = NULL;
 static ID3D11RenderTargetView*  g_mainRenderTargetView = NULL;
 
 // Forward declarations of helper functions
+void CreateDemonstrationMenuMM();
 bool CreateDeviceD3D(HWND hWnd);
 void CleanupDeviceD3D();
 void CreateRenderTarget();
@@ -23,6 +24,15 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 // Main code
 int main(int, char**)
+{
+    CreateDemonstrationMenuMM();
+
+    return 0;
+}
+
+// Helper functions
+
+void CreateDemonstrationMenuMM() 
 {
     // Create application window
     //ImGui_ImplWin32_EnableDpiAwareness();
@@ -36,7 +46,7 @@ int main(int, char**)
     {
         CleanupDeviceD3D();
         ::UnregisterClassW(wc.lpszClassName, wc.hInstance);
-        return 1;
+        //abort here
         // if directX not connected
     }
 
@@ -171,11 +181,7 @@ int main(int, char**)
     CleanupDeviceD3D();
     ::DestroyWindow(hwnd);
     ::UnregisterClassW(wc.lpszClassName, wc.hInstance);
-
-    return 0;
 }
-
-// Helper functions
 
 bool CreateDeviceD3D(HWND hWnd)
 {
