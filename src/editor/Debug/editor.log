@@ -1,0 +1,13 @@
+﻿  imgui_impl_dx11.cpp
+C:\Users\VR\Desktop\projects\SimulatorsEditor\src\imgui\backends\imgui_impl_dx11.cpp(33,10): fatal  error C1083: Не удается открыть файл включение: imgui.h: No such file or directory,
+  imgui_impl_win32.cpp
+C:\Users\VR\Desktop\projects\SimulatorsEditor\src\imgui\backends\imgui_impl_win32.cpp(15,10): fatal  error C1083: Не удается открыть файл включение: imgui.h: No such file or directory,
+  imgui.cpp
+  imgui_demo.cpp
+  imgui_draw.cpp
+  imgui_tables.cpp
+  imgui_widgets.cpp
+  clearclass.cpp
+  main.cpp
+C:\Users\VR\Desktop\projects\SimulatorsEditor\src\editor\main.cpp(5,10): fatal  error C1083: Не удается открыть файл включение: imgui.h: No such file or directory,
+  Создание кода...

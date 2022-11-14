@@ -7,6 +7,7 @@
 #include "imgui_impl_dx11.h"
 #include <d3d11.h>
 #include <tchar.h>
+#include "scenariosgui.h"
 
 // Data
 static ID3D11Device*            g_pd3dDevice = NULL;
@@ -25,8 +26,8 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 // Main code
 int main(int, char**)
 {
-    CreateDemonstrationMenuMM();
-
+    ScenarioGUI::CreateDemoScenarioGUI();
+    //CreateDemonstrationMenuMM();
     return 0;
 }
 
@@ -59,7 +60,7 @@ void CreateDemonstrationMenuMM()
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
 
-    io.Fonts->AddFontFromFileTTF("M:/GIT2/SimulatorsEditor/src/editor/LiberationSans.ttf", 14.0f, NULL, io.Fonts->GetGlyphRangesCyrillic());
+    io.Fonts->AddFontFromFileTTF("C:/Users/VR/Desktop/projects/SimulatorsEditor/src/editor/LiberationSans.ttf", 14.0f, NULL, io.Fonts->GetGlyphRangesCyrillic());
     //ImFont* font1 = io.Fonts->AddFontFromFileTTF("font.ttf", size_pixels);
 
 
