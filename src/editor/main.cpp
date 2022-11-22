@@ -8,6 +8,7 @@
 #include <d3d11.h>
 #include <tchar.h>
 #include "scenariosgui.h"
+#include "EditorMM.h"
 
 // Data
 static ID3D11Device*            g_pd3dDevice = NULL;
@@ -26,7 +27,8 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 // Main code
 int main(int, char**)
 {
-    ScenarioGUI::CreateDemoScenarioGUI();
+    //::CreateDemoScenarioGUI();
+    EditorMathModel::CreateDemoScenarioGUI();
     //CreateDemonstrationMenuMM();
     return 0;
 }
