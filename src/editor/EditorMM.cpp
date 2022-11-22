@@ -47,9 +47,11 @@ namespace EditorMathModel
         }
 
         // Show the window
-        ::ShowWindow(hwnd, SW_SHOWDEFAULT);
+        ::ShowWindow(hwnd, SW_SHOWMAXIMIZED);
         ::UpdateWindow(hwnd);
 
+
+        
         // Setup Dear ImGui context
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
@@ -64,7 +66,7 @@ namespace EditorMathModel
 
         // Setup Dear ImGui style
         //ImGui::StyleColorsDark();
-        ImGui::StyleColorsLight();
+        ImGui::StyleColorsDark();
 
         // Setup Platform/Renderer backends
         ImGui_ImplWin32_Init(hwnd);
@@ -90,7 +92,18 @@ namespace EditorMathModel
         bool show_demo_window = true;
         bool show_another_window = false;
         bool show = true;
+
+        bool show_main_screen = true;
+
         ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+
+
+        ImGuiWindowFlags window_flags = 0;
+        window_flags |= ImGuiWindowFlags_NoTitleBar;
+        window_flags |= ImGuiWindowFlags_NoScrollbar;
+        window_flags |= ImGuiWindowFlags_NoMove;
+        window_flags |= ImGuiWindowFlags_NoResize;
+        window_flags |= ImGuiWindowFlags_NoCollapse;
 
         // Main loop
         bool done = false;
@@ -113,9 +126,9 @@ namespace EditorMathModel
             ImGui_ImplDX11_NewFrame();
             ImGui_ImplWin32_NewFrame();
             ImGui::NewFrame();
-
+            
             // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
-            if (show_demo_window) ImGui::ShowDemoWindow(&show_demo_window);
+            /*if (show_demo_window) ImGui::ShowDemoWindow(&show_demo_window);
 
             // 2. Show a simple window that we create ourselves. We use a Begin/End pair to create a named window.
             {
@@ -138,19 +151,39 @@ namespace EditorMathModel
 
                 ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
                 ImGui::End();
-            }
+            }*/
 
             // 3. Show another simple window.
-            if (show_another_window)
+            /*if (show_another_window)
             {
                 ImGui::Begin("Another Window", &show_another_window);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
                 ImGui::Text("Hello from another window!");
                 if (ImGui::Button("Close Me"))
                     show_another_window = false;
                 ImGui::End();
+            }*/
+            if (show_main_screen) 
+            {
+                ImGui::Begin("Main Window", &show, window_flags);
+                if (ImGui::BeginMenuBar()) 
+                {
+                    if (ImGui::BeginMenu("Menu"))
+                    {
+                        if (ImGui::MenuItem("New")) {}
+                        if (ImGui::MenuItem("Open", "Ctrl+O")) {}
+                        if (ImGui::BeginMenu("Open Recent")){}
+                        if (ImGui::MenuItem("Save", "Ctrl+S")) {}
+                        if (ImGui::MenuItem("Save As..")) {}
+                        ImGui::Separator(); 
+                        if (ImGui::MenuItem("Import")) {}
+                        if (ImGui::MenuItem("Export as")) {}
+                        ImGui::EndMenu();
+                    }
+                }
+                ImGui::End();
             }
-
-            if (show)
+            
+            /*if (show)
             {
 
                 ImGui::Begin("Max Test", &show);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
@@ -158,8 +191,8 @@ namespace EditorMathModel
                 if (ImGui::Button("Close Me"))
                     show = false;
                 ImGui::End();
-            }
-
+            }*/
+            
             // Rendering
             ImGui::Render();
             const float clear_color_with_alpha[4] = { clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w };
@@ -175,10 +208,11 @@ namespace EditorMathModel
         ImGui_ImplDX11_Shutdown();
         ImGui_ImplWin32_Shutdown();
         ImGui::DestroyContext();
-
+        
         CleanupDeviceD3D();
         ::DestroyWindow(hwnd);
         ::UnregisterClassW(wc.lpszClassName, wc.hInstance);
+        
     }
 
     bool CreateDeviceD3D(HWND hWnd)
