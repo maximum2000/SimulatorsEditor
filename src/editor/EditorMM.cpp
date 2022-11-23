@@ -104,6 +104,7 @@ namespace EditorMathModel
         window_flags |= ImGuiWindowFlags_NoMove;
         window_flags |= ImGuiWindowFlags_NoResize;
         window_flags |= ImGuiWindowFlags_NoCollapse;
+        window_flags |= ImGuiWindowFlags_MenuBar;
 
         // Main loop
         bool done = false;
@@ -128,7 +129,7 @@ namespace EditorMathModel
             ImGui::NewFrame();
             
             // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
-            /*if (show_demo_window) ImGui::ShowDemoWindow(&show_demo_window);
+            if (show_demo_window) ImGui::ShowDemoWindow(&show_demo_window);
 
             // 2. Show a simple window that we create ourselves. We use a Begin/End pair to create a named window.
             {
@@ -151,7 +152,7 @@ namespace EditorMathModel
 
                 ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
                 ImGui::End();
-            }*/
+            }
 
             // 3. Show another simple window.
             /*if (show_another_window)
@@ -164,6 +165,8 @@ namespace EditorMathModel
             }*/
             if (show_main_screen) 
             {
+                ImGui::SetNextWindowPos(ImVec2(0, 0), 0);
+                ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize, 0);
                 ImGui::Begin("Main Window", &show, window_flags);
                 if (ImGui::BeginMenuBar()) 
                 {
@@ -171,14 +174,32 @@ namespace EditorMathModel
                     {
                         if (ImGui::MenuItem("New")) {}
                         if (ImGui::MenuItem("Open", "Ctrl+O")) {}
-                        if (ImGui::BeginMenu("Open Recent")){}
+                        //if (ImGui::BeginMenu("Open Recent")){}
                         if (ImGui::MenuItem("Save", "Ctrl+S")) {}
                         if (ImGui::MenuItem("Save As..")) {}
-                        ImGui::Separator(); 
+                        ImGui::Separator();
                         if (ImGui::MenuItem("Import")) {}
                         if (ImGui::MenuItem("Export as")) {}
+                        ImGui::Separator();
+                        if (ImGui::MenuItem("Exit")) {}
                         ImGui::EndMenu();
                     }
+                    if (ImGui::BeginMenu("Edit"))
+                    {
+                        if (ImGui::MenuItem("Undo", "Ctrl+Z")) {}
+                        if (ImGui::MenuItem("Redo", "Ctrl+Y")) {}
+                        ImGui::EndMenu();
+                    }
+                    if (ImGui::BeginMenu("Window"))
+                    {
+                        if (ImGui::MenuItem("Elements window")) {}
+                        ImGui::EndMenu();
+                    }
+                    if (ImGui::BeginMenu("Options"))
+                    {
+                        ImGui::EndMenu();
+                    }
+                    ImGui::EndMenuBar();
                 }
                 ImGui::End();
             }
