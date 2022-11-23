@@ -24,6 +24,7 @@ namespace EditorMathModel
 	void CleanupDeviceD3D();
 	void CreateRenderTarget();
 	void CleanupRenderTarget();
+    void ShowEditorScreen();
 	LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
     // Helper functions
@@ -94,6 +95,7 @@ namespace EditorMathModel
         bool show = true;
 
         bool show_main_screen = true;
+        bool show_elements_window = false;
 
         ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
@@ -105,6 +107,12 @@ namespace EditorMathModel
         window_flags |= ImGuiWindowFlags_NoResize;
         window_flags |= ImGuiWindowFlags_NoCollapse;
         window_flags |= ImGuiWindowFlags_MenuBar;
+
+        ImGuiWindowFlags elements_window_flag = 0;
+        elements_window_flag |= ImGuiWindowFlags_NoResize;
+        elements_window_flag |= ImGuiWindowFlags_NoResize;
+        elements_window_flag |= ImGuiWindowFlags_NoCollapse;
+        //elements_window_flag |= ImGuiWindowFlags_NoMove;
 
         // Main loop
         bool done = false;
@@ -127,6 +135,14 @@ namespace EditorMathModel
             ImGui_ImplDX11_NewFrame();
             ImGui_ImplWin32_NewFrame();
             ImGui::NewFrame();
+
+            if (show_elements_window)
+            {
+                ImGui::SetNextWindowPos(ImVec2(50, 50), 0);
+                ImGui::SetNextWindowSize(ImVec2(400, 400), 0);
+                ImGui::Begin("Elements", &show, elements_window_flag);
+                ImGui::End();
+            }
             
             // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
             if (show_demo_window) ImGui::ShowDemoWindow(&show_demo_window);
@@ -170,7 +186,7 @@ namespace EditorMathModel
                 ImGui::Begin("Main Window", &show, window_flags);
                 if (ImGui::BeginMenuBar()) 
                 {
-                    if (ImGui::BeginMenu("Menu"))
+                    if (ImGui::BeginMenu("File"))
                     {
                         if (ImGui::MenuItem("New")) {}
                         if (ImGui::MenuItem("Open", "Ctrl+O")) {}
@@ -192,7 +208,10 @@ namespace EditorMathModel
                     }
                     if (ImGui::BeginMenu("Window"))
                     {
-                        if (ImGui::MenuItem("Elements window")) {}
+                        if (ImGui::MenuItem("Elements window")) 
+                        {
+                            show_elements_window = !show_elements_window;
+                        }
                         ImGui::EndMenu();
                     }
                     if (ImGui::BeginMenu("Options"))
@@ -319,6 +338,11 @@ namespace EditorMathModel
             return 0;
         }
         return ::DefWindowProc(hWnd, msg, wParam, lParam);
+    }
+
+    void ShowEditorScreen() 
+    {
+
     }
 }
 
