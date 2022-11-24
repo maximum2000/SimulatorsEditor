@@ -47,7 +47,7 @@ namespace ScenarioGUI {
         }
 
         // Show the window
-        ::ShowWindow(hwnd, SW_SHOWDEFAULT);
+        ::ShowWindow(hwnd, SW_SHOWMAXIMIZED);
         ::UpdateWindow(hwnd);
 
         // Setup Dear ImGui context
@@ -55,7 +55,7 @@ namespace ScenarioGUI {
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO(); (void)io;
 
-        io.Fonts->AddFontFromFileTTF("C:/Users/VR/Desktop/projects/SimulatorsEditor/src/editor/LiberationSans.ttf", 14.0f, NULL, io.Fonts->GetGlyphRangesCyrillic());
+        io.Fonts->AddFontFromFileTTF("C:/Users/VR/Desktop/projects/SimulatorsEditor/src/editor/LiberationSans.ttf", 22.0f, NULL, io.Fonts->GetGlyphRangesCyrillic());
         //ImFont* font1 = io.Fonts->AddFontFromFileTTF("font.ttf", size_pixels);
 
 
@@ -110,8 +110,32 @@ namespace ScenarioGUI {
 
             // Ниже - окна, отображаемые в редакторе сценариев
 
+            // Меню
 
+            ImGui::BeginMainMenuBar();
+            if (ImGui::BeginMenu(u8"Файл"))
+            {
+                if (ImGui::MenuItem(u8"Открыть", "Ctrl+O")) {}
+                if (ImGui::MenuItem(u8"Недавние файлы..."))
+                //{
+                //    //
+                //    ImGui::EndMenu();
+                //}
+                if (ImGui::MenuItem(u8"Сохранить", "Ctrl+S")) {}
+                if (ImGui::MenuItem(u8"Сохранить как...")) {}
+                ImGui::EndMenu();
+            }
+           /* if (ImGui::BeginMenu("Edit"))
+            {
+                if (ImGui::MenuItem("Undo", "CTRL+Z")) {}
+                if (ImGui::MenuItem("Cut", "CTRL+X")) {}
+                if (ImGui::MenuItem("Copy", "CTRL+C")) {}
+                if (ImGui::MenuItem("Paste", "CTRL+V")) {}
+                ImGui::EndMenu();
+            }*/
+            ImGui::EndMainMenuBar();
 
+            // Область программы
 
             const ImGuiViewport* viewport = ImGui::GetMainViewport();
             ImGui::SetNextWindowPos(viewport->WorkPos);
@@ -120,16 +144,16 @@ namespace ScenarioGUI {
             ImGui::Begin("MainWorkspace", NULL, flags);
             ImGui::End();
             ImGui::SetNextWindowPos(viewport->WorkPos);
-            ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x / 4, viewport->WorkSize.y / 3));
-            ImGui::Begin("1", NULL, ImGuiWindowFlags_NoSavedSettings);
+            ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x / 4, (viewport->WorkSize.y / 3) - 29));
+            ImGui::Begin(u8"Сценарии", NULL, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
             ImGui::End();
-            ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x, (viewport->WorkSize.y / 3) - 1));
+            ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x, (viewport->WorkSize.y / 3) - 2));
             ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x / 4, viewport->WorkSize.y / 3));
-            ImGui::Begin("2", NULL, ImGuiWindowFlags_NoSavedSettings);
+            ImGui::Begin(u8"Элементы сценария", NULL, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
             ImGui::End();
-            ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x, (2 * viewport->WorkSize.y / 3) - 3));
-            ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x / 4, (viewport->WorkSize.y / 3) + 4));
-            ImGui::Begin("3", NULL, ImGuiWindowFlags_NoSavedSettings);
+            ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x, (2 * viewport->WorkSize.y / 3) - 4));
+            ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x / 4, (viewport->WorkSize.y / 3) + 33));
+            ImGui::Begin(u8"Свойства", NULL, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
             ImGui::End();
 
             ImGui::ShowDemoWindow();
