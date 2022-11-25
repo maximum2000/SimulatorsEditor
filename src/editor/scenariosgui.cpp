@@ -24,7 +24,10 @@ namespace ScenarioGUI {
     void CleanupDeviceD3D();
     void CreateRenderTarget();
     void CleanupRenderTarget();
+    void WorkspaceInitialization();
     LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
+    const ImGuiViewport* viewport;
 
     // Helper functions
 
@@ -86,7 +89,6 @@ namespace ScenarioGUI {
         //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
         //IM_ASSERT(font != NULL);
         ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-
         // Main loop
         bool done = false;
         while (!done)
@@ -137,12 +139,9 @@ namespace ScenarioGUI {
 
             // Область программы
 
-            const ImGuiViewport* viewport = ImGui::GetMainViewport();
-            ImGui::SetNextWindowPos(viewport->WorkPos);
-            ImGui::SetNextWindowSize(viewport->WorkSize);
-            static ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus;
-            ImGui::Begin("MainWorkspace", NULL, flags);
-            ImGui::End();
+            viewport = ImGui::GetMainViewport();
+            WorkspaceInitialization();
+            
             ImGui::SetNextWindowPos(viewport->WorkPos);
             ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x / 4, (viewport->WorkSize.y / 3) - 29));
             ImGui::Begin(u8"Сценарии", NULL, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
@@ -169,6 +168,7 @@ namespace ScenarioGUI {
 
             g_pSwapChain->Present(1, 0); // Present with vsync
             //g_pSwapChain->Present(0, 0); // Present without vsync
+
         }
 
         // Cleanup
@@ -179,6 +179,47 @@ namespace ScenarioGUI {
         CleanupDeviceD3D();
         ::DestroyWindow(hwnd);
         ::UnregisterClassW(wc.lpszClassName, wc.hInstance);
+    }
+
+    void WorkspaceInitialization()
+    {
+        ImGuiIO& io = ImGui::GetIO();
+        static ImVec2 scrolling(0.0f, 0.0f);
+        // Задаем размеры
+        ImGui::SetNextWindowPos(ImVec2(viewport->WorkSize.x / 4, viewport->WorkPos.y));
+        ImGui::SetNextWindowSize(ImVec2(3 * viewport->WorkSize.x / 4, viewport->WorkSize.y));
+        // Убираем отступы для корректного отображения
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+        ImGui::Begin("MainWorkspace", NULL, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus);
+        // Позиция + размеры рабочего поля
+        ImVec2 canvas_p0 = ImGui::GetCursorScreenPos();
+        ImVec2 canvas_sz = ImGui::GetContentRegionAvail();
+        ImVec2 canvas_p1 = ImVec2(canvas_p0.x + canvas_sz.x, canvas_p0.y + canvas_sz.y);
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+        draw_list->AddRectFilled(canvas_p0, canvas_p1, IM_COL32(240, 240, 240, 0));
+        ImGui::InvisibleButton("canvas", canvas_sz, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
+        const bool is_hovered = ImGui::IsItemHovered(); // Hovered
+        const bool is_active = ImGui::IsItemActive();   // Held
+        if (is_active && ImGui::IsMouseDragging(ImGuiMouseButton_Right))
+        {
+            scrolling.x += io.MouseDelta.x;
+            scrolling.y += io.MouseDelta.y;
+            if (scrolling.x > 0.0f) scrolling.x = 0.0f;
+            if (scrolling.y > 0.0f) scrolling.y = 0.0f;
+            io.MouseReleased;
+        }
+        draw_list->PushClipRect(canvas_p0, canvas_p1, true);
+        {
+            const float GRID_STEP = 128.0f;
+            for (float x = fmodf(scrolling.x, GRID_STEP); x < canvas_sz.x; x += GRID_STEP)
+                draw_list->AddLine(ImVec2(canvas_p0.x + x, canvas_p0.y), ImVec2(canvas_p0.x + x, canvas_p1.y), IM_COL32(0, 0, 0, 255)); // В итоге оставить ~200, 200, 200, 50
+            for (float y = fmodf(scrolling.y, GRID_STEP); y < canvas_sz.y; y += GRID_STEP)
+                draw_list->AddLine(ImVec2(canvas_p0.x, canvas_p0.y + y), ImVec2(canvas_p1.x, canvas_p0.y + y), IM_COL32(0, 0, 0, 255));
+        }
+        draw_list->PopClipRect();
+        // Возвращаем старый стиль отступов
+        ImGui::PopStyleVar();
+        ImGui::End();
     }
 
     bool CreateDeviceD3D(HWND hWnd)
