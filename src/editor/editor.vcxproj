@@ -154,6 +154,7 @@
     <ClCompile Include="clearclass.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="scenariosgui.cpp" />
+    <ClCompile Include="demoobj.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -7,9 +7,9 @@
 #include "imgui_impl_dx11.h"
 #include <d3d11.h>
 #include <tchar.h>
+#include <iostream>
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
-
 namespace ScenarioGUI {
 
     // Data
@@ -24,7 +24,11 @@ namespace ScenarioGUI {
     void CleanupDeviceD3D();
     void CreateRenderTarget();
     void CleanupRenderTarget();
+    void DrawObjects();
+    void WorkspaceInitialization();
     LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
+    const ImGuiViewport* viewport;
 
     // Helper functions
 
@@ -47,7 +51,7 @@ namespace ScenarioGUI {
         }
 
         // Show the window
-        ::ShowWindow(hwnd, SW_SHOWDEFAULT);
+        ::ShowWindow(hwnd, SW_SHOWMAXIMIZED);
         ::UpdateWindow(hwnd);
 
         // Setup Dear ImGui context
@@ -55,7 +59,7 @@ namespace ScenarioGUI {
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO(); (void)io;
 
-        io.Fonts->AddFontFromFileTTF("C:/Users/VR/Desktop/projects/SimulatorsEditor/src/editor/LiberationSans.ttf", 14.0f, NULL, io.Fonts->GetGlyphRangesCyrillic());
+        io.Fonts->AddFontFromFileTTF("C:/Users/VR/Desktop/projects/SimulatorsEditor/src/editor/LiberationSans.ttf", 22.0f, NULL, io.Fonts->GetGlyphRangesCyrillic());
         //ImFont* font1 = io.Fonts->AddFontFromFileTTF("font.ttf", size_pixels);
 
 
@@ -85,13 +89,7 @@ namespace ScenarioGUI {
         //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf", 15.0f);
         //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
         //IM_ASSERT(font != NULL);
-
-        // Our state
-        bool show_demo_window = true;
-        bool show_another_window = false;
-        bool show = true;
         ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-
         // Main loop
         bool done = false;
         while (!done)
@@ -108,57 +106,60 @@ namespace ScenarioGUI {
             }
             if (done)
                 break;
-
             // Start the Dear ImGui frame
             ImGui_ImplDX11_NewFrame();
             ImGui_ImplWin32_NewFrame();
             ImGui::NewFrame();
 
-            // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
-            if (show_demo_window) ImGui::ShowDemoWindow(&show_demo_window);
+            // Ниже - окна, отображаемые в редакторе сценариев
 
-            // 2. Show a simple window that we create ourselves. We use a Begin/End pair to create a named window.
+            // Меню
+
+            ImGui::BeginMainMenuBar();
+            if (ImGui::BeginMenu(u8"Файл"))
             {
-                static float f = 0.0f;
-                static int counter = 0;
-
-                ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
-
-                ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
-                ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
-                ImGui::Checkbox("Another Window", &show_another_window);
-
-                ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
-                ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
-
-                if (ImGui::Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
-                    counter++;
-                ImGui::SameLine();
-                ImGui::Text("counter = %d", counter);
-
-                ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-                ImGui::End();
+                if (ImGui::MenuItem(u8"Открыть", "Ctrl+O")) {}
+                if (ImGui::MenuItem(u8"Недавние файлы..."))
+                //{
+                //    //
+                //    ImGui::EndMenu();
+                //}
+                if (ImGui::MenuItem(u8"Сохранить", "Ctrl+S")) {}
+                if (ImGui::MenuItem(u8"Сохранить как...")) {}
+                ImGui::EndMenu();
             }
-
-            // 3. Show another simple window.
-            if (show_another_window)
+           /* if (ImGui::BeginMenu("Edit"))
             {
-                ImGui::Begin("Another Window", &show_another_window);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
-                ImGui::Text("Hello from another window!");
-                if (ImGui::Button("Close Me"))
-                    show_another_window = false;
-                ImGui::End();
-            }
+                if (ImGui::MenuItem("Undo", "CTRL+Z")) {}
+                if (ImGui::MenuItem("Cut", "CTRL+X")) {}
+                if (ImGui::MenuItem("Copy", "CTRL+C")) {}
+                if (ImGui::MenuItem("Paste", "CTRL+V")) {}
+                ImGui::EndMenu();
+            }*/
+            ImGui::EndMainMenuBar();
 
-            if (show)
-            {
-                
-                ImGui::Begin("Max Test", &show);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
-                ImGui::Text(u8"Гаммер МД123!");
-                if (ImGui::Button("Close Me"))
-                    show = false;
-                ImGui::End();
-            }
+            // Область программы
+
+            viewport = ImGui::GetMainViewport();
+            WorkspaceInitialization();
+            
+            ImGui::SetNextWindowPos(viewport->WorkPos);
+            ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x / 4, (viewport->WorkSize.y / 3) - 29));
+            ImGui::Begin(u8"Сценарии", NULL, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+            ImGui::End();
+            ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x, (viewport->WorkSize.y / 3) - 2));
+            ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x / 4, viewport->WorkSize.y / 3));
+            ImGui::Begin(u8"Элементы сценария", NULL, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+            DrawObjects();
+            ImGui::End();
+            ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x, (2 * viewport->WorkSize.y / 3) - 4));
+            ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x / 4, (viewport->WorkSize.y / 3) + 33));
+            ImGui::Begin(u8"Свойства", NULL, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+            ImGui::End();
+
+            ImGui::ShowDemoWindow();
+
+            // Конец окон
 
             // Rendering
             ImGui::Render();
@@ -169,6 +170,7 @@ namespace ScenarioGUI {
 
             g_pSwapChain->Present(1, 0); // Present with vsync
             //g_pSwapChain->Present(0, 0); // Present without vsync
+
         }
 
         // Cleanup
@@ -179,6 +181,53 @@ namespace ScenarioGUI {
         CleanupDeviceD3D();
         ::DestroyWindow(hwnd);
         ::UnregisterClassW(wc.lpszClassName, wc.hInstance);
+    }
+
+    void WorkspaceInitialization()
+    {
+        ImGuiIO& io = ImGui::GetIO();
+        static ImVec2 scrolling(0.0f, 0.0f);
+        // Задаем размеры
+        ImGui::SetNextWindowPos(ImVec2(viewport->WorkSize.x / 4, viewport->WorkPos.y));
+        ImGui::SetNextWindowSize(ImVec2(3 * viewport->WorkSize.x / 4, viewport->WorkSize.y));
+        // Убираем отступы для корректного отображения
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+        ImGui::Begin("MainWorkspace", NULL, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus);
+        // Позиция + размеры рабочего поля
+        ImVec2 canvas_p0 = ImGui::GetCursorScreenPos();
+        ImVec2 canvas_sz = ImGui::GetContentRegionAvail();
+        ImVec2 canvas_p1 = ImVec2(canvas_p0.x + canvas_sz.x, canvas_p0.y + canvas_sz.y);
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+        draw_list->AddRectFilled(canvas_p0, canvas_p1, IM_COL32(240, 240, 240, 0));
+        ImGui::InvisibleButton("canvas", canvas_sz, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
+        const bool is_hovered = ImGui::IsItemHovered(); // Hovered
+        const bool is_active = ImGui::IsItemActive();   // Held
+        if (is_active && ImGui::IsMouseDragging(ImGuiMouseButton_Right))
+        {
+            scrolling.x += io.MouseDelta.x;
+            scrolling.y += io.MouseDelta.y;
+            if (scrolling.x > 0.0f) scrolling.x = 0.0f;
+            if (scrolling.y > 0.0f) scrolling.y = 0.0f;
+            io.MouseReleased;
+        }
+        draw_list->PushClipRect(canvas_p0, canvas_p1, true);
+        {
+            const float GRID_STEP = 128.0f;
+            for (float x = fmodf(scrolling.x, GRID_STEP); x < canvas_sz.x; x += GRID_STEP)
+                draw_list->AddLine(ImVec2(canvas_p0.x + x, canvas_p0.y), ImVec2(canvas_p0.x + x, canvas_p1.y), IM_COL32(0, 0, 0, 255)); // В итоге оставить ~200, 200, 200, 50
+            for (float y = fmodf(scrolling.y, GRID_STEP); y < canvas_sz.y; y += GRID_STEP)
+                draw_list->AddLine(ImVec2(canvas_p0.x, canvas_p0.y + y), ImVec2(canvas_p1.x, canvas_p0.y + y), IM_COL32(0, 0, 0, 255));
+        }
+        draw_list->PopClipRect();
+        // Возвращаем старый стиль отступов
+        ImGui::PopStyleVar();
+        ImGui::End();
+    }
+
+    void DrawObjects()
+    {
+        //ImDrawList* draw_list = ImGui::GetWindowDrawList();
+        //ImGui::ImageButton();
     }
 
     bool CreateDeviceD3D(HWND hWnd)
@@ -197,7 +246,7 @@ namespace ScenarioGUI {
         sd.OutputWindow = hWnd;
         sd.SampleDesc.Count = 1;
         sd.SampleDesc.Quality = 0;
-        sd.Windowed = TRUE;
+        sd.Windowed = true;
         sd.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
 
         UINT createDeviceFlags = 0;
