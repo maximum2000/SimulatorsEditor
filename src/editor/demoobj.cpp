@@ -1,11 +1,16 @@
-class
+#include "ScenarioElement.cpp"
+class DemoObj : ScenarioElement
 {
 public:
+	DemoObj()
+	{
+
+	}
+protected:
 	static constexpr const char* name = "demo";
 	int param;
-};
-
-class A {
-public:
-	static const int i = 0;
+	const char* TexturePath()
+	{
+		return "test";
+	}
 };

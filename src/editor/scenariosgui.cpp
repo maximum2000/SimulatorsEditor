@@ -8,6 +8,11 @@
 #include <d3d11.h>
 #include <tchar.h>
 #include <iostream>
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
+// Simple helper function to load an image into a DX11 texture with common settings
+
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 namespace ScenarioGUI {
@@ -26,6 +31,7 @@ namespace ScenarioGUI {
     void CleanupRenderTarget();
     void DrawObjects();
     void WorkspaceInitialization();
+    bool LoadTextureFromFile(const char* filename, ID3D11ShaderResourceView** out_srv, int* out_width, int* out_height);
     LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
     const ImGuiViewport* viewport;
@@ -59,7 +65,7 @@ namespace ScenarioGUI {
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO(); (void)io;
 
-        io.Fonts->AddFontFromFileTTF("C:/Users/VR/Desktop/projects/SimulatorsEditor/src/editor/LiberationSans.ttf", 22.0f, NULL, io.Fonts->GetGlyphRangesCyrillic());
+        io.Fonts->AddFontFromFileTTF(u8"C:/Users/Михаил/Desktop/projects/SimulatorsEditor/src/editor/LiberationSans.ttf", 22.0f, NULL, io.Fonts->GetGlyphRangesCyrillic());
         //ImFont* font1 = io.Fonts->AddFontFromFileTTF("font.ttf", size_pixels);
 
 
@@ -158,6 +164,19 @@ namespace ScenarioGUI {
             ImGui::End();
 
             ImGui::ShowDemoWindow();
+            
+
+            int my_image_width = 0;
+            int my_image_height = 0;
+            ID3D11ShaderResourceView* my_texture = NULL;
+            if (bool ret = LoadTextureFromFile(u8"C:/Users/Михаил/Desktop/projects/SimulatorsEditor/src/editor/img/MyImage01.jpeg", &my_texture, &my_image_width, &my_image_height))
+            IM_ASSERT(ret);
+            ImGui::Begin("DirectX11 Texture Test");
+            ImGui::Text("pointer = %p", my_texture);
+            ImGui::Text("size = %d x %d", my_image_width, my_image_height);
+            ImGui::Image((void*)my_texture, ImVec2(my_image_width, my_image_height));
+            ImGui::End();
+
 
             // Конец окон
 
@@ -173,6 +192,7 @@ namespace ScenarioGUI {
 
         }
 
+
         // Cleanup
         ImGui_ImplDX11_Shutdown();
         ImGui_ImplWin32_Shutdown();
@@ -181,6 +201,7 @@ namespace ScenarioGUI {
         CleanupDeviceD3D();
         ::DestroyWindow(hwnd);
         ::UnregisterClassW(wc.lpszClassName, wc.hInstance);
+
     }
 
     void WorkspaceInitialization()
@@ -212,11 +233,11 @@ namespace ScenarioGUI {
         }
         draw_list->PushClipRect(canvas_p0, canvas_p1, true);
         {
-            const float GRID_STEP = 128.0f;
+            const float GRID_STEP = 79.0f;
             for (float x = fmodf(scrolling.x, GRID_STEP); x < canvas_sz.x; x += GRID_STEP)
-                draw_list->AddLine(ImVec2(canvas_p0.x + x, canvas_p0.y), ImVec2(canvas_p0.x + x, canvas_p1.y), IM_COL32(0, 0, 0, 255)); // В итоге оставить ~200, 200, 200, 50
+                draw_list->AddLine(ImVec2(canvas_p0.x + x, canvas_p0.y), ImVec2(canvas_p0.x + x, canvas_p1.y), IM_COL32(200, 200, 200, 119)); // В итоге оставить ~200, 200, 200, 50
             for (float y = fmodf(scrolling.y, GRID_STEP); y < canvas_sz.y; y += GRID_STEP)
-                draw_list->AddLine(ImVec2(canvas_p0.x, canvas_p0.y + y), ImVec2(canvas_p1.x, canvas_p0.y + y), IM_COL32(0, 0, 0, 255));
+                draw_list->AddLine(ImVec2(canvas_p0.x, canvas_p0.y + y), ImVec2(canvas_p1.x, canvas_p0.y + y), IM_COL32(200, 200, 200, 119));
         }
         draw_list->PopClipRect();
         // Возвращаем старый стиль отступов
@@ -224,10 +245,66 @@ namespace ScenarioGUI {
         ImGui::End();
     }
 
+    bool LoadTextureFromFile(const char* filename, ID3D11ShaderResourceView** out_srv, int* out_width, int* out_height)
+    {
+        // Load from disk into a raw RGBA buffer
+        int image_width = 0;
+        int image_height = 0;
+        unsigned char* image_data = stbi_load(filename, &image_width, &image_height, NULL, 4);
+        if (image_data == NULL)
+            return false;
+
+        // Create texture
+        D3D11_TEXTURE2D_DESC desc;
+        ZeroMemory(&desc, sizeof(desc));
+        desc.Width = image_width;
+        desc.Height = image_height;
+        desc.MipLevels = 1;
+        desc.ArraySize = 1;
+        desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+        desc.SampleDesc.Count = 1;
+        desc.Usage = D3D11_USAGE_DEFAULT;
+        desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+        desc.CPUAccessFlags = 0;
+
+        ID3D11Texture2D* pTexture = NULL;
+        D3D11_SUBRESOURCE_DATA subResource;
+        subResource.pSysMem = image_data;
+        subResource.SysMemPitch = desc.Width * 4;
+        subResource.SysMemSlicePitch = 0;
+        g_pd3dDevice->CreateTexture2D(&desc, &subResource, &pTexture);
+
+        // Create texture view
+        D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
+        ZeroMemory(&srvDesc, sizeof(srvDesc));
+        srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+        srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+        srvDesc.Texture2D.MipLevels = desc.MipLevels;
+        srvDesc.Texture2D.MostDetailedMip = 0;
+        g_pd3dDevice->CreateShaderResourceView(pTexture, &srvDesc, out_srv);
+        pTexture->Release();
+
+        *out_width = image_width;
+        *out_height = image_height;
+        stbi_image_free(image_data);
+
+        return true;
+    }
+
     void DrawObjects()
     {
-        //ImDrawList* draw_list = ImGui::GetWindowDrawList();
-        //ImGui::ImageButton();
+        int my_image_width = 0;
+        int my_image_height = 0;
+        ID3D11ShaderResourceView* my_texture = NULL;
+        for (int i = 0; i <= 8; i++)
+        {
+            if (bool ret = LoadTextureFromFile(u8"C:/Users/Михаил/Desktop/projects/SimulatorsEditor/src/editor/img/MyImage01.jpeg", &my_texture, &my_image_width, &my_image_height))
+            {
+                IM_ASSERT(ret);
+                ImGui::ImageButton("werwer", (void*)my_texture, ImVec2(my_image_width, my_image_height));
+            }
+            ImGui::SameLine();
+        }
     }
 
     bool CreateDeviceD3D(HWND hWnd)
