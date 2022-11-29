@@ -65,7 +65,7 @@ namespace ScenarioGUI {
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO(); (void)io;
 
-        io.Fonts->AddFontFromFileTTF(u8"C:/Users/Михаил/Desktop/projects/SimulatorsEditor/src/editor/LiberationSans.ttf", 22.0f, NULL, io.Fonts->GetGlyphRangesCyrillic());
+        io.Fonts->AddFontFromFileTTF(u8"C:/Users/VR/Desktop/projects/SimulatorsEditor/src/editor/LiberationSans.ttf", 22.0f, NULL, io.Fonts->GetGlyphRangesCyrillic());
         //ImFont* font1 = io.Fonts->AddFontFromFileTTF("font.ttf", size_pixels);
 
 
@@ -156,9 +156,11 @@ namespace ScenarioGUI {
             ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x, (viewport->WorkSize.y / 3) - 2));
             ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x / 4, viewport->WorkSize.y / 3));
 
+            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(15.0f, 15.0f)); // Отступы между кнопками
             ImGui::Begin(u8"Элементы сценария", NULL, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
             DrawObjects();
             ImGui::End();
+            ImGui::PopStyleVar();
 
             ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x, (2 * viewport->WorkSize.y / 3) - 4));
             ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x / 4, (viewport->WorkSize.y / 3) + 33));
@@ -171,7 +173,7 @@ namespace ScenarioGUI {
             int my_image_width = 0;
             int my_image_height = 0;
             ID3D11ShaderResourceView* my_texture = NULL;
-            if (bool ret = LoadTextureFromFile(u8"C:/Users/Михаил/Desktop/projects/SimulatorsEditor/src/editor/img/MyImage01.jpeg", &my_texture, &my_image_width, &my_image_height))
+            if (bool ret = LoadTextureFromFile(u8"C:/Users/VR/Desktop/projects/SimulatorsEditor/src/editor/img/MyImage01.jpeg", &my_texture, &my_image_width, &my_image_height))
             IM_ASSERT(ret);
             ImGui::Begin("DirectX11 Texture Test");
             ImGui::Text("pointer = %p", my_texture);
@@ -297,17 +299,22 @@ namespace ScenarioGUI {
     {
         int my_image_width = 0;
         int my_image_height = 0;
-        int ButtonRightPosition = 0; // Для определения необходимости переноса на следующую строку
         ID3D11ShaderResourceView* my_texture = NULL;
-        for (int i = 0; i <= 8; i++)
+        for (int i = 0; i <= 15; i++)
         {
-            if (bool ret = LoadTextureFromFile(u8"C:/Users/Михаил/Desktop/projects/SimulatorsEditor/src/editor/img/MyImage01.jpeg", &my_texture, &my_image_width, &my_image_height))
+            if (bool ret = LoadTextureFromFile(u8"C:/Users/VR/Desktop/projects/SimulatorsEditor/src/editor/img/MyImage01.jpeg", &my_texture, &my_image_width, &my_image_height))
             {
                 IM_ASSERT(ret);
+                ImGui::SameLine(); // Перед добавлением кнопки с целью рассчитать оставшееся место "строки"
+                if (ImGui::GetStyle().ItemSpacing.x + my_image_width > ImGui::GetContentRegionAvail().x)
+                {
+                    ImGui::NewLine();
+                    ImGui::SetCursorPos(ImVec2(ImGui::GetCursorPos().x + ImGui::GetStyle().ItemSpacing.x, ImGui::GetCursorPos().y)); // Отступы второй и далее строки
+                }
                 ImGui::ImageButton("werwer", (void*)my_texture, ImVec2(my_image_width, my_image_height));
             }
-            ImGui::SameLine();
         }
+
     }
 
     bool CreateDeviceD3D(HWND hWnd)
