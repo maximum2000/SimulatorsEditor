@@ -155,9 +155,11 @@ namespace ScenarioGUI {
             ImGui::End();
             ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x, (viewport->WorkSize.y / 3) - 2));
             ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x / 4, viewport->WorkSize.y / 3));
+
             ImGui::Begin(u8"Ёлементы сценари€", NULL, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
             DrawObjects();
             ImGui::End();
+
             ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x, (2 * viewport->WorkSize.y / 3) - 4));
             ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x / 4, (viewport->WorkSize.y / 3) + 33));
             ImGui::Begin(u8"—войства", NULL, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
@@ -295,6 +297,7 @@ namespace ScenarioGUI {
     {
         int my_image_width = 0;
         int my_image_height = 0;
+        int ButtonRightPosition = 0; // ƒл€ определени€ необходимости переноса на следующую строку
         ID3D11ShaderResourceView* my_texture = NULL;
         for (int i = 0; i <= 8; i++)
         {
