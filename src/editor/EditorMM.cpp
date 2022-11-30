@@ -107,12 +107,7 @@ namespace EditorMathModel
         window_flags |= ImGuiWindowFlags_NoResize;
         window_flags |= ImGuiWindowFlags_NoCollapse;
         window_flags |= ImGuiWindowFlags_MenuBar;
-
-        ImGuiWindowFlags elements_window_flag = 0;
-        elements_window_flag |= ImGuiWindowFlags_NoResize;
-        elements_window_flag |= ImGuiWindowFlags_NoResize;
-        elements_window_flag |= ImGuiWindowFlags_NoCollapse;
-        //elements_window_flag |= ImGuiWindowFlags_NoMove;
+        window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus;
 
         // Main loop
         bool done = false;
@@ -140,7 +135,7 @@ namespace EditorMathModel
             {
                 ImGui::SetNextWindowPos(ImVec2(50, 50), 0);
                 ImGui::SetNextWindowSize(ImVec2(400, 400), 0);
-                ImGui::Begin("Elements", &show, elements_window_flag);
+                ImGui::Begin("Elements", &show, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
                 ImGui::End();
             }
             
