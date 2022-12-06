@@ -219,21 +219,25 @@ namespace ScenarioGUI {
 
 	}
 
-	//Для сохранения элементов
+	//Для сохранения элементов на рабочей панели
 	struct ElementOnCanvas
 	{
 		const char* Path;
 		ImVec2 Pos;
 	};
 	std::list<ElementOnCanvas> Elems;
+	//Используются для определения передвигаемого элемента
+	ElementOnCanvas* SelectedElem;
 	bool clicked = false;
 	bool dragging = false;
-	std::list<ElementOnCanvas>::iterator k;
+	std::list<ElementOnCanvas>::iterator ElemIterator;
+	//Используются для определения места передвигаемого элемента
+	ImVec2 OldMousePosition; 
+	ImVec2 OldElementPosition;
 	// Отображение рабочего места
 	void WorkspaceInitialization()
 	{
 		ImGuiIO& io = ImGui::GetIO();
-
 		static ImVec2 scrolling(0.0f, 0.0f); // Текущая прокрутка
 		// Задаем размеры
 		ImGui::SetNextWindowPos(ImVec2(viewport->WorkSize.x / 4, viewport->WorkPos.y));
@@ -247,7 +251,7 @@ namespace ScenarioGUI {
 		ImVec2 canvas_p1 = ImVec2(canvas_p0.x + canvas_sz.x, canvas_p0.y + canvas_sz.y);
 		ImDrawList* draw_list = ImGui::GetWindowDrawList();
 		draw_list->AddRectFilled(canvas_p0, canvas_p1, IM_COL32(240, 240, 240, 0));
-		ImGui::InvisibleButton("canvas", canvas_sz, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight ); // Невидимая кнопка для взаимодействия
+		ImGui::InvisibleButton("canvas", canvas_sz, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight); // Невидимая кнопка для взаимодействия
 		ImGui::SetItemAllowOverlap();
 		const bool is_hovered = ImGui::IsItemHovered();
 		const bool is_active = ImGui::IsItemActive();
@@ -274,13 +278,13 @@ namespace ScenarioGUI {
 		const ImVec2 mouse_pos_in_canvas(io.MousePos.x - origin.x, io.MousePos.y - origin.y);
 		// Приемник drag'n'drop
 		if (ImGui::BeginDragDropTarget()) {
-			
+
 			auto payload = ImGui::AcceptDragDropPayload("Element");
 			if (payload != NULL) {
 				int ElementNum = *(int*)payload->Data;
 				const char* Name;
 				Name = ElementNum % 2 == 1 ? u8"MyImage01.png" : u8"MyImage02.png";
-				Elems.push_back({ Name, ImVec2(mouse_pos_in_canvas.x - TEMP.my_image_width / 2, mouse_pos_in_canvas.y - TEMP.my_image_height/2) });
+				Elems.push_back({ Name, ImVec2(mouse_pos_in_canvas.x - TEMP.my_image_width / 2, mouse_pos_in_canvas.y - TEMP.my_image_height / 2) });
 			}
 			ImGui::EndDragDropTarget();
 		}
@@ -303,38 +307,53 @@ namespace ScenarioGUI {
 			ImGui::SetCursorScreenPos(ImVec2(origin.x + i->Pos.x, origin.y + i->Pos.y));
 			ImGui::InvisibleButton("canvasloplolo", ImVec2(TEMP.my_image_width, TEMP.my_image_height), ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
 			ImGui::SetItemAllowOverlap();
-			if (ImGui::IsItemHovered())
+			// Выбираем передвигаемый элемент (если уже не передвигаем)
+			if (ImGui::IsItemHovered() && !dragging)
 			{
+				// Первое нажатие - перерисовка элемента "поверх"
 				if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+				{
 					clicked = true;
-				if (ImGui::IsMouseDragging(ImGuiMouseButton_Left) && clicked)
+					OldMousePosition = io.MousePos;
+					OldElementPosition = i->Pos;
+				}
+				// Уже нажали, переносим
+				if (clicked && ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+				{
 					dragging = true;
-				if (clicked || dragging)
-					k = i;
+				}
+				if (clicked)
+				{
+					ElemIterator = i;
+					SelectedElem = &*ElemIterator;
+					//k = SelectedElem;
+				}
 			}
 			i++;
 		}
-		if (&k != nullptr)
+		if (dragging || clicked)
 		{
+			if (SelectedElem == nullptr) ElemIterator = std::prev(Elems.end());
 			if (dragging)
 			{
-				ToAdd = { k->Path, ImVec2(k->Pos.x + io.MouseDelta.x,k->Pos.y + io.MouseDelta.y) };
+				ToAdd = { ElemIterator->Path, ImVec2(OldElementPosition.x + io.MousePos.x - OldMousePosition.x,OldElementPosition.y + io.MousePos.y - OldMousePosition.y) };
 			}
 			else if (clicked)
 			{
-				ToAdd = { k->Path, k->Pos };
+				ToAdd = { ElemIterator->Path, ElemIterator->Pos };
 			}
 			ImGui::SetCursorPos(OldPos);
-
-			if (clicked || dragging)
-			{
-				Elems.erase(k);
-				Elems.push_back(ToAdd);
-			}
+			Elems.erase(ElemIterator);
+			Elems.push_back(ToAdd);
+			SelectedElem = nullptr;
+		}
+		std::cout << clicked << dragging << '\n';
+		if (!io.MouseDown[0])
+		{
+			dragging = clicked = false;
+			SelectedElem = nullptr;
 		}
 		ImGui::End();
-		std::cout << clicked << dragging << '\n';
-		if (!io.MouseDown[0]) dragging = clicked = false;
 	}
 
 	// Отображение элементов сценария
