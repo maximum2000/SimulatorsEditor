@@ -11,6 +11,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #include <list>
+#include <vector>
 
 // Simple helper function to load an image into a DX11 texture with common settings
 
@@ -225,15 +226,16 @@ namespace ScenarioGUI {
 		const char* Path;
 		ImVec2 Pos;
 	};
-	std::list<ElementOnCanvas> Elems;
+	// TODO - перенести в функцию, со static;
+	std::vector<ElementOnCanvas> Elems;
+	std::vector<int> SelectedElems;
 	//Используются для определения передвигаемого элемента
-	ElementOnCanvas* SelectedElem;
-	bool clicked = false;
+	bool ClickedOnElement = false;
+	bool IsSelecting = false;
 	bool dragging = false;
-	std::list<ElementOnCanvas>::iterator ElemIterator;
 	//Используются для определения места передвигаемого элемента
-	ImVec2 OldMousePosition; 
 	ImVec2 OldElementPosition;
+	ImVec2 SelectionStartPosition;
 	// Отображение рабочего места
 	void WorkspaceInitialization()
 	{
@@ -253,9 +255,10 @@ namespace ScenarioGUI {
 		draw_list->AddRectFilled(canvas_p0, canvas_p1, IM_COL32(240, 240, 240, 0));
 		ImGui::InvisibleButton("canvas", canvas_sz, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight); // Невидимая кнопка для взаимодействия
 		ImGui::SetItemAllowOverlap();
+		const bool WorkspaceHovered = ImGui::IsItemHovered();
 		const bool is_hovered = ImGui::IsItemHovered();
 		const bool is_active = ImGui::IsItemActive();
-		if (is_active && ImGui::IsMouseDragging(ImGuiMouseButton_Right))
+		if (is_active && ImGui::IsMouseDragging(ImGuiMouseButton_Right) && !ClickedOnElement)
 		{
 			scrolling.x += io.MouseDelta.x;
 			scrolling.y += io.MouseDelta.y;
@@ -267,7 +270,7 @@ namespace ScenarioGUI {
 		{
 			const float GRID_STEP = 79.0f;
 			for (float x = fmodf(scrolling.x, GRID_STEP); x < canvas_sz.x; x += GRID_STEP)
-				draw_list->AddLine(ImVec2(canvas_p0.x + x, canvas_p0.y), ImVec2(canvas_p0.x + x, canvas_p1.y), IM_COL32(200, 200, 200, 119)); // В итоге оставить ~200, 200, 200, 50
+				draw_list->AddLine(ImVec2(canvas_p0.x + x, canvas_p0.y), ImVec2(canvas_p0.x + x, canvas_p1.y), IM_COL32(200, 200, 200, 119));
 			for (float y = fmodf(scrolling.y, GRID_STEP); y < canvas_sz.y; y += GRID_STEP)
 				draw_list->AddLine(ImVec2(canvas_p0.x, canvas_p0.y + y), ImVec2(canvas_p1.x, canvas_p0.y + y), IM_COL32(200, 200, 200, 119));
 		}
@@ -284,74 +287,106 @@ namespace ScenarioGUI {
 				int ElementNum = *(int*)payload->Data;
 				const char* Name;
 				Name = ElementNum % 2 == 1 ? u8"MyImage01.png" : u8"MyImage02.png";
-				Elems.push_back({ Name, ImVec2(mouse_pos_in_canvas.x - TEMP.my_image_width / 2, mouse_pos_in_canvas.y - TEMP.my_image_height / 2) });
+				int x = mouse_pos_in_canvas.x - TEMP.my_image_width / 2;
+				int y = mouse_pos_in_canvas.y - TEMP.my_image_height / 2;
+				if (x < 0) x = 0;
+				if (y < 0) y = 0;
+				Elems.push_back({ Name, ImVec2(x, y) });
 			}
 			ImGui::EndDragDropTarget();
 		}
 		// Отображаем добавленные элементы
-		ImVec2 OldPos = ImGui::GetCursorPos();
 		ElementOnCanvas ToAdd;
 		static ImVec2 scrollingelem(0.0f, 0.0f);
 		// Такое решения для того, чтобы при нажатии выбирался верхний элемент. При использовании IsItemHovered() выбираются все элементы, попадающие под курсор. Уверен, есть более рациональное решение, пока не нашел
 		// https://github.com/ocornut/imgui/issues/3909 - работает криво
 		// Переносим объект - удаляем его из списка, добавляем в конец
 		// IsItemActive - перехватывает лишь при нажатии ЛКМ и ПКМ
-		std::list<ElementOnCanvas>::iterator i = Elems.begin();
 
-		while (i != Elems.end())
+		for (int i = 0; i < static_cast<int>(Elems.size()); i++)
 		{
-			if (i->Path == "MyImage01.png")
-				draw_list->AddImage((void*)TEMP.my_texture, ImVec2(origin.x + i->Pos.x, origin.y + i->Pos.y), ImVec2(origin.x + i->Pos.x + TEMP.my_image_width, origin.y + i->Pos.y + TEMP.my_image_height));
-			else if (i->Path == "MyImage02.png")
-				draw_list->AddImage((void*)TEMP2.my_texture, ImVec2(origin.x + i->Pos.x, origin.y + i->Pos.y), ImVec2(origin.x + i->Pos.x + TEMP2.my_image_width, origin.y + i->Pos.y + TEMP2.my_image_height));
-			ImGui::SetCursorScreenPos(ImVec2(origin.x + i->Pos.x, origin.y + i->Pos.y));
-			ImGui::InvisibleButton("canvasloplolo", ImVec2(TEMP.my_image_width, TEMP.my_image_height), ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
+			// Уйдет на замену
+			if (Elems[i].Path == "MyImage01.png")
+				draw_list->AddImage((void*)TEMP.my_texture, ImVec2(origin.x + Elems[i].Pos.x, origin.y + Elems[i].Pos.y), ImVec2(origin.x + Elems[i].Pos.x + TEMP.my_image_width, origin.y + Elems[i].Pos.y + TEMP.my_image_height));
+			else if (Elems[i].Path == "MyImage02.png")
+				draw_list->AddImage((void*)TEMP2.my_texture, ImVec2(origin.x + Elems[i].Pos.x, origin.y + Elems[i].Pos.y), ImVec2(origin.x + Elems[i].Pos.x + TEMP2.my_image_width, origin.y + Elems[i].Pos.y + TEMP2.my_image_height));
+			// Конец замены
+			// Создаем невидимую кнопку для взаимодействия с объектом на рабочем пространстве
+			ImGui::SetCursorScreenPos(ImVec2(origin.x + Elems[i].Pos.x, origin.y + Elems[i].Pos.y));
+			ImGui::InvisibleButton("canvas123", ImVec2(TEMP.my_image_width, TEMP.my_image_height), ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
 			ImGui::SetItemAllowOverlap();
-			// Выбираем передвигаемый элемент (если уже не передвигаем)
-			if (ImGui::IsItemHovered() && !dragging)
+			// Нажатия на кнопку обрабатываются криво, поэтому используется связка IsMouseClicked() + IsItemHovered(), возможно, изменить позже
+			// Поиск элемента, лежащего "сверху"
+			if (ImGui::IsItemHovered())
 			{
-				// Первое нажатие - перерисовка элемента "поверх"
+				// Нажатие на элемент - перерисовка элемента "поверх", запоминание его при передвижении (вылет, если курсор покинет невидимую кнопку)
 				if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
 				{
-					clicked = true;
-					OldMousePosition = io.MousePos;
-					OldElementPosition = i->Pos;
+					SelectedElems.push_back(i);
+					ClickedOnElement = true; // TODO: проверить, потребуется ли вообще
+					OldElementPosition = Elems[i].Pos;
 				}
 				// Уже нажали, переносим
-				if (clicked && ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+				if (ImGui::IsMouseDragging(ImGuiMouseButton_Left) && !IsSelecting)
 				{
 					dragging = true;
 				}
-				if (clicked)
-				{
-					ElemIterator = i;
-					SelectedElem = &*ElemIterator;
-					//k = SelectedElem;
-				}
 			}
-			i++;
+			if (IsSelecting)
+				if (Elems[i].Pos.x + ImGui::GetWindowPos().x > (io.MousePos.x + SelectionStartPosition.x - max(io.MousePos.x, SelectionStartPosition.x)) && Elems[i].Pos.x + ImGui::GetWindowPos().x < (io.MousePos.x + SelectionStartPosition.x - min(io.MousePos.x, SelectionStartPosition.x)))
+					if (Elems[i].Pos.y + ImGui::GetWindowPos().y > (io.MousePos.y + SelectionStartPosition.y - max(io.MousePos.y, SelectionStartPosition.y)) && Elems[i].Pos.y + ImGui::GetWindowPos().y < (io.MousePos.y + SelectionStartPosition.y - min(io.MousePos.y, SelectionStartPosition.y)))
+					{
+						if (std::find(SelectedElems.begin(), SelectedElems.end(), i) == SelectedElems.end())
+						SelectedElems.push_back(i);
+					}
 		}
-		if (dragging || clicked)
+		if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ClickedOnElement && WorkspaceHovered)
 		{
-			if (SelectedElem == nullptr) ElemIterator = std::prev(Elems.end());
+			IsSelecting = true;
+			SelectionStartPosition = io.MousePos;
+			SelectedElems.clear();
+		}
+		if (IsSelecting)
+		{
+			draw_list->AddRect(SelectionStartPosition, io.MousePos, IM_COL32(0, 0, 0, 255));
+			draw_list->AddRectFilled(SelectionStartPosition, io.MousePos, IM_COL32(0, 0, 0, 15));
+		} 
+		else if (static_cast<int>(SelectedElems.size()) > 1)
+		{
+			SelectedElems.erase(SelectedElems.begin(), SelectedElems.end() - 1);
+		}
+		// Вынесено отдельно, так как мы переносим наверх лишь один элемент, лежащий сверху
+		// Реализует отрисовку передвигаемого/нажатого элемента поверх других
+		int j = static_cast<int>(SelectedElems.size());
+		for (int i = 0; i < j; i++)
+		{
+			int SelectedElem = SelectedElems[i];
+			draw_list->AddRect(ImVec2(origin.x + Elems[SelectedElem].Pos.x, origin.y + Elems[SelectedElem].Pos.y), ImVec2(origin.x + Elems[SelectedElem].Pos.x + TEMP.my_image_width, origin.y + Elems[SelectedElem].Pos.y + TEMP.my_image_height), IM_COL32(0, 0, 0, 255));
+			draw_list->AddRectFilled(ImVec2(origin.x + Elems[SelectedElem].Pos.x, origin.y + Elems[SelectedElem].Pos.y), ImVec2(origin.x + Elems[SelectedElem].Pos.x + TEMP.my_image_width, origin.y + Elems[SelectedElem].Pos.y + TEMP.my_image_height), IM_COL32(255, 255, 0, 10));
 			if (dragging)
 			{
-				ToAdd = { ElemIterator->Path, ImVec2(OldElementPosition.x + io.MousePos.x - OldMousePosition.x,OldElementPosition.y + io.MousePos.y - OldMousePosition.y) };
+				int x = Elems[SelectedElem].Pos.x + io.MouseDelta.x;
+				int y = Elems[SelectedElem].Pos.y + io.MouseDelta.y;
+				if (x < 0 || io.MousePos.x < canvas_p0.x) x = 0;
+				if (y < 0 || io.MousePos.y < canvas_p0.y) y = 0;
+				ToAdd = { Elems[SelectedElem].Path, ImVec2(x,y) };
 			}
-			else if (clicked)
+			else
 			{
-				ToAdd = { ElemIterator->Path, ElemIterator->Pos };
+				ToAdd = { Elems[SelectedElem].Path, Elems[SelectedElem].Pos };
 			}
-			ImGui::SetCursorPos(OldPos);
-			Elems.erase(ElemIterator);
+			Elems.erase(Elems.begin() + SelectedElem);
 			Elems.push_back(ToAdd);
-			SelectedElem = nullptr;
+			SelectedElems[i] = -1;
+			SelectedElems.push_back(static_cast<int>(Elems.size())-1-i);
 		}
-		std::cout << clicked << dragging << '\n';
+
+		auto new_end = std::remove(SelectedElems.begin(), SelectedElems.end(), -1);
+		SelectedElems.erase(new_end, SelectedElems.end());
 		if (!io.MouseDown[0])
 		{
-			dragging = clicked = false;
-			SelectedElem = nullptr;
+			if (!IsSelecting && static_cast<int>(SelectedElems.size())==1) SelectedElems.clear();
+			dragging = ClickedOnElement = IsSelecting = false;
 		}
 		ImGui::End();
 	}
