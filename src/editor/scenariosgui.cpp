@@ -40,6 +40,8 @@ namespace ScenarioGUI {
 	void CleanupRenderTarget();
 	void DrawObjects();
 	void WorkspaceInitialization();
+	void PopupWorkspace();
+	void PopupElements();
 	bool LoadTextureFromFile(const char* filename, ID3D11ShaderResourceView** out_srv, int* out_width, int* out_height);
 	LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -226,38 +228,41 @@ namespace ScenarioGUI {
 		const char* Path;
 		ImVec2 Pos;
 	};
-	// TODO - перенести в функцию, со static;
-	std::vector<ElementOnCanvas> Elems;
-	std::vector<int> SelectedElems;
-	//Используются для определения передвигаемого элемента
-	bool ClickedOnElement = false;
-	bool IsSelecting = false;
-	bool dragging = false;
-	//Используются для определения места передвигаемого элемента
-	ImVec2 OldElementPosition;
-	ImVec2 SelectionStartPosition;
+
+	// Запоминаем расположенные элементы на поле, а также выбранные при выделении;
+	static std::vector<ElementOnCanvas> Elems;
+	static std::vector<int> SelectedElems;
 	// Отображение рабочего места
 	void WorkspaceInitialization()
 	{
 		ImGuiIO& io = ImGui::GetIO();
-		static ImVec2 scrolling(0.0f, 0.0f); // Текущая прокрутка
 		// Задаем размеры
 		ImGui::SetNextWindowPos(ImVec2(viewport->WorkSize.x / 4, viewport->WorkPos.y));
 		ImGui::SetNextWindowSize(ImVec2(3 * viewport->WorkSize.x / 4, viewport->WorkSize.y));
 		// Убираем отступы для корректного отображения
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
 		ImGui::Begin("MainWorkspace", NULL, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus);
+
 		// Позиция + размеры рабочего поля
+		static ImVec2 scrolling(0.0f, 0.0f); // Текущая прокрутка
 		ImVec2 canvas_p0 = ImGui::GetCursorScreenPos();
 		ImVec2 canvas_sz = ImGui::GetContentRegionAvail();
 		ImVec2 canvas_p1 = ImVec2(canvas_p0.x + canvas_sz.x, canvas_p0.y + canvas_sz.y);
 		ImDrawList* draw_list = ImGui::GetWindowDrawList();
+		
+		//Используются для определения передвигаемого элемента
+		static bool ClickedOnElement = false;
+		static bool IsSelecting = false;
+		static bool dragging = false;
+		//Используются для определения места передвигаемого элемента
+		static ImVec2 OldElementPosition;
+		static ImVec2 SelectionStartPosition;
 		draw_list->AddRectFilled(canvas_p0, canvas_p1, IM_COL32(240, 240, 240, 0));
 		ImGui::InvisibleButton("canvas", canvas_sz, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight); // Невидимая кнопка для взаимодействия
 		ImGui::SetItemAllowOverlap();
-		const bool WorkspaceHovered = ImGui::IsItemHovered();
-		const bool is_hovered = ImGui::IsItemHovered();
+		bool WorkspaceHovered = ImGui::IsItemHovered();
 		const bool is_active = ImGui::IsItemActive();
+		// Прокрутка на ПКМ
 		if (is_active && ImGui::IsMouseDragging(ImGuiMouseButton_Right) && !ClickedOnElement)
 		{
 			scrolling.x += io.MouseDelta.x;
@@ -277,6 +282,16 @@ namespace ScenarioGUI {
 		draw_list->PopClipRect();
 		// Возвращаем старый стиль отступов
 		ImGui::PopStyleVar();
+		// Вызов контекстного меню
+		ImVec2 drag_delta = ImGui::GetMouseDragDelta(ImGuiMouseButton_Right);
+		if (drag_delta.x == 0.0f && drag_delta.y == 0.0f)
+			ImGui::OpenPopupOnItemClick("contextworkspace", ImGuiPopupFlags_MouseButtonRight);
+		if (ImGui::BeginPopup("contextworkspace"))
+		{
+			PopupWorkspace();
+			ImGui::EndPopup();
+		}
+		// Отслеживание позиции поля с учетом прокрутки
 		const ImVec2 origin(canvas_p0.x + scrolling.x, canvas_p0.y + scrolling.y);
 		const ImVec2 mouse_pos_in_canvas(io.MousePos.x - origin.x, io.MousePos.y - origin.y);
 		// Приемник drag'n'drop
@@ -297,12 +312,11 @@ namespace ScenarioGUI {
 		}
 		// Отображаем добавленные элементы
 		ElementOnCanvas ToAdd;
-		static ImVec2 scrollingelem(0.0f, 0.0f);
-		// Такое решения для того, чтобы при нажатии выбирался верхний элемент. При использовании IsItemHovered() выбираются все элементы, попадающие под курсор. Уверен, есть более рациональное решение, пока не нашел
+		// Решение ниже - для того, чтобы при нажатии выбирался верхний элемент. При использовании IsItemHovered() выбираются все элементы, попадающие под курсор. Уверен, есть более рациональное решение, пока не нашел
 		// https://github.com/ocornut/imgui/issues/3909 - работает криво
 		// Переносим объект - удаляем его из списка, добавляем в конец
 		// IsItemActive - перехватывает лишь при нажатии ЛКМ и ПКМ
-
+		if (IsSelecting) SelectedElems.clear();
 		for (int i = 0; i < static_cast<int>(Elems.size()); i++)
 		{
 			// Уйдет на замену
@@ -315,15 +329,31 @@ namespace ScenarioGUI {
 			ImGui::SetCursorScreenPos(ImVec2(origin.x + Elems[i].Pos.x, origin.y + Elems[i].Pos.y));
 			ImGui::InvisibleButton("canvas123", ImVec2(TEMP.my_image_width, TEMP.my_image_height), ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
 			ImGui::SetItemAllowOverlap();
+			// Контексное меню
+			ImVec2 drag_delta = ImGui::GetMouseDragDelta(ImGuiMouseButton_Right);
+			if (drag_delta.x == 0.0f && drag_delta.y == 0.0f)
+				ImGui::OpenPopupOnItemClick("contextelem", ImGuiPopupFlags_MouseButtonRight);
+			if (ImGui::BeginPopup("contextelem"))
+			{
+				PopupElements();
+				ImGui::EndPopup();
+			}
 			// Нажатия на кнопку обрабатываются криво, поэтому используется связка IsMouseClicked() + IsItemHovered(), возможно, изменить позже
 			// Поиск элемента, лежащего "сверху"
 			if (ImGui::IsItemHovered())
 			{
 				// Нажатие на элемент - перерисовка элемента "поверх", запоминание его при передвижении (вылет, если курсор покинет невидимую кнопку)
-				if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+
+				// Если не идет множественное выделение, единственный элемент считаем выбранныс
+				if (!IsSelecting && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
 				{
-					SelectedElems.push_back(i);
-					ClickedOnElement = true; // TODO: проверить, потребуется ли вообще
+					// Убеждаемся, что элемент уже не был выбран
+					if (std::find(SelectedElems.begin(), SelectedElems.end(), i) == SelectedElems.end())
+					{
+						SelectedElems.clear();
+						SelectedElems.push_back(i);
+					}
+					ClickedOnElement = true;
 					OldElementPosition = Elems[i].Pos;
 				}
 				// Уже нажали, переносим
@@ -331,66 +361,79 @@ namespace ScenarioGUI {
 				{
 					dragging = true;
 				}
+				WorkspaceHovered = false;
 			}
+			// Если идет выбор - убеждаемся, что элемент попадает в выделение, добавляем в список выбранных элементов
 			if (IsSelecting)
-				if (Elems[i].Pos.x + ImGui::GetWindowPos().x > (io.MousePos.x + SelectionStartPosition.x - max(io.MousePos.x, SelectionStartPosition.x)) && Elems[i].Pos.x + ImGui::GetWindowPos().x < (io.MousePos.x + SelectionStartPosition.x - min(io.MousePos.x, SelectionStartPosition.x)))
-					if (Elems[i].Pos.y + ImGui::GetWindowPos().y > (io.MousePos.y + SelectionStartPosition.y - max(io.MousePos.y, SelectionStartPosition.y)) && Elems[i].Pos.y + ImGui::GetWindowPos().y < (io.MousePos.y + SelectionStartPosition.y - min(io.MousePos.y, SelectionStartPosition.y)))
+				if (Elems[i].Pos.x + origin.x > (io.MousePos.x + SelectionStartPosition.x - max(io.MousePos.x, SelectionStartPosition.x)) && Elems[i].Pos.x + origin.x < (io.MousePos.x + SelectionStartPosition.x - min(io.MousePos.x, SelectionStartPosition.x)))
+					if (Elems[i].Pos.y + origin.y > (io.MousePos.y + SelectionStartPosition.y - max(io.MousePos.y, SelectionStartPosition.y)) && Elems[i].Pos.y + origin.y < (io.MousePos.y + SelectionStartPosition.y - min(io.MousePos.y, SelectionStartPosition.y)))
 					{
 						if (std::find(SelectedElems.begin(), SelectedElems.end(), i) == SelectedElems.end())
 						SelectedElems.push_back(i);
 					}
 		}
+		
+		// Нажали на поле - сброс выделения
 		if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ClickedOnElement && WorkspaceHovered)
 		{
 			IsSelecting = true;
 			SelectionStartPosition = io.MousePos;
 			SelectedElems.clear();
 		}
+		// Отрисовка окна выделения
 		if (IsSelecting)
 		{
 			draw_list->AddRect(SelectionStartPosition, io.MousePos, IM_COL32(0, 0, 0, 255));
 			draw_list->AddRectFilled(SelectionStartPosition, io.MousePos, IM_COL32(0, 0, 0, 15));
 		} 
-		else if (static_cast<int>(SelectedElems.size()) > 1)
-		{
-			SelectedElems.erase(SelectedElems.begin(), SelectedElems.end() - 1);
-		}
-		// Вынесено отдельно, так как мы переносим наверх лишь один элемент, лежащий сверху
-		// Реализует отрисовку передвигаемого/нажатого элемента поверх других
+		// Реализует отрисовку передвигаемого/нажатого элемента поверх других, а также перенос элементов
 		int j = static_cast<int>(SelectedElems.size());
 		for (int i = 0; i < j; i++)
 		{
 			int SelectedElem = SelectedElems[i];
+			// Визуальное отображение того, что выделяется
 			draw_list->AddRect(ImVec2(origin.x + Elems[SelectedElem].Pos.x, origin.y + Elems[SelectedElem].Pos.y), ImVec2(origin.x + Elems[SelectedElem].Pos.x + TEMP.my_image_width, origin.y + Elems[SelectedElem].Pos.y + TEMP.my_image_height), IM_COL32(0, 0, 0, 255));
 			draw_list->AddRectFilled(ImVec2(origin.x + Elems[SelectedElem].Pos.x, origin.y + Elems[SelectedElem].Pos.y), ImVec2(origin.x + Elems[SelectedElem].Pos.x + TEMP.my_image_width, origin.y + Elems[SelectedElem].Pos.y + TEMP.my_image_height), IM_COL32(255, 255, 0, 10));
+			// Перенос не требует отрисовки "поверх", лишь смену позиции
 			if (dragging)
 			{
 				int x = Elems[SelectedElem].Pos.x + io.MouseDelta.x;
 				int y = Elems[SelectedElem].Pos.y + io.MouseDelta.y;
-				if (x < 0 || io.MousePos.x < canvas_p0.x) x = 0;
-				if (y < 0 || io.MousePos.y < canvas_p0.y) y = 0;
-				ToAdd = { Elems[SelectedElem].Path, ImVec2(x,y) };
+				if (x < 0 || io.MousePos.x < origin.x) x = 0;
+				if (y < 0 || io.MousePos.y < origin.y) y = 0;
+				Elems[SelectedElem].Pos = ImVec2(x, y);
 			}
-			else
+			// При нажатии на край элемента, лежащего за другим, требуется перерисовка "поверх"
+			else if (ClickedOnElement && !dragging && j < 2)
 			{
 				ToAdd = { Elems[SelectedElem].Path, Elems[SelectedElem].Pos };
+				Elems.erase(Elems.begin() + SelectedElem);
+				Elems.push_back(ToAdd);
+				SelectedElems[i] = -1;
+				SelectedElems.push_back(static_cast<int>(Elems.size()) - 1 - i);
 			}
-			Elems.erase(Elems.begin() + SelectedElem);
-			Elems.push_back(ToAdd);
-			SelectedElems[i] = -1;
-			SelectedElems.push_back(static_cast<int>(Elems.size())-1-i);
 		}
 
 		auto new_end = std::remove(SelectedElems.begin(), SelectedElems.end(), -1);
 		SelectedElems.erase(new_end, SelectedElems.end());
 		if (!io.MouseDown[0])
 		{
-			if (!IsSelecting && static_cast<int>(SelectedElems.size())==1) SelectedElems.clear();
 			dragging = ClickedOnElement = IsSelecting = false;
 		}
 		ImGui::End();
+
 	}
 
+	void PopupWorkspace()
+	{
+		if (ImGui::MenuItem("Remove all12312312312312312312312312312312312312312", NULL, false)) {}
+	}
+
+	void PopupElements()
+	{
+		if (ImGui::MenuItem("Remove sdfsdf", NULL, false)) {}
+	}
+	
 	// Отображение элементов сценария
 	void DrawObjects()
 	{
