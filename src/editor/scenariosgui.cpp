@@ -222,16 +222,7 @@ namespace ScenarioGUI {
 
 	}
 
-	struct LinkOnCanvas
-	{
-		ImVec2 *Points[2];
-	};
-
-	struct LinkingPoint
-	{
-		bool Connected = false;
-		ImVec2 PointPos;
-	};
+	
 
 	//Для сохранения элементов на рабочей панели
 	struct ElementOnCanvas
@@ -239,14 +230,22 @@ namespace ScenarioGUI {
 		const char* Path;
 		ImVec2 Pos;
 		int Type;
-		LinkingPoint Points[4];
+		ImVec2 Points[4];
+	};
+
+	struct LinkOnCanvas
+	{
+		ImVec2* Points[2];
+		ElementOnCanvas Elems[2];
 	};
 
 	// Запоминаем расположенные элементы на поле, а также выбранные при выделении;
 	static std::vector<ElementOnCanvas> Elems;
+	static std::vector<LinkOnCanvas> Links;
 	static std::vector<ElementOnCanvas> CopyBuffer;
 	static std::vector<int> SelectedElems;
 	static ImVec2 MousePos, origin;
+	static bool IsLinking = false;
 	ImDrawList* draw_list;
 	// Отображение рабочего места
 	void WorkspaceInitialization()
@@ -438,23 +437,131 @@ namespace ScenarioGUI {
 
 	void LinksInitialization()
 	{
+		ImGuiIO& io = ImGui::GetIO();
+		static ImVec2 *ClickedPoint;
+		static ElementOnCanvas ClickedElem;
 		for (int i = 0; i < Elems.size(); i++)
 		{
 			if (Elems[i].Type & 1)
 			{
+				Elems[i].Points[0] = ImVec2(origin.x + Elems[i].Pos.x + TEMP.my_image_width / 2, origin.y + Elems[i].Pos.y);
 				draw_list->AddCircleFilled(ImVec2(origin.x + Elems[i].Pos.x + TEMP.my_image_width / 2, origin.y + Elems[i].Pos.y),5.0f, IM_COL32(0, 0, 0, 255));
+				ImGui::SetCursorScreenPos(ImVec2(origin.x + Elems[i].Pos.x + TEMP.my_image_width / 2 - 5.0f, origin.y + Elems[i].Pos.y - 5.0f));
+				ImGui::InvisibleButton("LinkingPointUp", ImVec2(10.0f, 10.0f), ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
+				ImGui::SetItemAllowOverlap();
+				if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+				{
+					if (!IsLinking)
+					{
+						ClickedPoint = &Elems[i].Points[0];
+						ClickedElem = Elems[i];
+					}
+					else
+					{
+						if (ClickedPoint != &Elems[i].Points[0])
+						{
+							Links.push_back({ {ClickedPoint, &Elems[i].Points[0]},{ClickedElem, Elems[i]} });
+						}
+					}
+					IsLinking = !IsLinking;
+				}
+				if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
+				{
+					std::cout << "Up_Right";
+				}
 			}
 			if (Elems[i].Type & 2)
 			{
+				Elems[i].Points[1] = ImVec2(origin.x + Elems[i].Pos.x + TEMP.my_image_width, origin.y + Elems[i].Pos.y + TEMP.my_image_height / 2);
 				draw_list->AddCircleFilled(ImVec2(origin.x + Elems[i].Pos.x + TEMP.my_image_width, origin.y + Elems[i].Pos.y + TEMP.my_image_height / 2), 5.0f, IM_COL32(0, 0, 0, 255));
+				ImGui::SetCursorScreenPos(ImVec2(origin.x + Elems[i].Pos.x + TEMP.my_image_width - 5.0f, origin.y + Elems[i].Pos.y + TEMP.my_image_height / 2 - 5.0f));
+				ImGui::InvisibleButton("LinkingPointRight", ImVec2(10.0f, 10.0f), ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
+				ImGui::SetItemAllowOverlap();
+				if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+				{
+					if (!IsLinking)
+					{
+						ClickedPoint = &Elems[i].Points[1];
+						ClickedElem = Elems[i];
+					}
+					else
+					{
+						if (ClickedPoint != &Elems[i].Points[1])
+						{
+							Links.push_back({{ClickedPoint, &Elems[i].Points[1]},{ClickedElem, Elems[i]}});
+						}
+					}
+					IsLinking = !IsLinking;
+				}
+				if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
+				{
+					std::cout << "Right_Right";
+				}
 			}
 			if (Elems[i].Type & 4)
 			{
-				draw_list->AddCircleFilled(ImVec2(origin.x + Elems[i].Pos.x + TEMP.my_image_width / 2, origin.y + Elems[i].Pos.y + + TEMP.my_image_height), 5.0f, IM_COL32(0, 0, 0, 255));
+				Elems[i].Points[2] = ImVec2(origin.x + Elems[i].Pos.x + TEMP.my_image_width / 2, origin.y + Elems[i].Pos.y + TEMP.my_image_height);
+				draw_list->AddCircleFilled(ImVec2(origin.x + Elems[i].Pos.x + TEMP.my_image_width / 2, origin.y + Elems[i].Pos.y + TEMP.my_image_height), 5.0f, IM_COL32(0, 0, 0, 255));
+				ImGui::SetCursorScreenPos(ImVec2(origin.x + Elems[i].Pos.x + TEMP.my_image_width / 2 - 5.0f, origin.y + Elems[i].Pos.y +TEMP.my_image_height - 5.0f));
+				ImGui::InvisibleButton("LinkingPointDown", ImVec2(10.0f, 10.0f), ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
+				ImGui::SetItemAllowOverlap();
+				if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+				{
+					if (!IsLinking)
+					{
+						ClickedPoint = &Elems[i].Points[2];
+						ClickedElem = Elems[i];
+					}
+					else
+					{
+						if (ClickedPoint != &Elems[i].Points[2])
+						{
+							Links.push_back({ {ClickedPoint, &Elems[i].Points[2]},{ClickedElem, Elems[i]} });
+						}
+					}
+					IsLinking = !IsLinking;
+				}
+				if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
+				{
+					std::cout << "Down_Right";
+				}
 			}
 			if (Elems[i].Type & 8)
 			{
+				Elems[i].Points[3] = ImVec2(origin.x + Elems[i].Pos.x, origin.y + Elems[i].Pos.y + TEMP.my_image_height / 2);
 				draw_list->AddCircleFilled(ImVec2(origin.x + Elems[i].Pos.x, origin.y + Elems[i].Pos.y + TEMP.my_image_height / 2), 5.0f, IM_COL32(0, 0, 0, 255));
+				ImGui::SetCursorScreenPos(ImVec2(origin.x + Elems[i].Pos.x - 5.0f, origin.y + Elems[i].Pos.y + TEMP.my_image_height / 2 - 5.0f));
+				ImGui::InvisibleButton("LinkingPointLeft", ImVec2(10.0f, 10.0f), ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
+				ImGui::SetItemAllowOverlap();
+				if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+				{
+					if (!IsLinking)
+					{
+						ClickedPoint = &Elems[i].Points[3];
+						ClickedElem = Elems[i];
+					}
+					else
+					{
+						if (ClickedPoint != &Elems[i].Points[3])
+						{
+							Links.push_back({ {ClickedPoint, &Elems[i].Points[3]},{ClickedElem, Elems[i]} });
+						}
+					}
+					IsLinking = !IsLinking;
+				}
+				if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
+				{
+					std::cout << "Left_Right";
+				}
+			}
+			if (IsLinking)
+			{
+				if (ClickedPoint->x != 0 && ClickedPoint->y != 0)
+				draw_list->AddLine(*ClickedPoint , io.MousePos, IM_COL32(0, 0, 0, 255));
+			}
+			for (int i = 0; i < Links.size(); i++)
+			{
+				draw_list->AddLine(*Links[i].Points[0], *Links[i].Points[1], IM_COL32(0, 0, 0, 255));
 			}
 		}
 	}
