@@ -12,20 +12,24 @@
 #include "stb_image.h"
 #include <list>
 #include <vector>
+#include "tinyxml2.h"
 
 // Simple helper function to load an image into a DX11 texture with common settings
 
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 namespace ScenarioGUI {
-	struct LoadedTextures
+	static std::vector<const char*> ElementNames = { "uzel", "start", "clear", "message", "sound", "script", "pilon", "arrow", 
+										"pause", "push", "select", "outcome", "if_answer", "if_variable", "if_random", "if_danger" };
+	static std::vector<int> ElementTypes = { 1, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 11, 11, 11, 11};
+	struct LoadedTexture
 	{
 		ID3D11ShaderResourceView* my_texture;
 		int my_image_height;
 		int my_image_width;
 	};
-	LoadedTextures TEMP; // В будущем - удалить
-	LoadedTextures TEMP2; // В будущем - удалить
+	static std::vector<LoadedTexture> Textures;
+	float Zoom = 2;
 	// Data
 	static ID3D11Device* g_pd3dDevice = NULL;
 	static ID3D11DeviceContext* g_pd3dDeviceContext = NULL;
@@ -42,6 +46,8 @@ namespace ScenarioGUI {
 	void WorkspaceInitialization();
 	void PopupWorkspace();
 	void LinksInitialization();
+	void ParamsInitialization();
+	void TempLoad();
 	bool LoadTextureFromFile(const char* filename, ID3D11ShaderResourceView** out_srv, int* out_width, int* out_height);
 	LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -108,20 +114,7 @@ namespace ScenarioGUI {
 		//IM_ASSERT(font != NULL);
 		ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 		// Main loop
-		while (TEMP.my_image_height == 0)
-		{
-			if (bool ret = LoadTextureFromFile(u8"C:/Users/VR/Desktop/projects/SimulatorsEditor/src/editor/img/MyImage01.png", &TEMP.my_texture, &TEMP.my_image_width, &TEMP.my_image_height))
-			{
-				IM_ASSERT(ret);
-			}
-		}
-		while (TEMP2.my_image_height == 0)
-		{
-			if (bool ret = LoadTextureFromFile(u8"C:/Users/VR/Desktop/projects/SimulatorsEditor/src/editor/img/MyImage02.png", &TEMP2.my_texture, &TEMP2.my_image_width, &TEMP2.my_image_height))
-			{
-				IM_ASSERT(ret);
-			}
-		}
+		TempLoad();
 		bool done = false;
 		while (!done)
 		{
@@ -192,6 +185,7 @@ namespace ScenarioGUI {
 			ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x, (2 * viewport->WorkSize.y / 3) - 4));
 			ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x / 4, (viewport->WorkSize.y / 3) + 33));
 			ImGui::Begin(u8"Свойства", NULL, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+			ParamsInitialization();
 			ImGui::End();
 
 			ImGui::ShowDemoWindow();
@@ -222,27 +216,26 @@ namespace ScenarioGUI {
 
 	}
 
-	
+
 
 	//Для сохранения элементов на рабочей панели
 	struct ElementOnCanvas
 	{
-		const char* Path;
+		int Element;
 		ImVec2 Pos;
 		int Type;
-		ImVec2 Points[4];
 	};
 
 	struct LinkOnCanvas
 	{
-		ImVec2* Points[2];
-		ElementOnCanvas Elems[2];
+		int Points[2];
+		int Elems[2];
 	};
-
+	 
 	// Запоминаем расположенные элементы на поле, а также выбранные при выделении;
 	static std::vector<ElementOnCanvas> Elems;
 	static std::vector<LinkOnCanvas> Links;
-	static std::vector<ElementOnCanvas> CopyBuffer;
+	static std::vector<int> CopyBuffer; // TODO: заменить int
 	static std::vector<int> SelectedElems;
 	static ImVec2 MousePos, origin;
 	static bool IsLinking = false;
@@ -317,13 +310,11 @@ namespace ScenarioGUI {
 			auto payload = ImGui::AcceptDragDropPayload("Element");
 			if (payload != NULL) {
 				int ElementNum = *(int*)payload->Data;
-				const char* Name;
-				Name = ElementNum % 2 == 1 ? u8"MyImage01.png" : u8"MyImage02.png";
-				int x = mouse_pos_in_canvas.x - TEMP.my_image_width / 2;
-				int y = mouse_pos_in_canvas.y - TEMP.my_image_height / 2;
+				int x = mouse_pos_in_canvas.x - Textures[ElementNum].my_image_width / 2;
+				int y = mouse_pos_in_canvas.y - Textures[ElementNum].my_image_height / 2;
 				if (x < 0) x = 0;
 				if (y < 0) y = 0;
-				Elems.push_back({ Name, ImVec2(x, y), ElementNum });
+				Elems.push_back({ ElementNum, ImVec2(x, y), ElementTypes[ElementNum]});
 			}
 			ImGui::EndDragDropTarget();
 		}
@@ -336,24 +327,22 @@ namespace ScenarioGUI {
 		if (IsSelecting) SelectedElems.clear();
 		for (int i = 0; i < static_cast<int>(Elems.size()); i++)
 		{
+			LoadedTexture UsedTexture = Textures[Elems[i].Element];
 			// Уйдет на замену
-			if (Elems[i].Path == "MyImage01.png")
-				draw_list->AddImage((void*)TEMP.my_texture, ImVec2(origin.x + Elems[i].Pos.x, origin.y + Elems[i].Pos.y), ImVec2(origin.x + Elems[i].Pos.x + TEMP.my_image_width, origin.y + Elems[i].Pos.y + TEMP.my_image_height));
-			else if (Elems[i].Path == "MyImage02.png")
-				draw_list->AddImage((void*)TEMP2.my_texture, ImVec2(origin.x + Elems[i].Pos.x, origin.y + Elems[i].Pos.y), ImVec2(origin.x + Elems[i].Pos.x + TEMP2.my_image_width, origin.y + Elems[i].Pos.y + TEMP2.my_image_height));
+				draw_list->AddImage((void*)UsedTexture.my_texture, ImVec2(origin.x + Elems[i].Pos.x, origin.y + Elems[i].Pos.y), ImVec2(origin.x + Elems[i].Pos.x + UsedTexture.my_image_width, origin.y + Elems[i].Pos.y + UsedTexture.my_image_height));
 			// Конец замены
 			// Создаем невидимую кнопку для взаимодействия с объектом на рабочем пространстве
 			ImGui::SetCursorScreenPos(ImVec2(origin.x + Elems[i].Pos.x, origin.y + Elems[i].Pos.y));
-			ImGui::InvisibleButton("canvas123", ImVec2(TEMP.my_image_width, TEMP.my_image_height), ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
+			ImGui::InvisibleButton("canvas123", ImVec2(UsedTexture.my_image_width, UsedTexture.my_image_height), ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
 			ImGui::SetItemAllowOverlap();
 			// Нажатия на кнопку обрабатываются криво, поэтому используется связка IsMouseClicked() + IsItemHovered(), возможно, изменить позже
 			// Поиск элемента, лежащего "сверху"
-			if (ImGui::IsItemHovered())
+			if (!IsLinking && !IsSelecting && ImGui::IsItemHovered())
 			{
 				// Нажатие на элемент - перерисовка элемента "поверх", запоминание его при передвижении (вылет, если курсор покинет невидимую кнопку)
 
-				// Если не идет множественное выделение, единственный элемент считаем выбранныс
-				if (!IsSelecting && (ImGui::IsMouseClicked(ImGuiMouseButton_Left) || ImGui::IsMouseClicked(ImGuiMouseButton_Right)))
+				// Если не идет множественное выделение, единственный элемент считаем выбранным
+				if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) || ImGui::IsMouseClicked(ImGuiMouseButton_Right))
 				{
 					// Убеждаемся, что элемент уже не был выбран
 					if (std::find(SelectedElems.begin(), SelectedElems.end(), i) == SelectedElems.end())
@@ -365,7 +354,7 @@ namespace ScenarioGUI {
 					OldElementPosition = Elems[i].Pos;
 				}
 				// Уже нажали, переносим
-				if (ImGui::IsMouseDragging(ImGuiMouseButton_Left) && !IsSelecting)
+				if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
 				{
 					dragging = true;
 				}
@@ -388,6 +377,11 @@ namespace ScenarioGUI {
 			SelectionStartPosition = io.MousePos;
 			SelectedElems.clear();
 		}
+		if (IsLinking)
+		{
+			IsSelecting = false;
+			SelectedElems.clear();
+		}
 		// Отрисовка окна выделения
 		if (IsSelecting)
 		{
@@ -395,13 +389,14 @@ namespace ScenarioGUI {
 			draw_list->AddRectFilled(SelectionStartPosition, io.MousePos, IM_COL32(0, 0, 0, 15));
 		}
 		// Реализует отрисовку передвигаемого/нажатого элемента поверх других, а также перенос элементов
-		int j = static_cast<int>(SelectedElems.size());
+		int j = SelectedElems.size();
 		for (int i = 0; i < j; i++)
 		{
 			int SelectedElem = SelectedElems[i];
+			LoadedTexture UsedTexture = Textures[Elems[SelectedElem].Element];
 			// Визуальное отображение того, что выделяется
-			draw_list->AddRect(ImVec2(origin.x + Elems[SelectedElem].Pos.x, origin.y + Elems[SelectedElem].Pos.y), ImVec2(origin.x + Elems[SelectedElem].Pos.x + TEMP.my_image_width, origin.y + Elems[SelectedElem].Pos.y + TEMP.my_image_height), IM_COL32(0, 0, 0, 255));
-			draw_list->AddRectFilled(ImVec2(origin.x + Elems[SelectedElem].Pos.x, origin.y + Elems[SelectedElem].Pos.y), ImVec2(origin.x + Elems[SelectedElem].Pos.x + TEMP.my_image_width, origin.y + Elems[SelectedElem].Pos.y + TEMP.my_image_height), IM_COL32(255, 255, 0, 10));
+			draw_list->AddRect(ImVec2(origin.x + Elems[SelectedElem].Pos.x, origin.y + Elems[SelectedElem].Pos.y), ImVec2(origin.x + Elems[SelectedElem].Pos.x + UsedTexture.my_image_width, origin.y + Elems[SelectedElem].Pos.y + UsedTexture.my_image_height), IM_COL32(0, 0, 0, 255));
+			draw_list->AddRectFilled(ImVec2(origin.x + Elems[SelectedElem].Pos.x, origin.y + Elems[SelectedElem].Pos.y), ImVec2(origin.x + Elems[SelectedElem].Pos.x + UsedTexture.my_image_width, origin.y + Elems[SelectedElem].Pos.y + UsedTexture.my_image_height), IM_COL32(255, 255, 0, 10));
 			// Перенос не требует отрисовки "поверх", лишь смену позиции
 			if (dragging)
 			{
@@ -414,11 +409,18 @@ namespace ScenarioGUI {
 			// При нажатии на край элемента, лежащего за другим, требуется перерисовка "поверх"
 			else if (ClickedOnElement && !dragging && j < 2)
 			{
-				ToAdd = { Elems[SelectedElem].Path, Elems[SelectedElem].Pos, Elems[SelectedElem].Type };
+				ToAdd = { Elems[SelectedElem].Element, Elems[SelectedElem].Pos, Elems[SelectedElem].Type };
 				Elems.erase(Elems.begin() + SelectedElem);
 				Elems.push_back(ToAdd);
 				SelectedElems[i] = -1;
-				SelectedElems.push_back(static_cast<int>(Elems.size()) - 1 - i);
+				SelectedElems.push_back(Elems.size() - 1 - i);
+				for (int k = 0; k < Links.size(); k++)
+				{
+					if (Links[k].Elems[0] == SelectedElem) Links[k].Elems[0] = Elems.size() - 1;
+					else if (Links[k].Elems[0] > SelectedElem) Links[k].Elems[0]--;
+					if (Links[k].Elems[1] == SelectedElem) Links[k].Elems[1] = Elems.size() - 1;
+					else if (Links[k].Elems[1] > SelectedElem) Links[k].Elems[1]--;
+				}
 			}
 		}
 
@@ -435,33 +437,44 @@ namespace ScenarioGUI {
 
 	}
 
+	ImVec2 GetLinkingPointLocation(int Elem, int Point)
+	{
+		switch (Point)
+		{
+		case 0: return ImVec2(origin.x + Elems[Elem].Pos.x + Textures[Elems[Elem].Element].my_image_width / 2, origin.y + Elems[Elem].Pos.y); break;
+		case 1: return ImVec2(origin.x + Elems[Elem].Pos.x + Textures[Elems[Elem].Element].my_image_width, origin.y + Elems[Elem].Pos.y + Textures[Elems[Elem].Element].my_image_height / 2); break;
+		case 2: return ImVec2(origin.x + Elems[Elem].Pos.x + Textures[Elems[Elem].Element].my_image_width / 2, origin.y + Elems[Elem].Pos.y + Textures[Elems[Elem].Element].my_image_height); break;
+		case 3: return ImVec2(origin.x + Elems[Elem].Pos.x, origin.y + Elems[Elem].Pos.y + Textures[Elems[Elem].Element].my_image_height / 2); break;
+		}
+	}
+
 	void LinksInitialization()
 	{
 		ImGuiIO& io = ImGui::GetIO();
-		static ImVec2 *ClickedPoint;
-		static ElementOnCanvas ClickedElem;
+		static int ClickedElem;
+		static int ClickedType;
 		for (int i = 0; i < Elems.size(); i++)
 		{
+			LoadedTexture UsedTexture = Textures[Elems[i].Element];
 			if (Elems[i].Type & 1)
 			{
-				Elems[i].Points[0] = ImVec2(origin.x + Elems[i].Pos.x + TEMP.my_image_width / 2, origin.y + Elems[i].Pos.y);
-				draw_list->AddCircleFilled(ImVec2(origin.x + Elems[i].Pos.x + TEMP.my_image_width / 2, origin.y + Elems[i].Pos.y),5.0f, IM_COL32(0, 0, 0, 255));
-				ImGui::SetCursorScreenPos(ImVec2(origin.x + Elems[i].Pos.x + TEMP.my_image_width / 2 - 5.0f, origin.y + Elems[i].Pos.y - 5.0f));
+				//Elems[i].Points[0] = ImVec2(origin.x + Elems[i].Pos.x + TEMP.my_image_width / 2, origin.y + Elems[i].Pos.y);
+				draw_list->AddCircleFilled(ImVec2(origin.x + Elems[i].Pos.x + UsedTexture.my_image_width / 2, origin.y + Elems[i].Pos.y), 5.0f, IM_COL32(0, 0, 0, 255));
+				ImGui::SetCursorScreenPos(ImVec2(origin.x + Elems[i].Pos.x + UsedTexture.my_image_width / 2 - 5.0f, origin.y + Elems[i].Pos.y - 5.0f));
 				ImGui::InvisibleButton("LinkingPointUp", ImVec2(10.0f, 10.0f), ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
 				ImGui::SetItemAllowOverlap();
 				if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
 				{
 					if (!IsLinking)
 					{
-						ClickedPoint = &Elems[i].Points[0];
-						ClickedElem = Elems[i];
+						ClickedElem = i;
+						ClickedType = 0;
+						SelectedElems.clear();
 					}
 					else
 					{
-						if (ClickedPoint != &Elems[i].Points[0])
-						{
-							Links.push_back({ {ClickedPoint, &Elems[i].Points[0]},{ClickedElem, Elems[i]} });
-						}
+						if (ClickedType != 0 || ClickedElem != i)
+						Links.push_back({ {ClickedType, 0},{ClickedElem, i} });
 					}
 					IsLinking = !IsLinking;
 				}
@@ -472,24 +485,22 @@ namespace ScenarioGUI {
 			}
 			if (Elems[i].Type & 2)
 			{
-				Elems[i].Points[1] = ImVec2(origin.x + Elems[i].Pos.x + TEMP.my_image_width, origin.y + Elems[i].Pos.y + TEMP.my_image_height / 2);
-				draw_list->AddCircleFilled(ImVec2(origin.x + Elems[i].Pos.x + TEMP.my_image_width, origin.y + Elems[i].Pos.y + TEMP.my_image_height / 2), 5.0f, IM_COL32(0, 0, 0, 255));
-				ImGui::SetCursorScreenPos(ImVec2(origin.x + Elems[i].Pos.x + TEMP.my_image_width - 5.0f, origin.y + Elems[i].Pos.y + TEMP.my_image_height / 2 - 5.0f));
+				//Elems[i].Points[1] = ImVec2(origin.x + Elems[i].Pos.x + TEMP.my_image_width, origin.y + Elems[i].Pos.y + TEMP.my_image_height / 2);
+				draw_list->AddCircleFilled(ImVec2(origin.x + Elems[i].Pos.x + UsedTexture.my_image_width, origin.y + Elems[i].Pos.y + UsedTexture.my_image_height / 2), 5.0f, IM_COL32(0, 0, 0, 255));
+				ImGui::SetCursorScreenPos(ImVec2(origin.x + Elems[i].Pos.x + UsedTexture.my_image_width - 5.0f, origin.y + Elems[i].Pos.y + UsedTexture.my_image_height / 2 - 5.0f));
 				ImGui::InvisibleButton("LinkingPointRight", ImVec2(10.0f, 10.0f), ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
 				ImGui::SetItemAllowOverlap();
 				if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
 				{
 					if (!IsLinking)
 					{
-						ClickedPoint = &Elems[i].Points[1];
-						ClickedElem = Elems[i];
+						ClickedElem = i;
+						ClickedType = 1;
 					}
 					else
 					{
-						if (ClickedPoint != &Elems[i].Points[1])
-						{
-							Links.push_back({{ClickedPoint, &Elems[i].Points[1]},{ClickedElem, Elems[i]}});
-						}
+						if (ClickedType != 1 || ClickedElem != i)
+						Links.push_back({ {ClickedType, 1},{ClickedElem, i} });
 					}
 					IsLinking = !IsLinking;
 				}
@@ -500,24 +511,22 @@ namespace ScenarioGUI {
 			}
 			if (Elems[i].Type & 4)
 			{
-				Elems[i].Points[2] = ImVec2(origin.x + Elems[i].Pos.x + TEMP.my_image_width / 2, origin.y + Elems[i].Pos.y + TEMP.my_image_height);
-				draw_list->AddCircleFilled(ImVec2(origin.x + Elems[i].Pos.x + TEMP.my_image_width / 2, origin.y + Elems[i].Pos.y + TEMP.my_image_height), 5.0f, IM_COL32(0, 0, 0, 255));
-				ImGui::SetCursorScreenPos(ImVec2(origin.x + Elems[i].Pos.x + TEMP.my_image_width / 2 - 5.0f, origin.y + Elems[i].Pos.y +TEMP.my_image_height - 5.0f));
+				//Elems[i].Points[2] = ImVec2(origin.x + Elems[i].Pos.x + TEMP.my_image_width / 2, origin.y + Elems[i].Pos.y + TEMP.my_image_height);
+				draw_list->AddCircleFilled(ImVec2(origin.x + Elems[i].Pos.x + UsedTexture.my_image_width / 2, origin.y + Elems[i].Pos.y + UsedTexture.my_image_height), 5.0f, IM_COL32(0, 0, 0, 255));
+				ImGui::SetCursorScreenPos(ImVec2(origin.x + Elems[i].Pos.x + UsedTexture.my_image_width / 2 - 5.0f, origin.y + Elems[i].Pos.y + UsedTexture.my_image_height - 5.0f));
 				ImGui::InvisibleButton("LinkingPointDown", ImVec2(10.0f, 10.0f), ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
 				ImGui::SetItemAllowOverlap();
 				if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
 				{
 					if (!IsLinking)
 					{
-						ClickedPoint = &Elems[i].Points[2];
-						ClickedElem = Elems[i];
+						ClickedElem = i;
+						ClickedType = 2;
 					}
 					else
 					{
-						if (ClickedPoint != &Elems[i].Points[2])
-						{
-							Links.push_back({ {ClickedPoint, &Elems[i].Points[2]},{ClickedElem, Elems[i]} });
-						}
+						if (ClickedType != 2 || ClickedElem != i)
+						Links.push_back({ {ClickedType, 2},{ClickedElem, i} });
 					}
 					IsLinking = !IsLinking;
 				}
@@ -528,24 +537,22 @@ namespace ScenarioGUI {
 			}
 			if (Elems[i].Type & 8)
 			{
-				Elems[i].Points[3] = ImVec2(origin.x + Elems[i].Pos.x, origin.y + Elems[i].Pos.y + TEMP.my_image_height / 2);
-				draw_list->AddCircleFilled(ImVec2(origin.x + Elems[i].Pos.x, origin.y + Elems[i].Pos.y + TEMP.my_image_height / 2), 5.0f, IM_COL32(0, 0, 0, 255));
-				ImGui::SetCursorScreenPos(ImVec2(origin.x + Elems[i].Pos.x - 5.0f, origin.y + Elems[i].Pos.y + TEMP.my_image_height / 2 - 5.0f));
+				//Elems[i].Points[3] = ImVec2(origin.x + Elems[i].Pos.x, origin.y + Elems[i].Pos.y + TEMP.my_image_height / 2);
+				draw_list->AddCircleFilled(ImVec2(origin.x + Elems[i].Pos.x, origin.y + Elems[i].Pos.y + UsedTexture.my_image_height / 2), 5.0f, IM_COL32(0, 0, 0, 255));
+				ImGui::SetCursorScreenPos(ImVec2(origin.x + Elems[i].Pos.x - 5.0f, origin.y + Elems[i].Pos.y + UsedTexture.my_image_height / 2 - 5.0f));
 				ImGui::InvisibleButton("LinkingPointLeft", ImVec2(10.0f, 10.0f), ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
 				ImGui::SetItemAllowOverlap();
 				if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
 				{
 					if (!IsLinking)
 					{
-						ClickedPoint = &Elems[i].Points[3];
-						ClickedElem = Elems[i];
+						ClickedElem = i;
+						ClickedType = 3;
 					}
 					else
 					{
-						if (ClickedPoint != &Elems[i].Points[3])
-						{
-							Links.push_back({ {ClickedPoint, &Elems[i].Points[3]},{ClickedElem, Elems[i]} });
-						}
+						if (ClickedType != 3 || ClickedElem != i)
+						Links.push_back({ {ClickedType, 3},{ClickedElem, i} });
 					}
 					IsLinking = !IsLinking;
 				}
@@ -556,12 +563,11 @@ namespace ScenarioGUI {
 			}
 			if (IsLinking)
 			{
-				if (ClickedPoint->x != 0 && ClickedPoint->y != 0)
-				draw_list->AddLine(*ClickedPoint , io.MousePos, IM_COL32(0, 0, 0, 255));
+				draw_list->AddLine(GetLinkingPointLocation(ClickedElem, ClickedType), io.MousePos, IM_COL32(0, 0, 0, 255));
 			}
-			for (int i = 0; i < Links.size(); i++)
+			for (int j = 0; j < Links.size(); j++)
 			{
-				draw_list->AddLine(*Links[i].Points[0], *Links[i].Points[1], IM_COL32(0, 0, 0, 255));
+				draw_list->AddLine(GetLinkingPointLocation(Links[j].Elems[0], Links[j].Points[0]), GetLinkingPointLocation(Links[j].Elems[1], Links[j].Points[1]), IM_COL32(0, 0, 0, 255));
 			}
 		}
 	}
@@ -571,11 +577,22 @@ namespace ScenarioGUI {
 		if (ImGui::MenuItem(u8"Удалить", NULL, false, SelectedElems.size() > 0))
 		{
 			int j = static_cast<int>(SelectedElems.size());
-			for (int i = 0; i < j; i++)
+			for (int i = j - 1; i >= 0; i--)
 			{
 				int SelectedElem = SelectedElems[i];
-				Elems.erase(Elems.begin() + (SelectedElem - i));
+				Elems.erase(Elems.begin() + SelectedElem);
 				SelectedElems[i] = -1;
+				std::vector<LinkOnCanvas>::iterator k = Links.begin();
+				while (k != Links.end())
+				{
+					if ((*k).Elems[0] == SelectedElem || (*k).Elems[1] == SelectedElem) k = Links.erase(k);
+					else 
+					{
+						if ((*k).Elems[0] > SelectedElem ) (*k).Elems[0]--;
+						if ((*k).Elems[1] > SelectedElem ) (*k).Elems[1]--;
+						++k;
+					}
+				}
 			}
 			auto new_end = std::remove(SelectedElems.begin(), SelectedElems.end(), -1);
 			SelectedElems.erase(new_end, SelectedElems.end());
@@ -587,22 +604,54 @@ namespace ScenarioGUI {
 			for (int i = 0; i < j; i++)
 			{
 				int SelectedElem = SelectedElems[i];
-				CopyBuffer.push_back(Elems[SelectedElem]);
+				CopyBuffer.push_back(SelectedElem);
 			}
+		}
+		if (ImGui::MenuItem(u8"Удалить связи", NULL, false, SelectedElems.size() > 0))
+		{
+			int j = static_cast<int>(SelectedElems.size());
+			for (int i = j - 1; i >= 0; i--)
+			{
+				std::vector<LinkOnCanvas>::iterator k = Links.begin();
+				while (k != Links.end())
+				{
+					int SelectedElem = SelectedElems[i];
+					if ((*k).Elems[0] == SelectedElem || (*k).Elems[1] == SelectedElem) k = Links.erase(k);
+					else
+					{
+						++k;
+					}
+				}
+			}
+			auto new_end = std::remove(SelectedElems.begin(), SelectedElems.end(), -1);
+			SelectedElems.erase(new_end, SelectedElems.end());
 		}
 		if (ImGui::MenuItem(u8"Вставить", NULL, false, CopyBuffer.size() > 0))
 		{
+			std::vector<LinkOnCanvas> LinksBuffer = Links;
 			SelectedElems.clear();
 			ImVec2 min = ImVec2(-1, -1);
 			for (int i = 0; i < CopyBuffer.size(); i++)
 			{
-				if (min.x == -1 || CopyBuffer[i].Pos.x < min.x) min.x = CopyBuffer[i].Pos.x;
-				if (min.y == -1 || CopyBuffer[i].Pos.y < min.y) min.y = CopyBuffer[i].Pos.y;
+				if (min.x == -1 || Elems[CopyBuffer[i]].Pos.x < min.x) min.x = Elems[CopyBuffer[i]].Pos.x;
+				if (min.y == -1 || Elems[CopyBuffer[i]].Pos.y < min.y) min.y = Elems[CopyBuffer[i]].Pos.y;
 			}
 			for (int i = 0; i < CopyBuffer.size(); i++)
 			{
-				Elems.push_back({ CopyBuffer[i].Path, ImVec2(CopyBuffer[i].Pos.x - min.x + MousePos.x, CopyBuffer[i].Pos.y - min.y + MousePos.y), CopyBuffer[i].Type});
-				SelectedElems.push_back(Elems.size()-1);
+				Elems.push_back({ Elems[CopyBuffer[i]].Element, ImVec2(Elems[CopyBuffer[i]].Pos.x - min.x + MousePos.x, Elems[CopyBuffer[i]].Pos.y - min.y + MousePos.y), Elems[CopyBuffer[i]].Type });
+				SelectedElems.push_back(Elems.size() - 1);
+			}
+			for (int k = 0; k < LinksBuffer.size(); k++)
+			{
+				// Если буфер обмена содержит оба элемента, формирующих связь, создаем ещё одну
+				std::vector<int>::iterator it1, it2;
+
+				if ((it1 = std::find(CopyBuffer.begin(), CopyBuffer.end(), LinksBuffer[k].Elems[0])) != CopyBuffer.end() && (it2 = std::find(CopyBuffer.begin(), CopyBuffer.end(), LinksBuffer[k].Elems[1])) != CopyBuffer.end())
+				{
+					int Elem1 = Elems.size() - CopyBuffer.size() + std::distance(CopyBuffer.begin(), it1);
+					int Elem2 = Elems.size() - CopyBuffer.size() + std::distance(CopyBuffer.begin(), it2);
+					Links.push_back({ {Links[k].Points[0], Links[k].Points[1]},{Elem1, Elem2} }); // типы, элементы
+				}
 			}
 		}
 	}
@@ -611,18 +660,18 @@ namespace ScenarioGUI {
 	void DrawObjects()
 	{
 		// Ниже - временное решение
-		for (int i = 0; i <= 15; i++)
+		for (int i = 0; i < Textures.size(); i++)
 		{
-			LoadedTextures TEMP = i % 2 == 1 ? ScenarioGUI::TEMP : TEMP2;
+			LoadedTexture Temp = Textures[i];
 			ImGui::SameLine(); // Для актуальности GetCursorPos()
 			// Рассчитываем, требуется ли перенос
-			if (ImGui::GetStyle().ItemSpacing.x + TEMP.my_image_width > ImGui::GetContentRegionAvail().x)
+			if (ImGui::GetStyle().ItemSpacing.x + Temp.my_image_width > ImGui::GetContentRegionAvail().x)
 			{
 				ImGui::NewLine();
 				ImGui::SetCursorPos(ImVec2(ImGui::GetCursorPos().x + ImGui::GetStyle().ItemSpacing.x, ImGui::GetCursorPos().y)); // Отступы второй и далее строки
 			}
 			ImGui::PushID(i); // Иначе - вызов BeginDragDropSource() происходит для всех элементов одновременно. Разные строки - вылет
-			if (ImGui::ImageButton("Element", (void*)TEMP.my_texture, ImVec2(TEMP.my_image_width, TEMP.my_image_height)));
+			if (ImGui::ImageButton("Element", (void*)Temp.my_texture, ImVec2(Temp.my_image_width, Temp.my_image_height)));
 			// Источник drag'n'drop
 			if (ImGui::BeginDragDropSource())
 			{
@@ -633,6 +682,43 @@ namespace ScenarioGUI {
 			ImGui::PopID();
 		}
 		// Конец временного решения
+	}
+
+	// Отображение свойств
+	void ParamsInitialization()
+	{
+		if (SelectedElems.size() == 1)
+		{
+			if (Elems[SelectedElems[0]].Element % 2 == 1)
+			{
+				static char str0[128] = "";
+				ImGui::InputText("param-text", str0, IM_ARRAYSIZE(str0));
+			}
+			else
+			{
+				static int i0 = 123;
+				ImGui::InputInt("param-int", &i0);
+			}
+		}
+	}
+
+	void TempLoad()
+	{
+		for (int i = 0; i < ElementNames.size(); i++)
+		{
+			bool ret = false;
+			LoadedTexture Temp;
+			while (!ret)
+			{
+				if (ret = LoadTextureFromFile((std::string(u8"C:/Users/VR/Desktop/projects/SimulatorsEditor/src/editor/img/") + std::string(ElementNames[i]) + u8".png").c_str(), &Temp.my_texture, &Temp.my_image_width, &Temp.my_image_height))
+				{
+					IM_ASSERT(ret);
+				}
+			}
+			Temp.my_image_height *= Zoom;
+			Temp.my_image_width *= Zoom;
+			Textures.push_back(Temp);
+		}
 	}
 
 	// Ниже - вспомогательные функции 

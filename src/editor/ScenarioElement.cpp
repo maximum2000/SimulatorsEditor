@@ -1,7 +1,12 @@
+#include <string>
+#include <vector>
 class ScenarioElement
 {
+public:
+	
 protected:
 	//static constexpr const char* name = "demo";
-	int param;
-	virtual const char* TexturePath(void);
+	std::string ScenarioGUID, name, caption;
+	float x, y, alfa;
+	std::vector<int> pins;
 };
