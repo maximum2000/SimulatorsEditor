@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -143,6 +143,7 @@
     <ClInclude Include="clearclass.h" />
     <ClInclude Include="EditorMM.h" />
     <ClInclude Include="scenariosgui.h" />
+    <ClInclude Include="TextureLoader.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\imgui\backends\imgui_impl_dx11.cpp" />
@@ -156,6 +157,7 @@
     <ClCompile Include="EditorMM.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="scenariosgui.cpp" />
+    <ClCompile Include="TextureLoader.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

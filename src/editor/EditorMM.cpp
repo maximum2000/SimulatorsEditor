@@ -7,6 +7,12 @@
 #include "imgui_impl_dx11.h"
 #include <d3d11.h>
 #include <tchar.h>
+#include <iostream>
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+#include <list>
+#include <vector>
+#include "TextureLoader.h"
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -18,6 +24,18 @@ namespace EditorMathModel
 	static IDXGISwapChain* g_pSwapChain = NULL;
 	static ID3D11RenderTargetView* g_mainRenderTargetView = NULL;
 
+    //Textures
+    /*static std::vector<const char*> ElementNames = {"square_red", "triangle_red", "circle_red",
+                                                    "square_green", "triangle_green", "circle_green", 
+                                                    "square_blue", "triangle_blue", "circle_blue"};
+    struct LoadedTexture
+    {
+        ID3D11ShaderResourceView* my_texture;
+        int my_image_height;
+        int my_image_width;
+    };
+    static std::vector<LoadedTexture> Textures;*/
+
 	// Forward declarations of helper functions
 	void CreateDemoScenarioGUI();
 	bool CreateDeviceD3D(HWND hWnd);
@@ -25,6 +43,24 @@ namespace EditorMathModel
 	void CreateRenderTarget();
 	void CleanupRenderTarget();
     void ShowEditorScreen();
+
+
+
+    // MY FUNCTIONS
+    void DrawTopBar(bool show_main_screen, bool show);
+    void DrawElementsWindow(bool show);
+    //void TempLoad();
+    //bool LoadTextureFromFile(const char* filename, ID3D11ShaderResourceView** out_srv, int* out_width, int* out_height);
+    // END OF MY FUNCTIONS
+
+    // MY VARIABLES
+    bool show_elements_window = false;
+    // END OF MY VARIABLES
+
+    // MY CLASSES
+    EditorMMTextureLoader::TextureLoader TL;
+    // END OF MY CLASSES
+
 	LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
     // Helper functions
@@ -95,20 +131,15 @@ namespace EditorMathModel
         bool show = true;
 
         bool show_main_screen = true;
-        bool show_elements_window = false;
+        //bool show_elements_window = false;
 
         ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
 
-        ImGuiWindowFlags window_flags = 0;
-        window_flags |= ImGuiWindowFlags_NoTitleBar;
-        window_flags |= ImGuiWindowFlags_NoScrollbar;
-        window_flags |= ImGuiWindowFlags_NoMove;
-        window_flags |= ImGuiWindowFlags_NoResize;
-        window_flags |= ImGuiWindowFlags_NoCollapse;
-        window_flags |= ImGuiWindowFlags_MenuBar;
-        window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus;
+        
+        TL.LoadToList(g_pd3dDevice);
 
+        //LoadFromFile();
         // Main loop
         bool done = false;
         while (!done)
@@ -131,13 +162,7 @@ namespace EditorMathModel
             ImGui_ImplWin32_NewFrame();
             ImGui::NewFrame();
 
-            if (show_elements_window)
-            {
-                ImGui::SetNextWindowPos(ImVec2(50, 50), 0);
-                ImGui::SetNextWindowSize(ImVec2(400, 400), 0);
-                ImGui::Begin("Elements", &show, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
-                ImGui::End();
-            }
+            
             
             // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
             if (show_demo_window) ImGui::ShowDemoWindow(&show_demo_window);
@@ -147,7 +172,7 @@ namespace EditorMathModel
                 static float f = 0.0f;
                 static int counter = 0;
 
-                ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
+                ImGui::Begin("Hello, world!", &show, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);                          // Create a window called "Hello, world!" and append into it.
 
                 ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
                 ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
@@ -174,49 +199,11 @@ namespace EditorMathModel
                     show_another_window = false;
                 ImGui::End();
             }*/
-            if (show_main_screen) 
+            if (show_elements_window)
             {
-                ImGui::SetNextWindowPos(ImVec2(0, 0), 0);
-                ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize, 0);
-                ImGui::Begin("Main Window", &show, window_flags);
-                if (ImGui::BeginMenuBar()) 
-                {
-                    if (ImGui::BeginMenu("File"))
-                    {
-                        if (ImGui::MenuItem("New")) {}
-                        if (ImGui::MenuItem("Open", "Ctrl+O")) {}
-                        //if (ImGui::BeginMenu("Open Recent")){}
-                        if (ImGui::MenuItem("Save", "Ctrl+S")) {}
-                        if (ImGui::MenuItem("Save As..")) {}
-                        ImGui::Separator();
-                        if (ImGui::MenuItem("Import")) {}
-                        if (ImGui::MenuItem("Export as")) {}
-                        ImGui::Separator();
-                        if (ImGui::MenuItem("Exit")) {}
-                        ImGui::EndMenu();
-                    }
-                    if (ImGui::BeginMenu("Edit"))
-                    {
-                        if (ImGui::MenuItem("Undo", "Ctrl+Z")) {}
-                        if (ImGui::MenuItem("Redo", "Ctrl+Y")) {}
-                        ImGui::EndMenu();
-                    }
-                    if (ImGui::BeginMenu("Window"))
-                    {
-                        if (ImGui::MenuItem("Elements window")) 
-                        {
-                            show_elements_window = !show_elements_window;
-                        }
-                        ImGui::EndMenu();
-                    }
-                    if (ImGui::BeginMenu("Options"))
-                    {
-                        ImGui::EndMenu();
-                    }
-                    ImGui::EndMenuBar();
-                }
-                ImGui::End();
+                DrawElementsWindow(show);
             }
+            DrawTopBar(show_main_screen, show);
             
             /*if (show)
             {
@@ -339,5 +326,145 @@ namespace EditorMathModel
     {
 
     }
-}
 
+    void DrawElementsWindow(bool show)
+    {
+        ImGui::SetNextWindowSize(ImVec2(400, 400), 0);
+        ImGui::Begin("Elements", &show, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
+        for (int i = 0; i < TL.GetTextureCount(); i++)
+        {
+            EditorMMTextureLoader::LoadedTexture Temp = TL.GetTextureByIndex(i);
+            /*ImGui::SameLine();
+            if (ImGui::GetStyle().ItemSpacing.x + Temp.my_image_width > ImGui::GetContentRegionAvail().x)
+            {
+                ImGui::NewLine();
+                ImGui::SetCursorPos(ImVec2(ImGui::GetCursorPos().x + ImGui::GetStyle().ItemSpacing.x, ImGui::GetCursorPos().y));
+            }
+            ImGui::PushID(i);*/
+            if (ImGui::ImageButton("Element", (void*)Temp.my_texture, ImVec2(Temp.my_image_width, Temp.my_image_height)));
+            /*if (ImGui::BeginDragDropSource())
+            {
+                ImGui::SetDragDropPayload("Element", &i, sizeof(int), ImGuiCond_Once);
+                ImGui::Text("Payload data is: %d", *(int*)ImGui::GetDragDropPayload()->Data);
+                ImGui::EndDragDropSource();
+            }
+            ImGui::PopID();*/
+        }
+
+        ImGui::End();
+    }
+
+    // draw top menu bar
+    void DrawTopBar(bool show_main_screen, bool show)
+    {
+        if (show_main_screen)
+        {
+            ImGui::SetNextWindowPos(ImVec2(0, 0), 0);
+            ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize, 0);
+            ImGui::Begin("Main Window", &show, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoMove |
+                ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoBringToFrontOnFocus);
+            if (ImGui::BeginMenuBar())
+            {
+                if (ImGui::BeginMenu("File"))
+                {
+                    if (ImGui::MenuItem("New")) {}
+                    if (ImGui::MenuItem("Open", "Ctrl+O")) {}
+                    //if (ImGui::BeginMenu("Open Recent")){}
+                    if (ImGui::MenuItem("Save", "Ctrl+S")) {}
+                    if (ImGui::MenuItem("Save As..")) {}
+                    ImGui::Separator();
+                    if (ImGui::MenuItem("Import")) {}
+                    if (ImGui::MenuItem("Export as")) {}
+                    ImGui::Separator();
+                    if (ImGui::MenuItem("Exit")) {}
+                    ImGui::EndMenu();
+                }
+                if (ImGui::BeginMenu("Edit"))
+                {
+                    if (ImGui::MenuItem("Undo", "Ctrl+Z")) {}
+                    if (ImGui::MenuItem("Redo", "Ctrl+Y")) {}
+                    ImGui::EndMenu();
+                }
+                if (ImGui::BeginMenu("Window"))
+                {
+                    if (ImGui::MenuItem("Elements window"))
+                    {
+                        show_elements_window = !show_elements_window;
+                    }
+                    ImGui::EndMenu();
+                }
+                if (ImGui::BeginMenu("Options"))
+                {
+                    ImGui::EndMenu();
+                }
+                ImGui::EndMenuBar();
+            }
+            ImGui::End();
+        }
+    }
+
+    /*void TempLoad()
+    {
+        for (int i = 0; i < ElementNames.size(); i++)
+        {
+            bool ret = false;
+            LoadedTexture Temp;
+            while (!ret)
+            {
+                if (ret = LoadTextureFromFile((std::string(u8"C:/Users/VR/Desktop/projects c++/SimulatorsEditor/src/editor/img/") + std::string(ElementNames[i]) + u8".png").c_str(), &Temp.my_texture, &Temp.my_image_width, &Temp.my_image_height))
+                {
+                    IM_ASSERT(ret);
+                }
+            }
+            Temp.my_image_height *= 1;
+            Temp.my_image_width *= 1;
+            Textures.push_back(Temp);
+        }
+    }
+
+    bool LoadTextureFromFile(const char* filename, ID3D11ShaderResourceView** out_srv, int* out_width, int* out_height)
+    {
+        // Load from disk into a raw RGBA buffer
+        int image_width = 0;
+        int image_height = 0;
+        unsigned char* image_data = stbi_load(filename, &image_width, &image_height, NULL, 4);
+        if (image_data == NULL)
+            return false;
+
+        // Create texture
+        D3D11_TEXTURE2D_DESC desc;
+        ZeroMemory(&desc, sizeof(desc));
+        desc.Width = image_width;
+        desc.Height = image_height;
+        desc.MipLevels = 1;
+        desc.ArraySize = 1;
+        desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+        desc.SampleDesc.Count = 1;
+        desc.Usage = D3D11_USAGE_DEFAULT;
+        desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+        desc.CPUAccessFlags = 0;
+
+        ID3D11Texture2D* pTexture = NULL;
+        D3D11_SUBRESOURCE_DATA subResource;
+        subResource.pSysMem = image_data;
+        subResource.SysMemPitch = desc.Width * 4;
+        subResource.SysMemSlicePitch = 0;
+        g_pd3dDevice->CreateTexture2D(&desc, &subResource, &pTexture);
+
+        // Create texture view
+        D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
+        ZeroMemory(&srvDesc, sizeof(srvDesc));
+        srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+        srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+        srvDesc.Texture2D.MipLevels = desc.MipLevels;
+        srvDesc.Texture2D.MostDetailedMip = 0;
+        g_pd3dDevice->CreateShaderResourceView(pTexture, &srvDesc, out_srv);
+        pTexture->Release();
+
+        *out_width = image_width;
+        *out_height = image_height;
+        stbi_image_free(image_data);
+
+        return true;
+    }*/
+}
