@@ -15,7 +15,7 @@ namespace EditorMMTextureLoader
 		static std::vector<const char*> ElementNames;
 		static std::vector<LoadedTexture> Textures;
 	public:
-		void LoadToList(ID3D11Device* g_pd3dDevice);
+		void LoadToList();
 		int GetTextureCount();
 		LoadedTexture GetTextureByIndex(int index);
 	};

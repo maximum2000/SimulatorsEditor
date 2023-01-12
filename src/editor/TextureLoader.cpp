@@ -1,21 +1,15 @@
 #include <d3d11.h>
-#include <tchar.h>
 #include <iostream>
+#define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #include <vector>
 #include "TextureLoader.h"
-#include "imgui.h"
-#include "imgui_impl_win32.h"
 #include "imgui_impl_dx11.h"
+#include "Render.h"
 
     using namespace EditorMMTextureLoader;
 
     bool LoadTextureFromFile(const char* filename, ID3D11ShaderResourceView** out_srv, int* out_width, int* out_height);
-
-    //static ID3D11Device* g_pd3dDevice = NULL;
-    //static ID3D11DeviceContext* g_pd3dDeviceContext = NULL;
-    //static IDXGISwapChain* g_pSwapChain = NULL;
-    //static ID3D11RenderTargetView* g_mainRenderTargetView = NULL;
 
     std::vector<const char*> TextureLoader::ElementNames = {"square_red", "triangle_red", "circle_red",
                                                     "square_green", "triangle_green", "circle_green",
@@ -32,15 +26,15 @@
         return Textures[index];
     }
 
-    void TextureLoader::LoadToList(ID3D11Device* g_pd3dDevice)
+    void TextureLoader::LoadToList()
     {
-        for (int i = 0; i < ElementNames.size(); i++)
+        /*for (int i = 0; i < ElementNames.size(); i++)
         {
             bool ret = false;
             LoadedTexture Temp;
             while (!ret)
             {
-                if (ret = LoadTextureFromFile((std::string(u8"C:/Users/VR/Desktop/projects c++/SimulatorsEditor/src/editor/img/") + std::string(ElementNames[i]) + u8".png").c_str(), &Temp.my_texture, &Temp.my_image_width, &Temp.my_image_height, g_pd3dDevice))
+                if (ret = LoadTextureFromFile((std::string(u8"C:/Users/VR/Desktop/projects c++/SimulatorsEditor/src/editor/img/") + std::string(ElementNames[i]) + u8".png").c_str(), &Temp.my_texture, &Temp.my_image_width, &Temp.my_image_height))
                 {
                     IM_ASSERT(ret);
                 }
@@ -48,13 +42,13 @@
             Temp.my_image_height *= 1;
             Temp.my_image_width *= 1;
             Textures.push_back(Temp);
-        }
+        }*/ 
     }
 
-    bool LoadTextureFromFile(const char* filename, ID3D11ShaderResourceView** out_srv, int* out_width, int* out_height, ID3D11Device* g_pd3dDevice)
+    bool LoadTextureFromFile(const char* filename, ID3D11ShaderResourceView** out_srv, int* out_width, int* out_height)
     {
         // Load from disk into a raw RGBA buffer
-        int image_width = 0;
+        /*int image_width = 0;
         int image_height = 0;
         unsigned char* image_data = stbi_load(filename, &image_width, &image_height, NULL, 4);
         if (image_data == NULL)
@@ -78,7 +72,7 @@
         subResource.pSysMem = image_data;
         subResource.SysMemPitch = desc.Width * 4;
         subResource.SysMemSlicePitch = 0;
-        g_pd3dDevice->CreateTexture2D(&desc, &subResource, &pTexture);
+        EditorMMRender::g_pd3dDevice->CreateTexture2D(&desc, &subResource, &pTexture);
 
         // Create texture view
         D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
@@ -87,12 +81,12 @@
         srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
         srvDesc.Texture2D.MipLevels = desc.MipLevels;
         srvDesc.Texture2D.MostDetailedMip = 0;
-        g_pd3dDevice->CreateShaderResourceView(pTexture, &srvDesc, out_srv);
+        EditorMMRender::g_pd3dDevice->CreateShaderResourceView(pTexture, &srvDesc, out_srv);
         pTexture->Release();
 
         *out_width = image_width;
         *out_height = image_height;
         stbi_image_free(image_data);
-
+        */
         return true;
     }

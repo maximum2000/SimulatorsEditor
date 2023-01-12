@@ -8,21 +8,22 @@
 #include <d3d11.h>
 #include <tchar.h>
 #include <iostream>
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
+//#define STB_IMAGE_IMPLEMENTATION
+//#include "stb_image.h"
 #include <list>
 #include <vector>
 #include "TextureLoader.h"
+#include "Render.h"
 
-extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+//extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 namespace EditorMathModel
 {
 	// Data
-	static ID3D11Device* g_pd3dDevice = NULL;
-	static ID3D11DeviceContext* g_pd3dDeviceContext = NULL;
-	static IDXGISwapChain* g_pSwapChain = NULL;
-	static ID3D11RenderTargetView* g_mainRenderTargetView = NULL;
+	//static ID3D11Device* g_pd3dDevice = NULL;
+	//static ID3D11DeviceContext* g_pd3dDeviceContext = NULL;
+	//static IDXGISwapChain* g_pSwapChain = NULL;
+	//static ID3D11RenderTargetView* g_mainRenderTargetView = NULL;
 
     //Textures
     /*static std::vector<const char*> ElementNames = {"square_red", "triangle_red", "circle_red",
@@ -38,10 +39,10 @@ namespace EditorMathModel
 
 	// Forward declarations of helper functions
 	void CreateDemoScenarioGUI();
-	bool CreateDeviceD3D(HWND hWnd);
-	void CleanupDeviceD3D();
-	void CreateRenderTarget();
-	void CleanupRenderTarget();
+	//bool CreateDeviceD3D(HWND hWnd);
+	//void CleanupDeviceD3D();
+	//void CreateRenderTarget();
+	//void CleanupRenderTarget();
     void ShowEditorScreen();
 
 
@@ -61,7 +62,7 @@ namespace EditorMathModel
     EditorMMTextureLoader::TextureLoader TL;
     // END OF MY CLASSES
 
-	LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+	//LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
     // Helper functions
 
@@ -69,32 +70,32 @@ namespace EditorMathModel
     {
         // Create application window
         //ImGui_ImplWin32_EnableDpiAwareness();
-        WNDCLASSEXW wc = { sizeof(wc), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(NULL), NULL, NULL, NULL, NULL, L"ImGui Example", NULL };
-        ::RegisterClassExW(&wc);
+        //WNDCLASSEXW wc = { sizeof(wc), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(NULL), NULL, NULL, NULL, NULL, L"ImGui Example", NULL };
+        //::RegisterClassExW(&wc);
         //HWND hwnd = ::CreateWindowW(wc.lpszClassName, L"ÑÀÏÐ ÊÈÒ", WS_OVERLAPPEDWINDOW, 100, 100, 1280, 800, NULL, NULL, wc.hInstance, NULL);
-        HWND hwnd = ::CreateWindowW(wc.lpszClassName, L"ÑÀÏÐ ÊÈÒ", WS_OVERLAPPEDWINDOW, 0, 0, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN), NULL, NULL, wc.hInstance, NULL);
+        //HWND hwnd = ::CreateWindowW(wc.lpszClassName, L"ÑÀÏÐ ÊÈÒ", WS_OVERLAPPEDWINDOW, 0, 0, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN), NULL, NULL, wc.hInstance, NULL);
 
         // Initialize Direct3D
-        if (!CreateDeviceD3D(hwnd))
-        {
-            CleanupDeviceD3D();
-            ::UnregisterClassW(wc.lpszClassName, wc.hInstance);
+        //if (!CreateDeviceD3D(hwnd))
+        //{
+        //    CleanupDeviceD3D();
+        //    ::UnregisterClassW(wc.lpszClassName, wc.hInstance);
             //abort here
             // if directX not connected
-        }
+        //}
 
         // Show the window
-        ::ShowWindow(hwnd, SW_SHOWMAXIMIZED);
-        ::UpdateWindow(hwnd);
+        //::ShowWindow(hwnd, SW_SHOWMAXIMIZED);
+        //::UpdateWindow(hwnd);
 
 
         
         // Setup Dear ImGui context
-        IMGUI_CHECKVERSION();
-        ImGui::CreateContext();
-        ImGuiIO& io = ImGui::GetIO(); (void)io;
+        //IMGUI_CHECKVERSION();
+        //ImGui::CreateContext();
+        //ImGuiIO& io = ImGui::GetIO(); (void)io;
 
-        io.Fonts->AddFontFromFileTTF("C:/Users/VR/Desktop/projects/SimulatorsEditor/src/editor/LiberationSans.ttf", 14.0f, NULL, io.Fonts->GetGlyphRangesCyrillic());
+        //io.Fonts->AddFontFromFileTTF("C:/Users/VR/Desktop/projects/SimulatorsEditor/src/editor/LiberationSans.ttf", 14.0f, NULL, io.Fonts->GetGlyphRangesCyrillic());
         //ImFont* font1 = io.Fonts->AddFontFromFileTTF("font.ttf", size_pixels);
 
 
@@ -103,11 +104,11 @@ namespace EditorMathModel
 
         // Setup Dear ImGui style
         //ImGui::StyleColorsDark();
-        ImGui::StyleColorsDark();
+        //ImGui::StyleColorsDark();
 
         // Setup Platform/Renderer backends
-        ImGui_ImplWin32_Init(hwnd);
-        ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
+        //ImGui_ImplWin32_Init(hwnd);
+        //ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
 
         // Load Fonts
         // - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
@@ -125,6 +126,8 @@ namespace EditorMathModel
         //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
         //IM_ASSERT(font != NULL);
 
+        EditorMMRender::Prepare();
+
         // Our state
         bool show_demo_window = true;
         bool show_another_window = false;
@@ -133,11 +136,11 @@ namespace EditorMathModel
         bool show_main_screen = true;
         //bool show_elements_window = false;
 
-        ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+        //ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
 
         
-        TL.LoadToList(g_pd3dDevice);
+        TL.LoadToList();
 
         //LoadFromFile();
         // Main loop
@@ -166,6 +169,8 @@ namespace EditorMathModel
             
             // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
             if (show_demo_window) ImGui::ShowDemoWindow(&show_demo_window);
+
+            ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
             // 2. Show a simple window that we create ourselves. We use a Begin/End pair to create a named window.
             {
@@ -216,28 +221,31 @@ namespace EditorMathModel
             }*/
             
             // Rendering
-            ImGui::Render();
-            const float clear_color_with_alpha[4] = { clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w };
-            g_pd3dDeviceContext->OMSetRenderTargets(1, &g_mainRenderTargetView, NULL);
-            g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, clear_color_with_alpha);
-            ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+            EditorMMRender::Render();
+            //ImGui::Render();
+            //const float clear_color_with_alpha[4] = { clear_color.x * clear_color.w, 
+            //    clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w };
+            //g_pd3dDeviceContext->OMSetRenderTargets(1, &g_mainRenderTargetView, NULL);
+            //g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, clear_color_with_alpha);
+            //ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
-            g_pSwapChain->Present(1, 0); // Present with vsync
+            //g_pSwapChain->Present(1, 0); // Present with vsync
             //g_pSwapChain->Present(0, 0); // Present without vsync
         }
 
+        EditorMMRender::Cleanup();
         // Cleanup
-        ImGui_ImplDX11_Shutdown();
-        ImGui_ImplWin32_Shutdown();
-        ImGui::DestroyContext();
+        //ImGui_ImplDX11_Shutdown();
+        //ImGui_ImplWin32_Shutdown();
+        //ImGui::DestroyContext();
         
-        CleanupDeviceD3D();
-        ::DestroyWindow(hwnd);
-        ::UnregisterClassW(wc.lpszClassName, wc.hInstance);
+        //CleanupDeviceD3D();
+        //::DestroyWindow(hwnd);
+        //::UnregisterClassW(wc.lpszClassName, wc.hInstance);
         
     }
 
-    bool CreateDeviceD3D(HWND hWnd)
+    /*bool CreateDeviceD3D(HWND hWnd)
     {
         // Setup swap chain
         DXGI_SWAP_CHAIN_DESC sd;
@@ -286,7 +294,7 @@ namespace EditorMathModel
     void CleanupRenderTarget()
     {
         if (g_mainRenderTargetView) { g_mainRenderTargetView->Release(); g_mainRenderTargetView = NULL; }
-    }
+    }*/
 
     // Forward declare message handler from imgui_impl_win32.cpp
 
@@ -296,7 +304,7 @@ namespace EditorMathModel
     // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
     // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application, or clear/overwrite your copy of the keyboard data.
     // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
-    LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+    /*LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     {
         if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
             return true;
@@ -320,7 +328,7 @@ namespace EditorMathModel
             return 0;
         }
         return ::DefWindowProc(hWnd, msg, wParam, lParam);
-    }
+    }*/
 
     void ShowEditorScreen() 
     {
@@ -331,9 +339,9 @@ namespace EditorMathModel
     {
         ImGui::SetNextWindowSize(ImVec2(400, 400), 0);
         ImGui::Begin("Elements", &show, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
-        for (int i = 0; i < TL.GetTextureCount(); i++)
-        {
-            EditorMMTextureLoader::LoadedTexture Temp = TL.GetTextureByIndex(i);
+        //for (int i = 0; i < TL.GetTextureCount(); i++)
+        //{
+            //EditorMMTextureLoader::LoadedTexture Temp = TL.GetTextureByIndex(i);
             /*ImGui::SameLine();
             if (ImGui::GetStyle().ItemSpacing.x + Temp.my_image_width > ImGui::GetContentRegionAvail().x)
             {
@@ -341,7 +349,7 @@ namespace EditorMathModel
                 ImGui::SetCursorPos(ImVec2(ImGui::GetCursorPos().x + ImGui::GetStyle().ItemSpacing.x, ImGui::GetCursorPos().y));
             }
             ImGui::PushID(i);*/
-            if (ImGui::ImageButton("Element", (void*)Temp.my_texture, ImVec2(Temp.my_image_width, Temp.my_image_height)));
+            //if (ImGui::ImageButton("Element", (void*)Temp.my_texture, ImVec2(Temp.my_image_width, Temp.my_image_height)));
             /*if (ImGui::BeginDragDropSource())
             {
                 ImGui::SetDragDropPayload("Element", &i, sizeof(int), ImGuiCond_Once);
@@ -349,7 +357,7 @@ namespace EditorMathModel
                 ImGui::EndDragDropSource();
             }
             ImGui::PopID();*/
-        }
+        //}
 
         ImGui::End();
     }
