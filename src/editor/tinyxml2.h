@@ -91,7 +91,6 @@ distribution.
 #       include <assert.h>
 #       define TIXMLASSERT                assert
 #   endif
-#include <crtdbg.h>
 #else
 #   define TIXMLASSERT( x )               do {} while(false)
 #endif
@@ -103,8 +102,6 @@ distribution.
 static const int TIXML2_MAJOR_VERSION = 9;
 static const int TIXML2_MINOR_VERSION = 0;
 static const int TIXML2_PATCH_VERSION = 0;
-
-
 
 #define TINYXML2_MAJOR_VERSION 9
 #define TINYXML2_MINOR_VERSION 0
