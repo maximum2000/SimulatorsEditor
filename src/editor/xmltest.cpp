@@ -1,9 +1,16 @@
+//
+// library usage example, delete after
+//
+
 #if defined( _MSC_VER )
-	#if !defined( _CRT_SECURE_NO_WARNINGS )
-		#define _CRT_SECURE_NO_WARNINGS		// This test file is not intended to be secure.
-	#endif
+#if !defined( _CRT_SECURE_NO_WARNINGS )
+#define _CRT_SECURE_NO_WARNINGS		// This test file is not intended to be secure.
+#endif
 #endif
 
+#define _CRTDBG_MAP_ALLOC
+#include <stdlib.h>
+#include <crtdbg.h>
 #include "tinyxml2.h"
 #include <cerrno>
 #include <cstdlib>
@@ -11,7 +18,7 @@
 #include <ctime>
 
 #if defined( _MSC_VER ) || defined (WIN32)
-	#include <crtdbg.h>
+
 	#define WIN32_LEAN_AND_MEAN
 	#include <windows.h>
 	_CrtMemState startMemState;
@@ -20,6 +27,9 @@
 	#include <sys/stat.h>
 	#include <sys/types.h>
 #endif
+#include <iostream>
+
+
 
 using namespace tinyxml2;
 using namespace std;
@@ -297,8 +307,10 @@ bool example_4()
 */
 
 
-int main( int argc, const char ** argv )
+
+int altmain( int argc, const char ** argv )
 {
+	
 	#if defined( _MSC_VER ) && defined( TINYXML2_DEBUG )
 		_CrtMemCheckpoint( &startMemState );
 		// Enable MS Visual C++ debug heap memory leaks dump on exit
@@ -983,10 +995,10 @@ int main( int argc, const char ** argv )
 			doc.LoadFile("resources/out/printer.xml");
 			XMLTest("XMLPrinter Stream mode: load", XML_SUCCESS, doc.ErrorID(), true);
 
-			const XMLDocument& cdoc = doc;
+			const XMLDocument& cdoc = doc; 
 
 			const XMLAttribute* attrib = cdoc.FirstChildElement("foo")->FindAttribute("attrib-text");
-			XMLTest("attrib-text", "text", attrib->Value(), true);
+			XMLTest("attrib-text", "text", attrib->Value(), true); 
 			attrib = cdoc.FirstChildElement("foo")->FindAttribute("attrib-int");
 			XMLTest("attrib-int", int(1), attrib->IntValue(), true);
 			attrib = cdoc.FirstChildElement("foo")->FindAttribute("attrib-unsigned");

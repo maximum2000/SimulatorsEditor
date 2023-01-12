@@ -2,6 +2,6 @@
 class scenariosgui
 {
 };
-namespace ScenarioGUI {
-	void CreateDemoScenarioGUI();
+namespace ScenariosEditorGUI {
+	void ShowDemoScenarioGUI();
 }

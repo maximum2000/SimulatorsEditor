@@ -14,7 +14,6 @@ static ID3D11Device*            g_pd3dDevice = NULL;
 static ID3D11DeviceContext*     g_pd3dDeviceContext = NULL;
 static IDXGISwapChain*          g_pSwapChain = NULL;
 static ID3D11RenderTargetView*  g_mainRenderTargetView = NULL;
-
 // Forward declarations of helper functions
 void CreateDemonstrationMenuMM();
 bool CreateDeviceD3D(HWND hWnd);
@@ -24,12 +23,12 @@ void CleanupRenderTarget();
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 // Main code
-//int main(int, char**)
-//{
-//     ScenarioGUI::CreateDemoScenarioGUI();
-//    //CreateDemonstrationMenuMM();
-//    return 0;
-//}
+int main(int, char**)
+{
+    ScenariosEditorGUI::ShowDemoScenarioGUI();
+    //CreateDemonstrationMenuMM();
+    return 0;
+}
 
 // Helper functions
 

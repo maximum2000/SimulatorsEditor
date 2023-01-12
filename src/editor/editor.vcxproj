@@ -144,6 +144,7 @@
     <ClInclude Include="clearclass.h" />
     <ClInclude Include="scenariosgui.h" />
     <ClInclude Include="tinyxml2.h" />
+    <ClInclude Include="render.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\imgui\backends\imgui_impl_dx11.cpp" />
@@ -160,6 +161,8 @@
     <ClCompile Include="demoobj.cpp" />
     <ClCompile Include="TempClasses.cpp" />
     <ClCompile Include="tinyxml2.cpp" />
+    <ClCompile Include="render.cpp" />
+    <ClCompile Include="xmlhandling.cpp" />
     <ClCompile Include="xmltest.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
