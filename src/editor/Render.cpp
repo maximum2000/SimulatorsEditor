@@ -199,7 +199,7 @@ namespace EditorMMRender
         g_pd3dDevice->CreateTexture2D(desc, subResource, pTexture);
     }
 
-    void EditorMMRender::CreateTextureView(ID3D11Texture2D* pTexture, D3D11_SHADER_RESOURCE_VIEW_DESC* srvDesc, ID3D11ShaderResourceView** out_srv) 
+    void EditorMMRender::CreateTextureView(ID3D11Texture2D* pTexture, D3D11_SHADER_RESOURCE_VIEW_DESC* srvDesc, ID3D11ShaderResourceView** out_srv)
     {
         g_pd3dDevice->CreateShaderResourceView(pTexture, srvDesc, out_srv);
     }

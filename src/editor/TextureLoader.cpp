@@ -87,6 +87,6 @@
         *out_width = image_width;
         *out_height = image_height;
         stbi_image_free(image_data);
-        
+
         return true;
     }

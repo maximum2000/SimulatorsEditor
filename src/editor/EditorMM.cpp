@@ -8,8 +8,6 @@
 #include <d3d11.h>
 #include <tchar.h>
 #include <iostream>
-//#define STB_IMAGE_IMPLEMENTATION
-//#include "stb_image.h"
 #include <list>
 #include <vector>
 #include "TextureLoader.h"
@@ -20,23 +18,14 @@ namespace EditorMathModel
 	// Forward declarations of helper functions
 	void CreateDemoScenarioGUI();
     void ShowEditorScreen();
-
-    // MY FUNCTIONS
     void DrawTopBar(bool show_main_screen, bool show);
     void DrawElementsWindow(bool show);
-    // END OF MY FUNCTIONS
 
-    // MY VARIABLES
+    // Forward declarations of variables
     bool show_elements_window = false;
-    // END OF MY VARIABLES
 
-    // MY CLASSES
+    // Forward declarations of classes
     EditorMMTextureLoader::TextureLoader TL;
-    // END OF MY CLASSES
-
-	//LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
-
-    // Helper functions
 
     void CreateDemoScenarioGUI()
     {
@@ -97,15 +86,6 @@ namespace EditorMathModel
                 ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
                 ImGui::End();
             }
-            // 3. Show another simple window.
-            /*if (show_another_window)
-            {
-                ImGui::Begin("Another Window", &show_another_window);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
-                ImGui::Text("Hello from another window!");
-                if (ImGui::Button("Close Me"))
-                    show_another_window = false;
-                ImGui::End();
-            }*/
             if (show_elements_window)
             {
                 DrawElementsWindow(show);
@@ -129,21 +109,21 @@ namespace EditorMathModel
         for (int i = 0; i < TL.GetTextureCount(); i++)
         {
             EditorMMTextureLoader::LoadedTexture Temp = TL.GetTextureByIndex(i);
-            /*ImGui::SameLine();
+            ImGui::SameLine();
             if (ImGui::GetStyle().ItemSpacing.x + Temp.my_image_width > ImGui::GetContentRegionAvail().x)
             {
                 ImGui::NewLine();
                 ImGui::SetCursorPos(ImVec2(ImGui::GetCursorPos().x + ImGui::GetStyle().ItemSpacing.x, ImGui::GetCursorPos().y));
             }
-            ImGui::PushID(i);*/
+            ImGui::PushID(i);
             if (ImGui::ImageButton("Element", (void*)Temp.my_texture, ImVec2(Temp.my_image_width, Temp.my_image_height)));
-            /*if (ImGui::BeginDragDropSource())
+            if (ImGui::BeginDragDropSource())
             {
                 ImGui::SetDragDropPayload("Element", &i, sizeof(int), ImGuiCond_Once);
                 ImGui::Text("Payload data is: %d", *(int*)ImGui::GetDragDropPayload()->Data);
                 ImGui::EndDragDropSource();
             }
-            ImGui::PopID();*/
+            ImGui::PopID();
         }
 
         ImGui::End();
