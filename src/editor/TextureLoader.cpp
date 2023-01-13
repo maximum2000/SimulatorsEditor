@@ -28,7 +28,7 @@
 
     void TextureLoader::LoadToList()
     {
-        /*for (int i = 0; i < ElementNames.size(); i++)
+        for (int i = 0; i < ElementNames.size(); i++)
         {
             bool ret = false;
             LoadedTexture Temp;
@@ -42,13 +42,13 @@
             Temp.my_image_height *= 1;
             Temp.my_image_width *= 1;
             Textures.push_back(Temp);
-        }*/ 
+        }
     }
 
     bool LoadTextureFromFile(const char* filename, ID3D11ShaderResourceView** out_srv, int* out_width, int* out_height)
     {
         // Load from disk into a raw RGBA buffer
-        /*int image_width = 0;
+        int image_width = 0;
         int image_height = 0;
         unsigned char* image_data = stbi_load(filename, &image_width, &image_height, NULL, 4);
         if (image_data == NULL)
@@ -72,7 +72,7 @@
         subResource.pSysMem = image_data;
         subResource.SysMemPitch = desc.Width * 4;
         subResource.SysMemSlicePitch = 0;
-        EditorMMRender::g_pd3dDevice->CreateTexture2D(&desc, &subResource, &pTexture);
+        EditorMMRender::CreateTexture(&desc, &subResource, &pTexture);
 
         // Create texture view
         D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
@@ -81,12 +81,12 @@
         srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
         srvDesc.Texture2D.MipLevels = desc.MipLevels;
         srvDesc.Texture2D.MostDetailedMip = 0;
-        EditorMMRender::g_pd3dDevice->CreateShaderResourceView(pTexture, &srvDesc, out_srv);
+        EditorMMRender::CreateTextureView(pTexture, &srvDesc, out_srv);
         pTexture->Release();
 
         *out_width = image_width;
         *out_height = image_height;
         stbi_image_free(image_data);
-        */
+        
         return true;
     }

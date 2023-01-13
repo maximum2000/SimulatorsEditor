@@ -193,4 +193,14 @@ namespace EditorMMRender
         }
         return ::DefWindowProc(hWnd, msg, wParam, lParam);
     }
+
+    void EditorMMRender::CreateTexture(D3D11_TEXTURE2D_DESC* desc, D3D11_SUBRESOURCE_DATA* subResource, ID3D11Texture2D** pTexture)
+    {
+        g_pd3dDevice->CreateTexture2D(desc, subResource, pTexture);
+    }
+
+    void EditorMMRender::CreateTextureView(ID3D11Texture2D* pTexture, D3D11_SHADER_RESOURCE_VIEW_DESC* srvDesc, ID3D11ShaderResourceView** out_srv) 
+    {
+        g_pd3dDevice->CreateShaderResourceView(pTexture, srvDesc, out_srv);
+    }
 }

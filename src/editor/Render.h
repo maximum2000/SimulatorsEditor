@@ -1,22 +1,12 @@
 #pragma once
 
+#include <d3d11.h>
+
 namespace EditorMMRender 
 {
-	//static ID3D11Device* g_pd3dDevice = NULL;
-	//static ID3D11DeviceContext* g_pd3dDeviceContext = NULL;
-	//static IDXGISwapChain* g_pSwapChain = NULL;
-	//static ID3D11RenderTargetView* g_mainRenderTargetView = NULL;
-
 	void Prepare();
 	void Cleanup();
 	void Render();
-
-	/*class RenderD3D11Data
-	{
-	public:
-		static ID3D11Device* g_pd3dDevice;
-		static ID3D11DeviceContext* g_pd3dDeviceContext;
-		static IDXGISwapChain* g_pSwapChain;
-		static ID3D11RenderTargetView* g_mainRenderTargetView;
-	};*/
+	void CreateTexture(D3D11_TEXTURE2D_DESC* desc, D3D11_SUBRESOURCE_DATA *subResource, ID3D11Texture2D** pTexture);
+	void CreateTextureView(ID3D11Texture2D* pTexture, D3D11_SHADER_RESOURCE_VIEW_DESC* srvDesc, ID3D11ShaderResourceView** out_srv);
 }
