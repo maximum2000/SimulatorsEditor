@@ -6,14 +6,15 @@
 #include <iostream>
 #include <vector>
 #include <d3d11.h>
-
 #include "imgui.h"
-#include "tinyxml2.h"
 
+#include "xmlhandling.h"
 #include "render.h"
 
 namespace ScenariosEditorGUI {
 
+	// Xml data
+	static ScenariosEditorXML::ScenariosDOM Model;
 	// Elements data
 	static const std::vector<const char*> ElementNames = { "uzel", "start", "clear", "message", "sound", "script", "pilon", "arrow",
 										"pause", "push", "select", "outcome", "if_answer", "if_variable", "if_random", "if_danger" };
@@ -120,14 +121,19 @@ namespace ScenariosEditorGUI {
 		ImGui::BeginMainMenuBar();
 		if (ImGui::BeginMenu(u8"Файл"))
 		{
-			if (ImGui::MenuItem(u8"Открыть", "Ctrl+O")) {
+			if (ImGui::MenuItem(u8"Открыть", "Ctrl+O")) 
+			{
+				Model.LoadFrom(u8"C:\\xmltest\\xmlold.model");
 			}
-			if (ImGui::MenuItem(u8"Недавние файлы..."))
+				//if (ImGui::MenuItem(u8"Недавние файлы..."))
 				//{
 				//    //
 				//    ImGui::EndMenu();
 				//}
-				if (ImGui::MenuItem(u8"Сохранить", "Ctrl+S")) {}
+				if (ImGui::MenuItem(u8"Сохранить", "Ctrl+S")) 
+				{
+					Model.SaveTo(u8"C:\\xmltest\\xml1301.model");
+				}
 			if (ImGui::MenuItem(u8"Сохранить как...")) {}
 			ImGui::EndMenu();
 

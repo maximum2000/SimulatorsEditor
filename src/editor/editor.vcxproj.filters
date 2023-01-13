@@ -48,10 +48,16 @@
     <ClInclude Include="..\imgui\stb_image.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="tinyxml2.h">
+    <ClInclude Include="render.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="render.h">
+    <ClInclude Include="xmlhandling.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="..\pugixml\src\pugiconfig.hpp">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="..\pugixml\src\pugixml.hpp">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
   </ItemGroup>
@@ -95,16 +101,13 @@
     <ClCompile Include="TempClasses.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
-    <ClCompile Include="tinyxml2.cpp">
-      <Filter>Исходные файлы</Filter>
-    </ClCompile>
-    <ClCompile Include="xmltest.cpp">
-      <Filter>Исходные файлы</Filter>
-    </ClCompile>
     <ClCompile Include="xmlhandling.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
     <ClCompile Include="render.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="..\pugixml\src\pugixml.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
   </ItemGroup>

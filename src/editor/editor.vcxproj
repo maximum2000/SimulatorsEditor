@@ -105,7 +105,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\VR\Desktop\projects c++\SimulatorsEditor\src\imgui\backends;C:\Users\VR\Desktop\projects c++\SimulatorsEditor\src\imgui;C:\Users\VR\Desktop\projects\SimulatorsEditor\src\imgui;C:\Users\VR\Desktop\projects\SimulatorsEditor\src\imgui\backends;C:\Users\Михаил\Desktop\projects\SimulatorsEditor\src\imgui\backends;C:\Users\Михаил\Desktop\projects\SimulatorsEditor\src\imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\VR\Desktop\projects c++\SimulatorsEditor\src\imgui\backends;C:\Users\VR\Desktop\projects c++\SimulatorsEditor\src\imgui;C:\Users\VR\Desktop\projects\SimulatorsEditor\src\imgui;C:\Users\VR\Desktop\projects\SimulatorsEditor\src\imgui\backends;C:\Users\VR\Desktop\projects\SimulatorsEditor\src\pugixml\src;C:\Users\Михаил\Desktop\projects\SimulatorsEditor\src\imgui\backends;C:\Users\Михаил\Desktop\projects\SimulatorsEditor\src\imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -141,10 +141,12 @@
     <ClInclude Include="..\imgui\imstb_textedit.h" />
     <ClInclude Include="..\imgui\imstb_truetype.h" />
     <ClInclude Include="..\imgui\stb_image.h" />
+    <ClInclude Include="..\pugixml\src\pugiconfig.hpp" />
+    <ClInclude Include="..\pugixml\src\pugixml.hpp" />
     <ClInclude Include="clearclass.h" />
     <ClInclude Include="scenariosgui.h" />
-    <ClInclude Include="tinyxml2.h" />
     <ClInclude Include="render.h" />
+    <ClInclude Include="xmlhandling.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\imgui\backends\imgui_impl_dx11.cpp" />
@@ -154,16 +156,17 @@
     <ClCompile Include="..\imgui\imgui_draw.cpp" />
     <ClCompile Include="..\imgui\imgui_tables.cpp" />
     <ClCompile Include="..\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="..\pugixml\src\pugixml.cpp" />
     <ClCompile Include="clearclass.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="ScenarioElement.cpp" />
     <ClCompile Include="scenariosgui.cpp" />
-    <ClCompile Include="demoobj.cpp" />
+    <ClCompile Include="demoobj.cpp">
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\VR\Desktop\projects c++\SimulatorsEditor\src\imgui\backends;C:\Users\VR\Desktop\projects c++\SimulatorsEditor\src\imgui;C:\Users\VR\Desktop\projects\SimulatorsEditor\src\imgui;C:\Users\VR\Desktop\projects\SimulatorsEditor\src\imgui\backends;C:\Users\VR\Desktop\projects\SimulatorsEditor\src\pugixml\src;C:\Users\Михаил\Desktop\projects\SimulatorsEditor\src\imgui\backends;C:\Users\Михаил\Desktop\projects\SimulatorsEditor\src\imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
     <ClCompile Include="TempClasses.cpp" />
-    <ClCompile Include="tinyxml2.cpp" />
     <ClCompile Include="render.cpp" />
     <ClCompile Include="xmlhandling.cpp" />
-    <ClCompile Include="xmltest.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

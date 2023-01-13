@@ -1,6 +1,20 @@
 //
 // XML-Canvas connection
 //
-/*tinyxml2::XMLDocument doc;
-		doc.LoadFile("C:\\xmltest\\xmlold.model");
-		doc.SaveFile("C:\\xmltest\\xmlnew.model");*/
+
+#include "xmlhandling.h"
+#include <iostream>
+#include "pugixml.hpp"
+
+namespace ScenariosEditorXML
+{
+	void Test()
+	{
+	}
+	void ScenariosDOM::LoadFrom(const char* path)
+	{
+	}
+	void ScenariosDOM::SaveTo(const char* path)
+	{
+	}
+}
