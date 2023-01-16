@@ -16,8 +16,8 @@ namespace ScenariosEditorGUI {
 	// Xml data
 	static ScenariosEditorXML::ScenariosDOM Model;
 	// Elements data
-	static const std::vector<const char*> ElementNames = { "uzel", "start", "clear", "message", "sound", "script", "pilon", "arrow",
-										"pause", "push", "select", "outcome", "if_answer", "if_variable", "if_random", "if_danger" };
+	static const std::vector<const char*> ElementNames = { "uzel", "start", "clear", "message", "sound", "script", "pilon", "arrow", // TODO : check compability
+										"pause", "push", "select", "outcome", "answer", "variable_value", "random", "danger" };
 	static const std::vector<int> ElementTypes = { 1, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 11, 11, 11, 11 }; // pin amount and location
 	// Texture data
 	struct Texture
@@ -132,7 +132,7 @@ namespace ScenariosEditorGUI {
 				//}
 				if (ImGui::MenuItem(u8"Сохранить", "Ctrl+S")) 
 				{
-					Model.SaveTo(u8"C:\\xmltest\\xml1301.model");
+					Model.SaveTo(u8"C:\\xmltest\\xmlpugi.model");
 				}
 			if (ImGui::MenuItem(u8"Сохранить как...")) {}
 			ImGui::EndMenu();
@@ -588,5 +588,21 @@ namespace ScenariosEditorGUI {
 			Temp.Width *= TextureZoom;
 			Textures.push_back(Temp);
 		}
+	}
+
+	// Add element on canvas
+	void AddElement(const char * name, float x, float y)
+	{
+		int j = -1;
+		for (int i = 0; i < ElementNames.size(); i++)
+		{ 
+			if (!strcmp(ElementNames[i], name))
+			{
+				j = i;
+				break;
+			}
+		}
+		std::cout << j << '\n';
+		Elems.push_back(ElementOnCanvas{j, ImVec2(x,y), ElementTypes[j]});
 	}
 }
