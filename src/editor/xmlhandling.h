@@ -11,6 +11,7 @@ namespace ScenariosEditorXML
 	public:
 		void LoadFrom(const char* path);
 		void SaveTo(const char* path);
+		
 	private:
 	};
 }

@@ -602,7 +602,6 @@ namespace ScenariosEditorGUI {
 				break;
 			}
 		}
-		std::cout << j << '\n';
 		Elems.push_back(ElementOnCanvas{j, ImVec2(x,y), ElementTypes[j]});
 	}
 }
