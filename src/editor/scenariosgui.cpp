@@ -2,6 +2,21 @@
 // ImGui-based UI functions
 //
 
+/*
+
+Known problems:
+
+-Loading elements should clear Elems
+
+
+
+
+
+
+
+
+*/
+
 #include <tchar.h>
 #include <iostream>
 #include <vector>
@@ -281,7 +296,9 @@ namespace ScenariosEditorGUI {
 			else
 			{
 				if (*ClickedType != Point || *ClickedElem != Elem)
+				{
 					Links.push_back({ {*ClickedType, Point},{*ClickedElem, Elem} });
+				}
 			}
 			IsLinking = !IsLinking;
 		}
@@ -320,10 +337,11 @@ namespace ScenariosEditorGUI {
 			{
 				draw_list->AddLine(GetLinkingPointLocation(ClickedElem, ClickedType), io.MousePos, IM_COL32(0, 0, 0, 255));
 			}
-			for (int j = 0; j < Links.size(); j++)
-			{
-				draw_list->AddLine(GetLinkingPointLocation(Links[j].Elems[0], Links[j].Points[0]), GetLinkingPointLocation(Links[j].Elems[1], Links[j].Points[1]), IM_COL32(0, 0, 0, 255));
-			}
+			
+		}
+		for (int j = 0; j < Links.size(); j++)
+		{
+			draw_list->AddLine(GetLinkingPointLocation(Links[j].Elems[0], Links[j].Points[0]), GetLinkingPointLocation(Links[j].Elems[1], Links[j].Points[1]), IM_COL32(0, 0, 0, 255));
 		}
 	}
 
@@ -603,5 +621,14 @@ namespace ScenariosEditorGUI {
 			}
 		}
 		Elems.push_back(ElementOnCanvas{j, ImVec2(x,y), ElementTypes[j]});
+	}
+	
+	void AddLink(int element_a_index, int element_b_index, int element_a_point, int element_b_point)
+	{
+		Links.push_back({ {element_a_point, element_b_point} , {element_a_index, element_b_index } });
+	}
+	const char* GetElementName(int index)
+	{
+		return ElementNames[Elems[index].Element];
 	}
 }
