@@ -4,9 +4,9 @@ namespace EditorMMTextureLoader
 {
 	struct LoadedTexture
 	{
-		ID3D11ShaderResourceView* my_texture;
-		int my_image_height;
-		int my_image_width;
+		ID3D11ShaderResourceView* myTexture;
+		int imageHeight;
+		int imageWidth;
 	};
 
 	class TextureLoader

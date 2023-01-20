@@ -3,6 +3,7 @@
 // Read online: https://github.com/ocornut/imgui/tree/master/docs
 
 #include "imgui.h"
+#include "imgui_internal.h"
 #include "imgui_impl_win32.h"
 #include "imgui_impl_dx11.h"
 #include <d3d11.h>
@@ -20,12 +21,46 @@ namespace EditorMathModel
     void ShowEditorScreen();
     void DrawTopBar(bool show_main_screen, bool show);
     void DrawElementsWindow(bool show);
+    void DrawCanvas();
+    void CanvasDrarElements(ImGuiIO& io);
 
     // Forward declarations of variables
     bool show_elements_window = false;
 
+    static ImVec2 MousePos, origin;
+
+    // ImGui data
+    const ImGuiViewport* viewport;
+    ImDrawList* draw_list;
+
     // Forward declarations of classes
-    EditorMMTextureLoader::TextureLoader TL;
+    EditorMMTextureLoader::TextureLoader TextureLoader;
+
+
+
+
+
+
+
+
+
+
+    struct CanvasElement
+    {
+        int Element;
+        ImVec2 Pos;
+        //int Type;
+    };
+
+    static std::vector<CanvasElement> CanvasElements;
+
+
+
+
+
+
+
+
 
     void CreateDemoScenarioGUI()
     {
@@ -39,7 +74,9 @@ namespace EditorMathModel
 
         bool show_main_screen = true;
 
-        TL.LoadToList();
+        TextureLoader.LoadToList();
+
+        viewport = ImGui::GetMainViewport();
 
         // Main loop
         bool done = false;
@@ -90,6 +127,7 @@ namespace EditorMathModel
             {
                 DrawElementsWindow(show);
             }
+            DrawCanvas();
             DrawTopBar(show_main_screen, show);
             // Rendering
             EditorMMRender::Render();
@@ -106,17 +144,17 @@ namespace EditorMathModel
     {
         ImGui::SetNextWindowSize(ImVec2(400, 400), 0);
         ImGui::Begin("Elements", &show, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
-        for (int i = 0; i < TL.GetTextureCount(); i++)
+        for (int i = 0; i < TextureLoader.GetTextureCount(); i++)
         {
-            EditorMMTextureLoader::LoadedTexture Temp = TL.GetTextureByIndex(i);
+            EditorMMTextureLoader::LoadedTexture Temp = TextureLoader.GetTextureByIndex(i);
             ImGui::SameLine();
-            if (ImGui::GetStyle().ItemSpacing.x + Temp.my_image_width > ImGui::GetContentRegionAvail().x)
+            if (ImGui::GetStyle().ItemSpacing.x + Temp.imageWidth > ImGui::GetContentRegionAvail().x)
             {
                 ImGui::NewLine();
                 ImGui::SetCursorPos(ImVec2(ImGui::GetCursorPos().x + ImGui::GetStyle().ItemSpacing.x, ImGui::GetCursorPos().y));
             }
             ImGui::PushID(i);
-            if (ImGui::ImageButton("Element", (void*)Temp.my_texture, ImVec2(Temp.my_image_width, Temp.my_image_height)));
+            if (ImGui::ImageButton("Element", (void*)Temp.myTexture, ImVec2(Temp.imageWidth, Temp.imageHeight)));
             if (ImGui::BeginDragDropSource())
             {
                 ImGui::SetDragDropPayload("Element", &i, sizeof(int), ImGuiCond_Once);
@@ -125,7 +163,6 @@ namespace EditorMathModel
             }
             ImGui::PopID();
         }
-
         ImGui::End();
     }
 
@@ -175,6 +212,70 @@ namespace EditorMathModel
                 ImGui::EndMenuBar();
             }
             ImGui::End();
+        }
+    }
+
+    void DrawCanvas() 
+    {
+        ImGuiIO& io = ImGui::GetIO();
+        // Canvas size and style
+        ImGui::SetNextWindowPos(ImVec2(0, 20)); // CHANGE 20 TO DYMANIC
+        ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x, viewport->WorkSize.y));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+        ImGui::Begin("MainWorkspace", NULL, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus);
+        ImGui::PopStyleVar();
+        // Canvas positioning
+        static ImVec2 scrolling(0.0f, 0.0f); // current scrolling
+        ImVec2 canvas_p0 = ImGui::GetCursorScreenPos();
+        ImVec2 canvas_sz = ImGui::GetContentRegionAvail();
+        ImVec2 canvas_p1 = ImVec2(canvas_p0.x + canvas_sz.x, canvas_p0.y + canvas_sz.y);
+        draw_list = ImGui::GetWindowDrawList();
+        draw_list->AddRectFilled(canvas_p0, canvas_p1, IM_COL32(240, 240, 240, 0));
+        ImGui::InvisibleButton("canvas", canvas_sz, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight); // Window itself doesn't trigger io mouse actions, invisible button does
+        ImGui::SetItemAllowOverlap();
+        // Draw grid
+        draw_list->PushClipRect(canvas_p0, canvas_p1, true);
+        {
+            const float GRID_STEP = 79.0f;
+            for (float x = fmodf(scrolling.x, GRID_STEP); x < canvas_sz.x; x += GRID_STEP)
+                draw_list->AddLine(ImVec2(canvas_p0.x + x, canvas_p0.y), ImVec2(canvas_p0.x + x, canvas_p1.y), IM_COL32(200, 200, 200, 119));
+            for (float y = fmodf(scrolling.y, GRID_STEP); y < canvas_sz.y; y += GRID_STEP)
+                draw_list->AddLine(ImVec2(canvas_p0.x, canvas_p0.y + y), ImVec2(canvas_p1.x, canvas_p0.y + y), IM_COL32(200, 200, 200, 119));
+        }
+        draw_list->PopClipRect();
+
+        const ImVec2 mouse_pos_in_canvas(io.MousePos.x - origin.x, io.MousePos.y - origin.y);
+        MousePos = mouse_pos_in_canvas;
+
+        // canvas is drag'n'drop reciever
+        if (ImGui::BeginDragDropTarget()) 
+        {
+
+            auto payload = ImGui::AcceptDragDropPayload("Element");
+            if (payload != NULL) 
+            {
+                int ElementNum = *(int*)payload->Data;
+                int x = mouse_pos_in_canvas.x - TextureLoader.GetTextureByIndex(ElementNum).imageWidth / 2;
+                int y = mouse_pos_in_canvas.y - TextureLoader.GetTextureByIndex(ElementNum).imageHeight / 2;
+                if (x < 0) x = 0;
+                if (y < 0) y = 0;
+                CanvasElements.push_back({ ElementNum, ImVec2(x, y) });
+            }
+            ImGui::EndDragDropTarget();
+        }
+
+        CanvasDrarElements(io);
+    }
+
+    void CanvasDrarElements(ImGuiIO& io) 
+    {
+        for (int i = 0; i < CanvasElements.size(); i++)
+        {
+            EditorMMTextureLoader::LoadedTexture UsedTexture = TextureLoader.GetTextureByIndex(CanvasElements[i].Element);
+            draw_list->AddImage((void*)UsedTexture.myTexture, ImVec2(origin.x + CanvasElements[i].Pos.x, origin.y + CanvasElements[i].Pos.y), ImVec2(origin.x + CanvasElements[i].Pos.x + UsedTexture.imageWidth, origin.y + CanvasElements[i].Pos.y + UsedTexture.imageHeight));
+            ImGui::SetCursorScreenPos(ImVec2(origin.x + CanvasElements[i].Pos.x, origin.y + CanvasElements[i].Pos.y));
+            ImGui::InvisibleButton("canvas123", ImVec2(UsedTexture.imageWidth, UsedTexture.imageHeight), ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
+            ImGui::SetItemAllowOverlap();
         }
     }
 }
