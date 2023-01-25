@@ -5,5 +5,6 @@ struct CanvasElement
 {
     int elementDataNumber;
     ImVec2 position;
+    ImVec2 centerPosition;
     bool isSelected = false;
 };

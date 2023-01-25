@@ -17,6 +17,14 @@
 
 namespace EditorMathModel
 {
+    enum CanvasState
+    {
+        Rest,
+        RectangleSelection,
+        ElementDrag,
+        CanvasDrag
+    };
+
     // Forward declarations of helper functions
     void CreateDemoScenarioGUI();
     void DrawTopBar(bool show_main_screen, bool show);
@@ -24,7 +32,9 @@ namespace EditorMathModel
     void DrawCanvas();
     void CanvasDrawElements(ImGuiIO& io);
     void CanvasLogic(ImGuiIO& io);
-    void CanvasRectangleSelection(ImGuiIO& io, bool isSelecting, ImVec2 SelectionStartPosition);
+    void CanvasRectangleSelection(ImGuiIO& io, ImVec2 SelectionStartPosition);
+    void SelectElementsInsideRectangle(ImGuiIO& io, ImVec2 start);
+    void UnselectElementsInsideRectangle(ImGuiIO& io, ImVec2 start);
     bool IsCanvasSelectedElementsContainElementByIndex(int index);
     void ClearCanvasSelectedElementsAll();
     void ClearCanvasSelectedElementByIndex(int index);
@@ -35,6 +45,8 @@ namespace EditorMathModel
     // Forward declarations of variables
     bool show_elements_window = false;
     static ImVec2 mousePosition, origin;
+    //bool isCanvasRectangleSelection = false;
+    bool isPossibleForCreateRectangleSelection = true;
 
     // ImGui data
     const ImGuiViewport* viewport;
@@ -45,6 +57,7 @@ namespace EditorMathModel
     static std::vector<CanvasElement> CanvasElements;
     static std::vector<int> CanvasElementsHovered;
     static std::vector<int> CanvasElementsIDSelected;
+    CanvasState currentState = Rest;
 
     void CreateDemoScenarioGUI()
     {
@@ -244,17 +257,18 @@ namespace EditorMathModel
             {
                 int ElementNum = *(int*)payload->Data;
                 //int x = mouse_pos_in_canvas.x - TextureLoader.GetTextureByIndex(ElementNum).imageWidth / 2;
-                int x = (io.MousePos.x - origin.x) - TextureLoader.GetTextureByIndex(ElementNum).imageWidth / 2;
+                //int x = (io.MousePos.x - origin.x) - TextureLoader.GetTextureByIndex(ElementNum).imageWidth / 2;
+                int x = io.MousePos.x - TextureLoader.GetTextureByIndex(ElementNum).imageWidth / 2;
                 //int y = mouse_pos_in_canvas.y - TextureLoader.GetTextureByIndex(ElementNum).imageHeight / 2;
-                int y = (io.MousePos.y - origin.y) - TextureLoader.GetTextureByIndex(ElementNum).imageHeight / 2;
+                //int y = (io.MousePos.y - origin.y) - TextureLoader.GetTextureByIndex(ElementNum).imageHeight / 2;
+                int y = io.MousePos.y  - TextureLoader.GetTextureByIndex(ElementNum).imageHeight / 2;
                 if (x < 0) x = 0;
                 if (y < 0) y = 0;
-                CanvasElements.push_back({ ElementNum, ImVec2(x, y) });
+                CanvasElements.push_back({ ElementNum, ImVec2(x, y), ImVec2(io.MousePos.x, io.MousePos.y) });
             }
             ImGui::EndDragDropTarget();
         }
         CanvasDrawElements(io);
-        //CanvasRectangleSelection(io);
     }
 
     void CanvasScrollingLogic()
@@ -275,44 +289,47 @@ namespace EditorMathModel
                 ImVec2(UsedTexture.imageWidth, UsedTexture.imageHeight),
                 ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
             ImGui::SetItemAllowOverlap();
-            if (ImGui::IsItemHovered())
+            if (!currentState == RectangleSelection)
             {
-                CanvasElementAddHover(i);
-                if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+                if (ImGui::IsItemHovered())
                 {
-                    if (!io.KeyShift)
+                    CanvasElementAddHover(i);
+                    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
                     {
-                        ClearCanvasSelectedElementsAll();
-                        CanvasElementsIDSelected.push_back(i);
-                        CanvasElements[i].isSelected = true;
-                    }
-                    else
-                    {
-                        if (IsCanvasSelectedElementsContainElementByIndex(i))
+                        if (!io.KeyShift)
                         {
-                            ClearCanvasSelectedElementByIndex(i);
-                        }
-                        else
-                        {
+                            ClearCanvasSelectedElementsAll();
                             CanvasElementsIDSelected.push_back(i);
                             CanvasElements[i].isSelected = true;
                         }
+                        else
+                        {
+                            if (IsCanvasSelectedElementsContainElementByIndex(i))
+                            {
+                                ClearCanvasSelectedElementByIndex(i);
+                            }
+                            else
+                            {
+                                CanvasElementsIDSelected.push_back(i);
+                                CanvasElements[i].isSelected = true;
+                            }
+                        }
                     }
+                    CanvasElementRenderRect();
+                    draw_list->AddRect(
+                        ImVec2(origin.x + CanvasElements[i].position.x, origin.y + CanvasElements[i].position.y),
+                        ImVec2(origin.x + CanvasElements[i].position.x + UsedTexture.imageWidth, origin.y + CanvasElements[i].position.y + UsedTexture.imageHeight),
+                        IM_COL32(150, 150, 255, 255));
+                    draw_list->AddRectFilled(
+                        ImVec2(origin.x + CanvasElements[i].position.x, origin.y + CanvasElements[i].position.y),
+                        ImVec2(origin.x + CanvasElements[i].position.x + UsedTexture.imageWidth, origin.y + CanvasElements[i].position.y + UsedTexture.imageHeight),
+                        IM_COL32(100, 100, 200, 50));
+                    ImGui::SetTooltip("Test tooltip. Name of element: %s", TextureLoader.GetTextureNameByIndex(CanvasElements[i].elementDataNumber));
                 }
-                CanvasElementRenderRect();
-                draw_list->AddRect(
-                    ImVec2(origin.x + CanvasElements[i].position.x, origin.y + CanvasElements[i].position.y),
-                    ImVec2(origin.x + CanvasElements[i].position.x + UsedTexture.imageWidth, origin.y + CanvasElements[i].position.y + UsedTexture.imageHeight),
-                    IM_COL32(150, 150, 255, 255));
-                draw_list->AddRectFilled(
-                    ImVec2(origin.x + CanvasElements[i].position.x, origin.y + CanvasElements[i].position.y),
-                    ImVec2(origin.x + CanvasElements[i].position.x + UsedTexture.imageWidth, origin.y + CanvasElements[i].position.y + UsedTexture.imageHeight),
-                    IM_COL32(100, 100, 200, 50));
-                ImGui::SetTooltip("Test tooltip. Name of element: %s", TextureLoader.GetTextureNameByIndex(CanvasElements[i].elementDataNumber));
-            }
-            else 
-            {
-                CanvasElementRemoveHover(i);
+                else
+                {
+                    CanvasElementRemoveHover(i);
+                }
             }
             if (CanvasElements[i].isSelected)
             {
@@ -332,28 +349,147 @@ namespace EditorMathModel
     void CanvasLogic(ImGuiIO& io)
     {
         static ImVec2 SelectionStartPosition;
+        if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
+        {
+            if (CanvasElementsHovered.size() > 0)
+            {
+                isPossibleForCreateRectangleSelection = false;
+            }
+            if (isPossibleForCreateRectangleSelection)
+            {
+                currentState = RectangleSelection;
+            }
+        }
+        if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) 
+        {
+            isPossibleForCreateRectangleSelection = true;
+            currentState = Rest;
+        }
         if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
         {
             SelectionStartPosition = io.MousePos;
-            if (CanvasElementsHovered.size() == 0) 
+            if (CanvasElementsHovered.size() == 0)
             {
                 ClearCanvasSelectedElementsAll();
             }
         }
-        /*if (!io.MouseDown[0])
+        if (ImGui::IsMouseClicked(ImGuiMouseButton_Right))
         {
-            isSelecting = false;
-        }*/
-        //CanvasRectangleSelection(io, isSelecting, SelectionStartPosition);
+            currentState = Rest;
+            SelectionStartPosition = io.MousePos;
+        }
+        CanvasRectangleSelection(io, SelectionStartPosition);
     }
 
-    void CanvasRectangleSelection(ImGuiIO& io, bool isSelecting, ImVec2 SelectionStartPosition)
+    void CanvasRectangleSelection(ImGuiIO& io, ImVec2 SelectionStartPosition)
     {
-        /*if (isSelecting)
+        if (currentState == RectangleSelection)
         {
-            draw_list->AddRect(SelectionStartPosition, io.MousePos, IM_COL32(0, 0, 0, 255));
-            draw_list->AddRectFilled(SelectionStartPosition, io.MousePos, IM_COL32(0, 0, 0, 15));
-        }*/
+            draw_list->AddRect(SelectionStartPosition, io.MousePos, IM_COL32(255, 255, 255, 255));
+            draw_list->AddRectFilled(SelectionStartPosition, io.MousePos, IM_COL32(255, 255, 255, 15));
+            SelectElementsInsideRectangle(io, SelectionStartPosition);
+            UnselectElementsInsideRectangle(io, SelectionStartPosition);
+        }
+    }
+
+    void SelectElementsInsideRectangle(ImGuiIO& io, ImVec2 start)
+    {
+        for (int i = 0; i < CanvasElements.size(); i++)
+        {
+            if (start.x < io.MousePos.x)
+            {
+                if (CanvasElements[i].centerPosition.x > start.x &&
+                    CanvasElements[i].centerPosition.x < io.MousePos.x)
+                {
+                    if (start.y < io.MousePos.y)
+                    {
+                        if (CanvasElements[i].centerPosition.y > start.y &&
+                            CanvasElements[i].centerPosition.y < io.MousePos.y)
+                        {
+                            CanvasElements[i].isSelected = true;
+                            CanvasElementsIDSelected.push_back(i);
+                        }
+                    }
+                    else
+                    {
+                        if (CanvasElements[i].centerPosition.y < start.y &&
+                            CanvasElements[i].centerPosition.y > io.MousePos.y)
+                        {
+                            CanvasElements[i].isSelected = true;
+                            CanvasElementsIDSelected.push_back(i);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                if (CanvasElements[i].centerPosition.x < start.x &&
+                    CanvasElements[i].centerPosition.x > io.MousePos.x)
+                {
+                    if (start.y < io.MousePos.y)
+                    {
+                        if (CanvasElements[i].centerPosition.y > start.y &&
+                            CanvasElements[i].centerPosition.y < io.MousePos.y)
+                        {
+                            CanvasElements[i].isSelected = true;
+                            CanvasElementsIDSelected.push_back(i);
+                        }
+                    }
+                    else
+                    {
+                        if (CanvasElements[i].centerPosition.y < start.y &&
+                            CanvasElements[i].centerPosition.y > io.MousePos.y)
+                        {
+                            CanvasElements[i].isSelected = true;
+                            CanvasElementsIDSelected.push_back(i);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    void UnselectElementsInsideRectangle(ImGuiIO& io, ImVec2 start)
+    {
+        for (int i = 0; i < CanvasElementsIDSelected.size(); i++)
+        {
+            if (start.x < io.MousePos.x)
+            {
+                if (CanvasElements[CanvasElementsIDSelected[i]].centerPosition.x <  start.x ||
+                    CanvasElements[CanvasElementsIDSelected[i]].centerPosition.x > io.MousePos.x)
+                {
+                    CanvasElements[CanvasElementsIDSelected[i]].isSelected = false;
+                    CanvasElementsIDSelected.erase(CanvasElementsIDSelected.begin() + i);
+                }
+            }
+            else
+            {
+                if (CanvasElements[CanvasElementsIDSelected[i]].centerPosition.x > start.x ||
+                    CanvasElements[CanvasElementsIDSelected[i]].centerPosition.x < io.MousePos.x)
+                {
+                    CanvasElements[CanvasElementsIDSelected[i]].isSelected = false;
+                    CanvasElementsIDSelected.erase(CanvasElementsIDSelected.begin() + i);
+                }
+            }
+            if (start.y < io.MousePos.y)
+            {
+                if (CanvasElements[CanvasElementsIDSelected[i]].centerPosition.y < start.y ||
+                    CanvasElements[CanvasElementsIDSelected[i]].centerPosition.y > io.MousePos.y)
+                {
+                    CanvasElements[CanvasElementsIDSelected[i]].isSelected = false;
+                    CanvasElementsIDSelected.erase(CanvasElementsIDSelected.begin() + i);
+                }
+            }
+            else
+            {
+                if (CanvasElements[CanvasElementsIDSelected[i]].centerPosition.y > start.y ||
+                    CanvasElements[CanvasElementsIDSelected[i]].centerPosition.y < io.MousePos.y)
+                {
+                    CanvasElements[CanvasElementsIDSelected[i]].isSelected = false;
+                    CanvasElementsIDSelected.erase(CanvasElementsIDSelected.begin() + i);
+                }
+            }
+        }
     }
 
     bool IsCanvasSelectedElementsContainElementByIndex(int index)
