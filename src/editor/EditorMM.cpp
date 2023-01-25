@@ -28,7 +28,9 @@ namespace EditorMathModel
     bool IsCanvasSelectedElementsContainElementByIndex(int index);
     void ClearCanvasSelectedElementsAll();
     void ClearCanvasSelectedElementByIndex(int index);
-    void CanvasElementRenderRect();
+    void CanvasElementRenderRect(); 
+    void CanvasElementAddHover(int index);
+    void CanvasElementRemoveHover(int index);
 
     // Forward declarations of variables
     bool show_elements_window = false;
@@ -41,6 +43,7 @@ namespace EditorMathModel
     // Forward declarations of classes and structures
     EditorMMTextureLoader::TextureLoader TextureLoader;
     static std::vector<CanvasElement> CanvasElements;
+    static std::vector<int> CanvasElementsHovered;
     static std::vector<int> CanvasElementsIDSelected;
 
     void CreateDemoScenarioGUI()
@@ -139,10 +142,10 @@ namespace EditorMathModel
             }
             ImGui::PopID();
         }
+        ImGui::Text("counter = %d", CanvasElementsHovered.size());
         ImGui::End();
     }
 
-    // draw top menu bar
     void DrawTopBar(bool show_main_screen, bool show)
     {
         if (show_main_screen)
@@ -209,6 +212,10 @@ namespace EditorMathModel
         draw_list->AddRectFilled(canvas_p0, canvas_p1, IM_COL32(0, 0, 0, 0));
         ImGui::InvisibleButton("canvas", canvas_sz, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight); // Window itself doesn't trigger io mouse actions, invisible button does
         ImGui::SetItemAllowOverlap();
+        if (ImGui::IsItemHovered()) 
+        {
+            CanvasLogic(io);
+        }
         // Canvas scrolling
         /*const bool IsWorkspaceActive = ImGui::IsItemActive();
         if (IsWorkspaceActive && ImGui::IsMouseDragging(ImGuiMouseButton_Right))
@@ -247,7 +254,6 @@ namespace EditorMathModel
             ImGui::EndDragDropTarget();
         }
         CanvasDrawElements(io);
-        //CanvasLogic(io);
         //CanvasRectangleSelection(io);
     }
 
@@ -271,6 +277,7 @@ namespace EditorMathModel
             ImGui::SetItemAllowOverlap();
             if (ImGui::IsItemHovered())
             {
+                CanvasElementAddHover(i);
                 if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
                 {
                     if (!io.KeyShift)
@@ -303,6 +310,10 @@ namespace EditorMathModel
                     IM_COL32(100, 100, 200, 50));
                 ImGui::SetTooltip("Test tooltip. Name of element: %s", TextureLoader.GetTextureNameByIndex(CanvasElements[i].elementDataNumber));
             }
+            else 
+            {
+                CanvasElementRemoveHover(i);
+            }
             if (CanvasElements[i].isSelected)
             {
                 CanvasElementRenderRect();
@@ -324,7 +335,10 @@ namespace EditorMathModel
         if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
         {
             SelectionStartPosition = io.MousePos;
-            ClearCanvasSelectedElementsAll();
+            if (CanvasElementsHovered.size() == 0) 
+            {
+                ClearCanvasSelectedElementsAll();
+            }
         }
         /*if (!io.MouseDown[0])
         {
@@ -386,5 +400,33 @@ namespace EditorMathModel
             ImVec2(origin.x + CanvasElements[i].position.x, origin.y + CanvasElements[i].position.y),
             ImVec2(origin.x + CanvasElements[i].position.x + UsedTexture.imageWidth, origin.y + CanvasElements[i].position.y + UsedTexture.imageHeight),
             IM_COL32(100, 100, 200, 50));*/
+    }
+    
+    void CanvasElementAddHover(int index)
+    {
+        bool isWasHovered = false;
+        for (int i = 0; i < CanvasElementsHovered.size(); i++) 
+        {
+            if (CanvasElementsHovered[i] == index)
+            {
+                isWasHovered = true;
+                break;
+            }
+        }
+        if (!isWasHovered)
+        {
+            CanvasElementsHovered.push_back(index);
+        }
+    }
+
+    void CanvasElementRemoveHover(int index)
+    {
+        for (int i = 0; i < CanvasElementsHovered.size(); i++)
+        {
+            if (CanvasElementsHovered[i] == index)
+            {
+                CanvasElementsHovered.erase(CanvasElementsHovered.begin() + i);
+            }
+        }
     }
 }
