@@ -21,6 +21,7 @@ namespace EditorMathModel
     {
         Rest,
         RectangleSelection,
+        RectangleSelectionPlus,
         ElementDrag,
         CanvasDrag
     };
@@ -57,6 +58,7 @@ namespace EditorMathModel
     static std::vector<CanvasElement> CanvasElements;
     static std::vector<int> CanvasElementsHovered;
     static std::vector<int> CanvasElementsIDSelected;
+    static std::vector<int> TemporaryCanvasElementsIDSelected;
     CanvasState currentState = Rest;
 
     void CreateDemoScenarioGUI()
@@ -155,7 +157,8 @@ namespace EditorMathModel
             }
             ImGui::PopID();
         }
-        ImGui::Text("counter = %d", CanvasElementsHovered.size());
+        ImGui::Text("hovered = %d", CanvasElementsHovered.size());
+        ImGui::Text("selected = %d", CanvasElementsIDSelected.size());
         ImGui::End();
     }
 
@@ -406,8 +409,11 @@ namespace EditorMathModel
                         if (CanvasElements[i].centerPosition.y > start.y &&
                             CanvasElements[i].centerPosition.y < io.MousePos.y)
                         {
-                            CanvasElements[i].isSelected = true;
-                            CanvasElementsIDSelected.push_back(i);
+                            if (!IsCanvasSelectedElementsContainElementByIndex(i))
+                            {
+                                CanvasElements[i].isSelected = true;
+                                CanvasElementsIDSelected.push_back(i);
+                            }
                         }
                     }
                     else
@@ -415,8 +421,11 @@ namespace EditorMathModel
                         if (CanvasElements[i].centerPosition.y < start.y &&
                             CanvasElements[i].centerPosition.y > io.MousePos.y)
                         {
-                            CanvasElements[i].isSelected = true;
-                            CanvasElementsIDSelected.push_back(i);
+                            if (!IsCanvasSelectedElementsContainElementByIndex(i))
+                            {
+                                CanvasElements[i].isSelected = true;
+                                CanvasElementsIDSelected.push_back(i);
+                            }
                         }
                     }
                 }
@@ -431,8 +440,11 @@ namespace EditorMathModel
                         if (CanvasElements[i].centerPosition.y > start.y &&
                             CanvasElements[i].centerPosition.y < io.MousePos.y)
                         {
-                            CanvasElements[i].isSelected = true;
-                            CanvasElementsIDSelected.push_back(i);
+                            if (!IsCanvasSelectedElementsContainElementByIndex(i))
+                            {
+                                CanvasElements[i].isSelected = true;
+                                CanvasElementsIDSelected.push_back(i);
+                            }
                         }
                     }
                     else
@@ -440,8 +452,11 @@ namespace EditorMathModel
                         if (CanvasElements[i].centerPosition.y < start.y &&
                             CanvasElements[i].centerPosition.y > io.MousePos.y)
                         {
-                            CanvasElements[i].isSelected = true;
-                            CanvasElementsIDSelected.push_back(i);
+                            if (!IsCanvasSelectedElementsContainElementByIndex(i))
+                            {
+                                CanvasElements[i].isSelected = true;
+                                CanvasElementsIDSelected.push_back(i);
+                            }
                         }
                     }
                 }
@@ -451,42 +466,45 @@ namespace EditorMathModel
 
     void UnselectElementsInsideRectangle(ImGuiIO& io, ImVec2 start)
     {
-        for (int i = 0; i < CanvasElementsIDSelected.size(); i++)
+        if (CanvasElementsIDSelected.size() > 0) 
         {
-            if (start.x < io.MousePos.x)
+            for (int i = 0; i < CanvasElementsIDSelected.size(); i++)
             {
-                if (CanvasElements[CanvasElementsIDSelected[i]].centerPosition.x <  start.x ||
-                    CanvasElements[CanvasElementsIDSelected[i]].centerPosition.x > io.MousePos.x)
+                if (start.x < io.MousePos.x)
                 {
-                    CanvasElements[CanvasElementsIDSelected[i]].isSelected = false;
-                    CanvasElementsIDSelected.erase(CanvasElementsIDSelected.begin() + i);
+                    if (CanvasElements[CanvasElementsIDSelected[i]].centerPosition.x <  start.x ||
+                        CanvasElements[CanvasElementsIDSelected[i]].centerPosition.x > io.MousePos.x)
+                    {
+                        CanvasElements[CanvasElementsIDSelected[i]].isSelected = false;
+                        CanvasElementsIDSelected.erase(CanvasElementsIDSelected.begin() + i);
+                    }
                 }
-            }
-            else
-            {
-                if (CanvasElements[CanvasElementsIDSelected[i]].centerPosition.x > start.x ||
-                    CanvasElements[CanvasElementsIDSelected[i]].centerPosition.x < io.MousePos.x)
+                else
                 {
-                    CanvasElements[CanvasElementsIDSelected[i]].isSelected = false;
-                    CanvasElementsIDSelected.erase(CanvasElementsIDSelected.begin() + i);
+                    if (CanvasElements[CanvasElementsIDSelected[i]].centerPosition.x > start.x ||
+                        CanvasElements[CanvasElementsIDSelected[i]].centerPosition.x < io.MousePos.x)
+                    {
+                        CanvasElements[CanvasElementsIDSelected[i]].isSelected = false;
+                        CanvasElementsIDSelected.erase(CanvasElementsIDSelected.begin() + i);
+                    }
                 }
-            }
-            if (start.y < io.MousePos.y)
-            {
-                if (CanvasElements[CanvasElementsIDSelected[i]].centerPosition.y < start.y ||
-                    CanvasElements[CanvasElementsIDSelected[i]].centerPosition.y > io.MousePos.y)
+                if (start.y < io.MousePos.y)
                 {
-                    CanvasElements[CanvasElementsIDSelected[i]].isSelected = false;
-                    CanvasElementsIDSelected.erase(CanvasElementsIDSelected.begin() + i);
+                    if (CanvasElements[CanvasElementsIDSelected[i]].centerPosition.y < start.y ||
+                        CanvasElements[CanvasElementsIDSelected[i]].centerPosition.y > io.MousePos.y)
+                    {
+                        CanvasElements[CanvasElementsIDSelected[i]].isSelected = false;
+                        CanvasElementsIDSelected.erase(CanvasElementsIDSelected.begin() + i);
+                    }
                 }
-            }
-            else
-            {
-                if (CanvasElements[CanvasElementsIDSelected[i]].centerPosition.y > start.y ||
-                    CanvasElements[CanvasElementsIDSelected[i]].centerPosition.y < io.MousePos.y)
+                else
                 {
-                    CanvasElements[CanvasElementsIDSelected[i]].isSelected = false;
-                    CanvasElementsIDSelected.erase(CanvasElementsIDSelected.begin() + i);
+                    if (CanvasElements[CanvasElementsIDSelected[i]].centerPosition.y > start.y ||
+                        CanvasElements[CanvasElementsIDSelected[i]].centerPosition.y < io.MousePos.y)
+                    {
+                        CanvasElements[CanvasElementsIDSelected[i]].isSelected = false;
+                        CanvasElementsIDSelected.erase(CanvasElementsIDSelected.begin() + i);
+                    }
                 }
             }
         }
