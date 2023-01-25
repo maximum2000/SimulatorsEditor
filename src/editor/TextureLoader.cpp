@@ -26,6 +26,11 @@
         return Textures[index];
     }
 
+    std::string TextureLoader::GetTextureNameByIndex(int index)
+    {
+        return std::string(ElementNames[index]);
+    }
+
     void TextureLoader::LoadToList()
     {
         for (int i = 0; i < ElementNames.size(); i++)

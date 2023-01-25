@@ -54,6 +54,12 @@
     <ClInclude Include="Render.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
+    <ClInclude Include="EditorMMElement.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="CanvasElements.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\imgui\imgui.cpp">
@@ -93,6 +99,12 @@
       <Filter>Исходные файлы</Filter>
     </ClCompile>
     <ClCompile Include="Render.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="EditorMMElement.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="CanvasElements.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
   </ItemGroup>
