@@ -38,6 +38,8 @@ namespace EditorMathModel
     void SelectElementsInsideRectangle(ImGuiIO& io, ImVec2 start);
     void UnselectElementsInsideRectangle(ImGuiIO& io, ImVec2 start);
     void ClearCanvasSelectedElementsAll();
+    void ResetCanvasSelectedElementsAll();
+    void SetCanvasSelectedElementsBlockStatud(bool newValue);
     void CanvasElementRenderRect(); 
     void CanvasElementAddHover(int index);
     void CanvasElementRemoveHover(int index);
@@ -375,10 +377,7 @@ namespace EditorMathModel
             {
                 isPossibleForCreateRectangleSelection = true;
                 currentState = Rest;
-                for (int i = 0; i < CanvasElements.size(); i++)
-                {
-                    CanvasElements[i].isBlockSelection = false;
-                }
+                SetCanvasSelectedElementsBlockStatud(false);
             }
             isHold = false;
         }
@@ -388,6 +387,10 @@ namespace EditorMathModel
             if (!io.KeyShift)
             {
                 ClearCanvasSelectedElementsAll();
+            }
+            else 
+            {
+                ResetCanvasSelectedElementsAll();
             }
         }
         CanvasRectangleSelection(io, SelectionStartPosition);
@@ -586,6 +589,30 @@ namespace EditorMathModel
         for (int i = 0; i < CanvasElements.size(); i++)
         {
             CanvasElements[i].isSelected = false;
+        }
+    }
+
+    void ResetCanvasSelectedElementsAll()
+    {
+        for (int i = 0; i < CanvasElements.size(); i++)
+        {
+            if (CanvasElements[i].isBlockSelection)
+            {
+                CanvasElements[i].isSelected = true;
+                CanvasElements[i].isBlockSelection = false;
+            } 
+            else
+            {
+                CanvasElements[i].isSelected = false;
+            }
+        }
+    }
+
+    void SetCanvasSelectedElementsBlockStatud(bool newValue)
+    {
+        for (int i = 0; i < CanvasElements.size(); i++)
+        {
+            CanvasElements[i].isBlockSelection = newValue;
         }
     }
 
