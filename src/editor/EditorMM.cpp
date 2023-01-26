@@ -33,7 +33,7 @@ namespace EditorMathModel
     void DrawCanvas();
     void CanvasDrawElements(ImGuiIO& io);
     void CanvasLogic(ImGuiIO& io);
-    void CanvasElementDragLogic(ImGuiIO& io);
+    void CanvasElementLogic(ImGuiIO& io);
     void CanvasRectangleSelection(ImGuiIO& io, ImVec2 SelectionStartPosition);
     void SelectElementsInsideRectangle(ImGuiIO& io, ImVec2 start);
     void UnselectElementsInsideRectangle(ImGuiIO& io, ImVec2 start);
@@ -44,11 +44,14 @@ namespace EditorMathModel
     void CanvasElementAddHover(int index);
     void CanvasElementRemoveHover(int index);
     void CalculateSelectedElements();
+    //void RenderDragNDropElementWhileDragging();
 
     // Forward declarations of variables
     bool show_elements_window = false;
     static ImVec2 mousePosition, origin;
     int selectedElementsCount = 0;
+    //bool isDragElementFromWindow = false;
+    //int dragElementTextureIndex = -1;
 
     // ImGui data
     const ImGuiViewport* viewport;
@@ -128,6 +131,10 @@ namespace EditorMathModel
             }
             DrawCanvas();
             DrawTopBar(show_main_screen, show);
+            /*if (isDragElementFromWindow && dragElementTextureIndex != -1)
+            {
+                RenderDragNDropElementWhileDragging();
+            }*/
             EditorMMRender::Render();
             CalculateSelectedElements();
         }
@@ -153,6 +160,8 @@ namespace EditorMathModel
             {
                 ImGui::SetDragDropPayload("Element", &i, sizeof(int), ImGuiCond_Once);
                 ImGui::Text("Payload data is: %d", *(int*)ImGui::GetDragDropPayload()->Data);
+                //dragElementTextureIndex = i;
+                //isDragElementFromWindow = true;
                 ImGui::EndDragDropSource();
             }
             ImGui::PopID();
@@ -261,6 +270,8 @@ namespace EditorMathModel
             auto payload = ImGui::AcceptDragDropPayload("Element");
             if (payload != NULL)
             {
+                //isDragElementFromWindow = false;
+                //dragElementTextureIndex = -1;
                 int ElementNum = *(int*)payload->Data;
                 //int x = mouse_pos_in_canvas.x - TextureLoader.GetTextureByIndex(ElementNum).imageWidth / 2;
                 //int x = (io.MousePos.x - origin.x) - TextureLoader.GetTextureByIndex(ElementNum).imageWidth / 2;
@@ -275,7 +286,7 @@ namespace EditorMathModel
             ImGui::EndDragDropTarget();
         }
         CanvasDrawElements(io);
-        CanvasElementDragLogic(io);
+        CanvasElementLogic(io);
     }
 
     void CanvasScrollingLogic()
@@ -534,7 +545,7 @@ namespace EditorMathModel
         }
     }
 
-    void CanvasElementDragLogic(ImGuiIO& io)
+    void CanvasElementLogic(ImGuiIO& io)
     {
         static bool isHold = false;
         static bool isGrabElement = false;
@@ -667,4 +678,33 @@ namespace EditorMathModel
             }
         }
     }
+
+    //void RenderDragNDropElementWhileDragging()
+    //{
+    //    ImGuiIO& io = ImGui::GetIO();
+        // Canvas size and style
+        /*ImGui::SetNextWindowPos(ImVec2(0, 20)); // CHANGE 20 TO DYMANIC
+        ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x, viewport->WorkSize.y));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+        ImGui::Begin("MainWorkspace", NULL,
+            ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus);
+        ImGui::PopStyleVar();
+        // Canvas positioning
+        static ImVec2 scrolling(0.0f, 0.0f); // current scrolling
+        ImVec2 canvas_p0 = ImGui::GetCursorScreenPos();
+        ImVec2 canvas_sz = ImGui::GetContentRegionAvail();
+        ImVec2 canvas_p1 = ImVec2(canvas_p0.x + canvas_sz.x, canvas_p0.y + canvas_sz.y);
+        draw_list = ImGui::GetWindowDrawList();
+        draw_list->AddRectFilled(canvas_p0, canvas_p1, IM_COL32(0, 0, 0, 0));*/
+        //auto payload = ImGui::AcceptDragDropPayload("Element");
+        //int ElementNum = *(int*)payload->Data;
+    //    EditorMMTextureLoader::LoadedTexture Temp = TextureLoader.GetTextureByIndex(dragElementTextureIndex);
+        //ImVec2 screen_pos = ImGui::GetCursorScreenPos();
+    //    ImGui::SetNextWindowPos(ImVec2(io.MousePos.x, io.MousePos.y));
+    //    ImGui::Image((void*)Temp.myTexture, ImVec2(Temp.imageWidth, Temp.imageHeight));
+        //EditorMMTextureLoader::LoadedTexture UsedTexture = TextureLoader.GetTextureByIndex(dragElementTextureIndex);
+        //draw_list->AddImage((void*)UsedTexture.myTexture,
+        //    ImVec2(io.MousePos.x, io.MousePos.y),
+        //    ImVec2(io.MousePos.x + UsedTexture.imageWidth, io.MousePos.y + UsedTexture.imageHeight));
+    //}
 }
