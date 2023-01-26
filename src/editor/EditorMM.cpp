@@ -13,7 +13,7 @@
 #include <vector>
 #include "TextureLoader.h"
 #include "Render.h"
-#include "CanvasElements.h";
+#include "CanvasElements.h"
 
 namespace EditorMathModel
 {
@@ -33,6 +33,7 @@ namespace EditorMathModel
     void DrawCanvas();
     void CanvasDrawElements(ImGuiIO& io);
     void CanvasLogic(ImGuiIO& io);
+    void CanvasElementDragLogic(ImGuiIO& io);
     void CanvasRectangleSelection(ImGuiIO& io, ImVec2 SelectionStartPosition);
     void SelectElementsInsideRectangle(ImGuiIO& io, ImVec2 start);
     void UnselectElementsInsideRectangle(ImGuiIO& io, ImVec2 start);
@@ -40,12 +41,12 @@ namespace EditorMathModel
     void CanvasElementRenderRect(); 
     void CanvasElementAddHover(int index);
     void CanvasElementRemoveHover(int index);
+    void CalculateSelectedElements();
 
     // Forward declarations of variables
     bool show_elements_window = false;
     static ImVec2 mousePosition, origin;
-
-    const char* debug_mouse = "peace";
+    int selectedElementsCount = 0;
 
     // ImGui data
     const ImGuiViewport* viewport;
@@ -126,6 +127,7 @@ namespace EditorMathModel
             DrawCanvas();
             DrawTopBar(show_main_screen, show);
             EditorMMRender::Render();
+            CalculateSelectedElements();
         }
         EditorMMRender::Cleanup();
     }
@@ -155,7 +157,7 @@ namespace EditorMathModel
         }
         ImGui::Text("hovered = %d", CanvasElementsHovered.size());
         ImGui::Text("State: %d", currentState);
-        ImGui::Text("State: %s", debug_mouse);
+        ImGui::Text("Selected: %d", selectedElementsCount);
         ImGui::End();
     }
 
@@ -271,6 +273,7 @@ namespace EditorMathModel
             ImGui::EndDragDropTarget();
         }
         CanvasDrawElements(io);
+        CanvasElementDragLogic(io);
     }
 
     void CanvasScrollingLogic()
@@ -291,24 +294,12 @@ namespace EditorMathModel
                 ImVec2(UsedTexture.imageWidth, UsedTexture.imageHeight),
                 ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
             ImGui::SetItemAllowOverlap();
-            if (!currentState == RectangleSelection)
+            if (!(currentState == RectangleSelection) && (currentState != ElementDrag))
             {
                 if (ImGui::IsItemHovered())
                 {
                     CanvasElementAddHover(i);
-                    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
-                    {
-                        if (!io.KeyShift)
-                        {
-                            ClearCanvasSelectedElementsAll();
-                            CanvasElements[i].isSelected = true;
-                        }
-                        else
-                        {
-                            CanvasElements[i].isSelected = !CanvasElements[i].isSelected;
-                        }
-                    }
-                    CanvasElementRenderRect();
+                    //CanvasElementRenderRect(); change lower 2 draw list to function and remove them.
                     draw_list->AddRect(
                         ImVec2(origin.x + CanvasElements[i].position.x, origin.y + CanvasElements[i].position.y),
                         ImVec2(origin.x + CanvasElements[i].position.x + UsedTexture.imageWidth, origin.y + CanvasElements[i].position.y + UsedTexture.imageHeight),
@@ -326,7 +317,7 @@ namespace EditorMathModel
             }
             if (CanvasElements[i].isSelected)
             {
-                CanvasElementRenderRect();
+                //CanvasElementRenderRect(); change lower 2 draw list to function and remove them.
                 draw_list->AddRect(
                     ImVec2(origin.x + CanvasElements[i].position.x, origin.y + CanvasElements[i].position.y),
                     ImVec2(origin.x + CanvasElements[i].position.x + UsedTexture.imageWidth, origin.y + CanvasElements[i].position.y + UsedTexture.imageHeight),
@@ -537,6 +528,63 @@ namespace EditorMathModel
         }
     }
 
+    void CanvasElementDragLogic(ImGuiIO& io)
+    {
+        static bool isHold = false;
+        static bool isGrabElement = false;
+        if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
+        {
+            if (!isHold)
+            {
+                if (CanvasElementsHovered.size() > 0)
+                {
+                    currentState = ElementDrag;
+                }
+                if (CanvasElementsHovered.size() != 0 && CanvasElements[CanvasElementsHovered[0]].isSelected == false)
+                {
+                    if (!io.KeyShift)
+                    {
+                        ClearCanvasSelectedElementsAll();
+                        CanvasElements[CanvasElementsHovered[0]].isSelected = true;
+                    }
+                    else
+                    {
+                        CanvasElements[CanvasElementsHovered[0]].isSelected = !CanvasElements[CanvasElementsHovered[0]].isSelected;
+                    }
+                } 
+                else if (CanvasElementsHovered.size() != 0 && CanvasElements[CanvasElementsHovered[0]].isSelected == true)
+                {
+                    if (io.KeyShift) 
+                    {
+                        CanvasElements[CanvasElementsHovered[0]].isSelected = false;
+                    }
+                }
+            }
+            isHold = true;
+        }
+        if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+        {
+            if (isHold)
+            {
+                currentState = Rest;
+            }
+            isHold = false;
+        }
+        if (currentState == ElementDrag)
+        {
+            for (int i = 0; i < CanvasElements.size(); i++)
+            {
+                if (CanvasElements[i].isSelected)
+                {
+                    CanvasElements[i].position.x = CanvasElements[i].position.x + io.MouseDelta.x;
+                    CanvasElements[i].position.y = CanvasElements[i].position.y + io.MouseDelta.y;
+                    CanvasElements[i].centerPosition.x = CanvasElements[i].centerPosition.x + io.MouseDelta.x;
+                    CanvasElements[i].centerPosition.y = CanvasElements[i].centerPosition.y + io.MouseDelta.y;
+                }
+            }
+        }
+    }
+
     void ClearCanvasSelectedElementsAll()
     {
         for (int i = 0; i < CanvasElements.size(); i++)
@@ -581,6 +629,18 @@ namespace EditorMathModel
             if (CanvasElementsHovered[i] == index)
             {
                 CanvasElementsHovered.erase(CanvasElementsHovered.begin() + i);
+            }
+        }
+    }
+
+    void CalculateSelectedElements()
+    {
+        selectedElementsCount = 0;
+        for (int i = 0; i < CanvasElements.size(); i++)
+        {
+            if (CanvasElements[i].isSelected)
+            {
+                selectedElementsCount++;
             }
         }
     }
