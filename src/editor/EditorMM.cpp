@@ -44,7 +44,8 @@ namespace EditorMathModel
     // Forward declarations of variables
     bool show_elements_window = false;
     static ImVec2 mousePosition, origin;
-    bool isPossibleForCreateRectangleSelection = true;
+
+    const char* debug_mouse = "peace";
 
     // ImGui data
     const ImGuiViewport* viewport;
@@ -154,6 +155,7 @@ namespace EditorMathModel
         }
         ImGui::Text("hovered = %d", CanvasElementsHovered.size());
         ImGui::Text("State: %d", currentState);
+        ImGui::Text("State: %s", debug_mouse);
         ImGui::End();
     }
 
@@ -340,29 +342,54 @@ namespace EditorMathModel
     void CanvasLogic(ImGuiIO& io)
     {
         static ImVec2 SelectionStartPosition;
+        static bool isHold = false;
+        static bool isPossibleForCreateRectangleSelection = true;
         if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
         {
-            if (CanvasElementsHovered.size() > 0)
+            if (!isHold)
             {
-                isPossibleForCreateRectangleSelection = false;
+                if (CanvasElementsHovered.size() > 0)
+                {
+                    isPossibleForCreateRectangleSelection = false;
+                }
+                else
+                {
+                    if (!io.KeyShift) 
+                    {
+                        ClearCanvasSelectedElementsAll();
+                    }
+                }
+                if (isPossibleForCreateRectangleSelection)
+                {
+                    SelectionStartPosition = io.MousePos;
+                    currentState = RectangleSelection;
+                    if (io.KeyShift)
+                    {
+                        currentState = RectangleSelectionPlus;
+                        for (int i = 0; i < CanvasElements.size(); i++)
+                        {
+                            if (CanvasElements[i].isSelected)
+                            {
+                                CanvasElements[i].isBlockSelection = true;
+                            }
+                        }
+                    }
+                }
             }
-            if (isPossibleForCreateRectangleSelection)
-            {
-                currentState = RectangleSelection;
-            }
+            isHold = true;
         }
-        if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) 
+        if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
         {
-            isPossibleForCreateRectangleSelection = true;
-            currentState = Rest;
-        }
-        if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
-        {
-            SelectionStartPosition = io.MousePos;
-            if (CanvasElementsHovered.size() == 0)
+            if (isHold) 
             {
-                ClearCanvasSelectedElementsAll();
+                isPossibleForCreateRectangleSelection = true;
+                currentState = Rest;
+                for (int i = 0; i < CanvasElements.size(); i++)
+                {
+                    CanvasElements[i].isBlockSelection = false;
+                }
             }
+            isHold = false;
         }
         if (ImGui::IsMouseClicked(ImGuiMouseButton_Right))
         {
@@ -370,16 +397,19 @@ namespace EditorMathModel
             SelectionStartPosition = io.MousePos;
         }
         CanvasRectangleSelection(io, SelectionStartPosition);
+        if (currentState == RectangleSelection || currentState == RectangleSelectionPlus)
+        {
+            SelectElementsInsideRectangle(io, SelectionStartPosition);
+            UnselectElementsInsideRectangle(io, SelectionStartPosition);
+        }
     }
 
     void CanvasRectangleSelection(ImGuiIO& io, ImVec2 SelectionStartPosition)
     {
-        if (currentState == RectangleSelection)
+        if (currentState == RectangleSelection || currentState == RectangleSelectionPlus)
         {
             draw_list->AddRect(SelectionStartPosition, io.MousePos, IM_COL32(255, 255, 255, 255));
             draw_list->AddRectFilled(SelectionStartPosition, io.MousePos, IM_COL32(255, 255, 255, 15));
-            SelectElementsInsideRectangle(io, SelectionStartPosition);
-            UnselectElementsInsideRectangle(io, SelectionStartPosition);
         }
     }
 
@@ -398,6 +428,10 @@ namespace EditorMathModel
                             CanvasElements[i].centerPosition.y < io.MousePos.y)
                         {
                             CanvasElements[i].isSelected = true;
+                            if (CanvasElements[i].isBlockSelection)
+                            {
+                                CanvasElements[i].isSelected = false;
+                            }
                         }
                     }
                     else
@@ -406,6 +440,10 @@ namespace EditorMathModel
                             CanvasElements[i].centerPosition.y > io.MousePos.y)
                         {
                             CanvasElements[i].isSelected = true;
+                            if (CanvasElements[i].isBlockSelection)
+                            {
+                                CanvasElements[i].isSelected = false;
+                            }
                         }
                     }
                 }
@@ -421,6 +459,10 @@ namespace EditorMathModel
                             CanvasElements[i].centerPosition.y < io.MousePos.y)
                         {
                             CanvasElements[i].isSelected = true;
+                            if (CanvasElements[i].isBlockSelection)
+                            {
+                                CanvasElements[i].isSelected = false;
+                            }
                         }
                     }
                     else
@@ -429,6 +471,10 @@ namespace EditorMathModel
                             CanvasElements[i].centerPosition.y > io.MousePos.y)
                         {
                             CanvasElements[i].isSelected = true;
+                            if (CanvasElements[i].isBlockSelection)
+                            {
+                                CanvasElements[i].isSelected = false;
+                            }
                         }
                     }
                 }
@@ -446,6 +492,10 @@ namespace EditorMathModel
                     CanvasElements[i].centerPosition.x > io.MousePos.x)
                 {
                     CanvasElements[i].isSelected = false;
+                    if (CanvasElements[i].isBlockSelection)
+                    {
+                        CanvasElements[i].isSelected = true;
+                    }
                 }
             }
             else
@@ -454,6 +504,10 @@ namespace EditorMathModel
                     CanvasElements[i].centerPosition.x < io.MousePos.x)
                 {
                     CanvasElements[i].isSelected = false;
+                    if (CanvasElements[i].isBlockSelection)
+                    {
+                        CanvasElements[i].isSelected = true;
+                    }
                 }
             }
             if (start.y < io.MousePos.y)
@@ -462,6 +516,10 @@ namespace EditorMathModel
                     CanvasElements[i].centerPosition.y > io.MousePos.y)
                 {
                     CanvasElements[i].isSelected = false;
+                    if (CanvasElements[i].isBlockSelection)
+                    {
+                        CanvasElements[i].isSelected = true;
+                    }
                 }
             }
             else
@@ -470,6 +528,10 @@ namespace EditorMathModel
                     CanvasElements[i].centerPosition.y < io.MousePos.y)
                 {
                     CanvasElements[i].isSelected = false;
+                    if (CanvasElements[i].isBlockSelection)
+                    {
+                        CanvasElements[i].isSelected = true;
+                    }
                 }
             }
         }

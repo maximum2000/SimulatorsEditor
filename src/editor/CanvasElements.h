@@ -7,4 +7,5 @@ struct CanvasElement
     ImVec2 position;
     ImVec2 centerPosition;
     bool isSelected = false;
+    bool isBlockSelection = false;
 };
