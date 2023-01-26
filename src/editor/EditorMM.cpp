@@ -294,7 +294,7 @@ namespace EditorMathModel
                 ImVec2(UsedTexture.imageWidth, UsedTexture.imageHeight),
                 ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
             ImGui::SetItemAllowOverlap();
-            if (!(currentState == RectangleSelection) && (currentState != ElementDrag))
+            if (currentState == Rest)
             {
                 if (ImGui::IsItemHovered())
                 {
@@ -539,24 +539,17 @@ namespace EditorMathModel
                 if (CanvasElementsHovered.size() > 0)
                 {
                     currentState = ElementDrag;
-                }
-                if (CanvasElementsHovered.size() != 0 && CanvasElements[CanvasElementsHovered[0]].isSelected == false)
-                {
-                    if (!io.KeyShift)
-                    {
-                        ClearCanvasSelectedElementsAll();
-                        CanvasElements[CanvasElementsHovered[0]].isSelected = true;
-                    }
-                    else
+                    if (io.KeyShift)
                     {
                         CanvasElements[CanvasElementsHovered[0]].isSelected = !CanvasElements[CanvasElementsHovered[0]].isSelected;
                     }
-                } 
-                else if (CanvasElementsHovered.size() != 0 && CanvasElements[CanvasElementsHovered[0]].isSelected == true)
-                {
-                    if (io.KeyShift) 
+                    else
                     {
-                        CanvasElements[CanvasElementsHovered[0]].isSelected = false;
+                        if (CanvasElements[CanvasElementsHovered[0]].isSelected == false) 
+                        {
+                            ClearCanvasSelectedElementsAll();
+                        }
+                        CanvasElements[CanvasElementsHovered[0]].isSelected = true;
                     }
                 }
             }
