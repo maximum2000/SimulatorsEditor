@@ -385,7 +385,10 @@ namespace EditorMathModel
         if (ImGui::IsMouseClicked(ImGuiMouseButton_Right))
         {
             currentState = Rest;
-            SelectionStartPosition = io.MousePos;
+            if (!io.KeyShift)
+            {
+                ClearCanvasSelectedElementsAll();
+            }
         }
         CanvasRectangleSelection(io, SelectionStartPosition);
         if (currentState == RectangleSelection || currentState == RectangleSelectionPlus)
