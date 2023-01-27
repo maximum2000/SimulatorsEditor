@@ -14,6 +14,7 @@
 #include "TextureLoader.h"
 #include "Render.h"
 #include "CanvasElements.h"
+#include <ctime>
 
 namespace EditorMathModel
 {
@@ -169,6 +170,11 @@ namespace EditorMathModel
         ImGui::Text("hovered = %d", CanvasElementsHovered.size());
         ImGui::Text("State: %d", currentState);
         ImGui::Text("Selected: %d", selectedElementsCount);
+        if (CanvasElements.size() > 0) 
+        {
+            ImGui::Text("Element X center: %f", CanvasElements[0].centerPosition.x);
+            ImGui::Text("Element Y center: %f", CanvasElements[0].centerPosition.y);
+        }
         ImGui::End();
     }
 
@@ -257,9 +263,9 @@ namespace EditorMathModel
         draw_list->PushClipRect(canvas_p0, canvas_p1, true);
         {
             const float GRID_STEP = 79.0f;
-            for (float x = fmodf(scrolling.x, GRID_STEP); x < canvas_sz.x; x += GRID_STEP)
+            for (float x = fmodf(origin.x, GRID_STEP); x < canvas_sz.x; x += GRID_STEP)
                 draw_list->AddLine(ImVec2(canvas_p0.x + x, canvas_p0.y), ImVec2(canvas_p0.x + x, canvas_p1.y), IM_COL32(200, 200, 200, 119));
-            for (float y = fmodf(scrolling.y, GRID_STEP); y < canvas_sz.y; y += GRID_STEP)
+            for (float y = fmodf(origin.y, GRID_STEP); y < canvas_sz.y; y += GRID_STEP)
                 draw_list->AddLine(ImVec2(canvas_p0.x, canvas_p0.y + y), ImVec2(canvas_p1.x, canvas_p0.y + y), IM_COL32(200, 200, 200, 119));
         }
         draw_list->PopClipRect();
@@ -275,13 +281,13 @@ namespace EditorMathModel
                 int ElementNum = *(int*)payload->Data;
                 //int x = mouse_pos_in_canvas.x - TextureLoader.GetTextureByIndex(ElementNum).imageWidth / 2;
                 //int x = (io.MousePos.x - origin.x) - TextureLoader.GetTextureByIndex(ElementNum).imageWidth / 2;
-                int x = io.MousePos.x - TextureLoader.GetTextureByIndex(ElementNum).imageWidth / 2;
+                int x = io.MousePos.x - origin.x - TextureLoader.GetTextureByIndex(ElementNum).imageWidth / 2;
                 //int y = mouse_pos_in_canvas.y - TextureLoader.GetTextureByIndex(ElementNum).imageHeight / 2;
                 //int y = (io.MousePos.y - origin.y) - TextureLoader.GetTextureByIndex(ElementNum).imageHeight / 2;
-                int y = io.MousePos.y  - TextureLoader.GetTextureByIndex(ElementNum).imageHeight / 2;
+                int y = io.MousePos.y - origin.y - TextureLoader.GetTextureByIndex(ElementNum).imageHeight / 2;
                 if (x < 0) x = 0;
                 if (y < 0) y = 0;
-                CanvasElements.push_back({ ElementNum, ImVec2(x, y), ImVec2(io.MousePos.x, io.MousePos.y) });
+                CanvasElements.push_back({ ElementNum, ImVec2(x, y), ImVec2(io.MousePos.x - origin.x, io.MousePos.y - origin.y) });
             }
             ImGui::EndDragDropTarget();
         }
@@ -321,7 +327,8 @@ namespace EditorMathModel
                         ImVec2(origin.x + CanvasElements[i].position.x, origin.y + CanvasElements[i].position.y),
                         ImVec2(origin.x + CanvasElements[i].position.x + UsedTexture.imageWidth, origin.y + CanvasElements[i].position.y + UsedTexture.imageHeight),
                         IM_COL32(100, 100, 200, 50));
-                    ImGui::SetTooltip("Test tooltip. Name of element: %s", TextureLoader.GetTextureNameByIndex(CanvasElements[i].elementDataNumber));
+                    //ImGui::SetTooltip("Test tooltip. Name of element: %s", TextureLoader.GetTextureNameByIndex(CanvasElements[i].elementDataNumber));
+                    ImGui::SetTooltip("Center X position: %f", CanvasElements[i].centerPosition.x);
                 }
                 else
                 {
@@ -346,11 +353,13 @@ namespace EditorMathModel
     void CanvasLogic(ImGuiIO& io)
     {
         static ImVec2 SelectionStartPosition;
-        static bool isHold = false;
+        static bool isHoldMouseLeftButton = false;
+        static bool isHoldMouseRightButton = false;
         static bool isPossibleForCreateRectangleSelection = true;
+        static clock_t startTimerRightMouseButton;
         if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
         {
-            if (!isHold)
+            if (!isHoldMouseLeftButton)
             {
                 if (CanvasElementsHovered.size() > 0)
                 {
@@ -380,35 +389,62 @@ namespace EditorMathModel
                     }
                 }
             }
-            isHold = true;
+            isHoldMouseLeftButton = true;
         }
         if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
         {
-            if (isHold) 
+            if (isHoldMouseLeftButton)
             {
                 isPossibleForCreateRectangleSelection = true;
                 currentState = Rest;
                 SetCanvasSelectedElementsBlockStatud(false);
             }
-            isHold = false;
+            isHoldMouseLeftButton = false;
         }
-        if (ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+        if (ImGui::IsMouseDown(ImGuiMouseButton_Right))
         {
-            currentState = Rest;
-            if (!io.KeyShift)
+            if (!isHoldMouseRightButton)
             {
-                ClearCanvasSelectedElementsAll();
+                startTimerRightMouseButton = clock();
+                currentState = CanvasDrag;
             }
-            else 
+            isHoldMouseRightButton = true;
+        }
+        if (ImGui::IsMouseReleased(ImGuiMouseButton_Right))
+        {
+            if (isHoldMouseRightButton)
             {
-                ResetCanvasSelectedElementsAll();
+                clock_t currentTime = clock();
+                if ((((double)currentTime - startTimerRightMouseButton) / CLOCKS_PER_SEC) < 0.1)
+                {
+                    if (!io.KeyShift)
+                    {
+                        ClearCanvasSelectedElementsAll();
+                    }
+                    else
+                    {
+                        ResetCanvasSelectedElementsAll();
+                    }
+                }
+                currentState = Rest;
             }
+            isHoldMouseRightButton = false;
         }
         CanvasRectangleSelection(io, SelectionStartPosition);
         if (currentState == RectangleSelection || currentState == RectangleSelectionPlus)
         {
             SelectElementsInsideRectangle(io, SelectionStartPosition);
             UnselectElementsInsideRectangle(io, SelectionStartPosition);
+        }
+        if (currentState == CanvasDrag)
+        {
+            origin.x = origin.x + io.MouseDelta.x;
+            origin.y = origin.y + io.MouseDelta.y;
+            for (int i = 0; i < CanvasElements.size(); i++)
+            {
+                CanvasElements[i].centerPosition.x += io.MouseDelta.x;
+                CanvasElements[i].centerPosition.y += io.MouseDelta.y;
+            }
         }
     }
 
