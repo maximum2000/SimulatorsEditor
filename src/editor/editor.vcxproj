@@ -146,6 +146,7 @@
     <ClInclude Include="clearclass.h" />
     <ClInclude Include="scenariosgui.h" />
     <ClInclude Include="render.h" />
+    <ClInclude Include="ElementsData.h" />
     <ClInclude Include="xmlhandling.h" />
   </ItemGroup>
   <ItemGroup>
@@ -166,6 +167,7 @@
     </ClCompile>
     <ClCompile Include="TempClasses.cpp" />
     <ClCompile Include="render.cpp" />
+    <ClCompile Include="ElementsData.cpp" />
     <ClCompile Include="xmlhandling.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

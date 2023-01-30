@@ -60,6 +60,9 @@
     <ClInclude Include="..\pugixml\src\pugixml.hpp">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
+    <ClInclude Include="ElementsData.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\imgui\imgui.cpp">
@@ -108,6 +111,9 @@
       <Filter>Исходные файлы</Filter>
     </ClCompile>
     <ClCompile Include="..\pugixml\src\pugixml.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="ElementsData.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
   </ItemGroup>

@@ -38,13 +38,6 @@ namespace ScenariosEditorXML
 	}
 	void LoadElements()
 	{
-		// root
-		//		scenarions2
-		//			elements
-		//				element  <-  !!!
-		//				element  <-  !!!
-		// 10 8
-		// 2720 1975
 		pugi::xml_node ElementParentNode = Model.child("root").child("scenarions2").child("elements");
 		for (pugi::xml_node Element : ElementParentNode.children())
 		{
@@ -81,14 +74,14 @@ namespace ScenariosEditorXML
 					{
 						count--;
 						ElemA = i;
-						const char* test = ScenariosEditorGUI::GetElementName(ElemA);
-						PointA = GetPoint(ScenariosEditorGUI::GetElementName(ElemA), j);
+						const char* test = ScenariosEditorGUI::GetNameOfElementOnCanvas(ElemA);
+						PointA = GetPoint(ScenariosEditorGUI::GetNameOfElementOnCanvas(ElemA), j);
 					}
 					if (CurrentElemPins[j] == PinB)
 					{
 						count--;
 						ElemB = i;
-						PointB = GetPoint(ScenariosEditorGUI::GetElementName(ElemB), j);
+						PointB = GetPoint(ScenariosEditorGUI::GetNameOfElementOnCanvas(i), j);
 					}
 					if (!count) break;
 				}
