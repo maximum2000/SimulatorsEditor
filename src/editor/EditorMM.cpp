@@ -15,6 +15,7 @@
 #include "Render.h"
 #include "CanvasElements.h"
 #include <ctime>
+#include "ColorData.h"
 
 namespace EditorMathModel
 {
@@ -40,19 +41,16 @@ namespace EditorMathModel
     void UnselectElementsInsideRectangle(ImGuiIO& io, ImVec2 start);
     void ClearCanvasSelectedElementsAll();
     void ResetCanvasSelectedElementsAll();
-    void SetCanvasSelectedElementsBlockStatud(bool newValue);
-    void CanvasElementRenderRect(); 
+    void SetCanvasSelectedElementsBlockStatus(bool newValue);
+    void CanvasElementRenderRect(ImVec2 startPosition, ImVec2 endPosition, ImU32 colorBorder, ImU32 colorFill);
     void CanvasElementAddHover(int index);
     void CanvasElementRemoveHover(int index);
     void CalculateSelectedElements();
-    //void RenderDragNDropElementWhileDragging();
 
     // Forward declarations of variables
     bool show_elements_window = false;
     static ImVec2 mousePosition, origin;
     int selectedElementsCount = 0;
-    //bool isDragElementFromWindow = false;
-    //int dragElementTextureIndex = -1;
 
     // ImGui data
     const ImGuiViewport* viewport;
@@ -60,6 +58,7 @@ namespace EditorMathModel
 
     // Forward declarations of classes and structures
     EditorMMTextureLoader::TextureLoader TextureLoader;
+    EditorMMColorData::ColorData ColorData;
     static std::vector<CanvasElement> CanvasElements;
     static std::vector<int> CanvasElementsHovered;
     CanvasState currentState = Rest;
@@ -167,13 +166,18 @@ namespace EditorMathModel
             }
             ImGui::PopID();
         }
-        ImGui::Text("hovered = %d", CanvasElementsHovered.size());
-        ImGui::Text("State: %d", currentState);
-        ImGui::Text("Selected: %d", selectedElementsCount);
+        //ImGui::Text("hovered = %d", CanvasElementsHovered.size());
+        //ImGui::Text("State: %d", currentState);
+        //ImGui::Text("Selected: %d", selectedElementsCount);
         if (CanvasElements.size() > 0) 
         {
             ImGui::Text("Element X center: %f", CanvasElements[0].centerPosition.x);
             ImGui::Text("Element Y center: %f", CanvasElements[0].centerPosition.y);
+        }
+        if (CanvasElements.size() > 1)
+        {
+            ImGui::Text("Element X center: %f", CanvasElements[1].centerPosition.x);
+            ImGui::Text("Element Y center: %f", CanvasElements[1].centerPosition.y);
         }
         ImGui::End();
     }
@@ -234,7 +238,8 @@ namespace EditorMathModel
         ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x, viewport->WorkSize.y));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
         ImGui::Begin("MainWorkspace", NULL, 
-            ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus);
+            ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus 
+            | ImGuiWindowFlags_NoScrollWithMouse);
         ImGui::PopStyleVar();
         // Canvas positioning
         static ImVec2 scrolling(0.0f, 0.0f); // current scrolling
@@ -276,18 +281,23 @@ namespace EditorMathModel
             auto payload = ImGui::AcceptDragDropPayload("Element");
             if (payload != NULL)
             {
-                //isDragElementFromWindow = false;
-                //dragElementTextureIndex = -1;
                 int ElementNum = *(int*)payload->Data;
-                //int x = mouse_pos_in_canvas.x - TextureLoader.GetTextureByIndex(ElementNum).imageWidth / 2;
-                //int x = (io.MousePos.x - origin.x) - TextureLoader.GetTextureByIndex(ElementNum).imageWidth / 2;
-                int x = io.MousePos.x - origin.x - TextureLoader.GetTextureByIndex(ElementNum).imageWidth / 2;
-                //int y = mouse_pos_in_canvas.y - TextureLoader.GetTextureByIndex(ElementNum).imageHeight / 2;
-                //int y = (io.MousePos.y - origin.y) - TextureLoader.GetTextureByIndex(ElementNum).imageHeight / 2;
-                int y = io.MousePos.y - origin.y - TextureLoader.GetTextureByIndex(ElementNum).imageHeight / 2;
-                if (x < 0) x = 0;
-                if (y < 0) y = 0;
-                CanvasElements.push_back({ ElementNum, ImVec2(x, y), ImVec2(io.MousePos.x - origin.x, io.MousePos.y - origin.y) });
+                ImVec2 mousePosition = io.MousePos;
+                int x = mousePosition.x - origin.x - TextureLoader.GetTextureByIndex(ElementNum).imageWidth / 2;
+                //int x = io.MousePos.x - origin.x - TextureLoader.GetTextureByIndex(ElementNum).imageWidth / 2;
+                //int y = io.MousePos.y - origin.y - TextureLoader.GetTextureByIndex(ElementNum).imageHeight / 2;
+                int y = mousePosition.y - origin.y - TextureLoader.GetTextureByIndex(ElementNum).imageHeight / 2;
+                if (x < 0)
+                {
+                    x = 0;
+                    mousePosition.x = origin.x + TextureLoader.GetTextureByIndex(ElementNum).imageWidth / 2;
+                }
+                if (y < 0)
+                {
+                    y = 0;
+                    mousePosition.y = origin.y + TextureLoader.GetTextureByIndex(ElementNum).imageHeight / 2;
+                }
+                CanvasElements.push_back({ ElementNum, ImVec2(x, y), mousePosition });
             }
             ImGui::EndDragDropTarget();
         }
@@ -318,15 +328,10 @@ namespace EditorMathModel
                 if (ImGui::IsItemHovered())
                 {
                     CanvasElementAddHover(i);
-                    //CanvasElementRenderRect(); change lower 2 draw list to function and remove them.
-                    draw_list->AddRect(
+                    CanvasElementRenderRect(
                         ImVec2(origin.x + CanvasElements[i].position.x, origin.y + CanvasElements[i].position.y),
                         ImVec2(origin.x + CanvasElements[i].position.x + UsedTexture.imageWidth, origin.y + CanvasElements[i].position.y + UsedTexture.imageHeight),
-                        IM_COL32(150, 150, 255, 255));
-                    draw_list->AddRectFilled(
-                        ImVec2(origin.x + CanvasElements[i].position.x, origin.y + CanvasElements[i].position.y),
-                        ImVec2(origin.x + CanvasElements[i].position.x + UsedTexture.imageWidth, origin.y + CanvasElements[i].position.y + UsedTexture.imageHeight),
-                        IM_COL32(100, 100, 200, 50));
+                        ColorData.CanvasElementHoverColorRect, ColorData.CanvasElementHoverColorRectFill);
                     //ImGui::SetTooltip("Test tooltip. Name of element: %s", TextureLoader.GetTextureNameByIndex(CanvasElements[i].elementDataNumber));
                     ImGui::SetTooltip("Center X position: %f", CanvasElements[i].centerPosition.x);
                 }
@@ -337,15 +342,10 @@ namespace EditorMathModel
             }
             if (CanvasElements[i].isSelected)
             {
-                //CanvasElementRenderRect(); change lower 2 draw list to function and remove them.
-                draw_list->AddRect(
+                CanvasElementRenderRect(
                     ImVec2(origin.x + CanvasElements[i].position.x, origin.y + CanvasElements[i].position.y),
                     ImVec2(origin.x + CanvasElements[i].position.x + UsedTexture.imageWidth, origin.y + CanvasElements[i].position.y + UsedTexture.imageHeight),
-                    IM_COL32(0, 0, 255, 255));
-                draw_list->AddRectFilled(
-                    ImVec2(origin.x + CanvasElements[i].position.x, origin.y + CanvasElements[i].position.y),
-                    ImVec2(origin.x + CanvasElements[i].position.x + UsedTexture.imageWidth, origin.y + CanvasElements[i].position.y + UsedTexture.imageHeight),
-                    IM_COL32(0, 0, 200, 50));
+                    ColorData.CanvasElementSelectColorRect, ColorData.CanvasElementSelectColorRectFill);
             }
         }
     }
@@ -397,7 +397,7 @@ namespace EditorMathModel
             {
                 isPossibleForCreateRectangleSelection = true;
                 currentState = Rest;
-                SetCanvasSelectedElementsBlockStatud(false);
+                SetCanvasSelectedElementsBlockStatus(false);
             }
             isHoldMouseLeftButton = false;
         }
@@ -438,12 +438,35 @@ namespace EditorMathModel
         }
         if (currentState == CanvasDrag)
         {
-            origin.x = origin.x + io.MouseDelta.x;
-            origin.y = origin.y + io.MouseDelta.y;
+            double xDelta = io.MouseDelta.x;
+            double yDelta = io.MouseDelta.y;
+            ImVec2 newOrigin = ImVec2(origin.x + xDelta, origin.y + yDelta);
+            if (newOrigin.x > 0)
+            {
+                origin.x = 0;
+            }
+            else 
+            {
+                origin.x = newOrigin.x;
+            }
+            if (newOrigin.y > 0)
+            {
+                origin.y = 0;
+            }
+            else
+            {
+                origin.y = newOrigin.y;
+            }
             for (int i = 0; i < CanvasElements.size(); i++)
             {
-                CanvasElements[i].centerPosition.x += io.MouseDelta.x;
-                CanvasElements[i].centerPosition.y += io.MouseDelta.y;
+                if (newOrigin.x < 0)
+                {
+                    CanvasElements[i].centerPosition.x += xDelta;
+                }
+                if (newOrigin.y < 0)
+                {
+                    CanvasElements[i].centerPosition.y += yDelta;
+                }
             }
         }
     }
@@ -584,7 +607,6 @@ namespace EditorMathModel
     void CanvasElementLogic(ImGuiIO& io)
     {
         static bool isHold = false;
-        static bool isGrabElement = false;
         if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
         {
             if (!isHold)
@@ -655,7 +677,7 @@ namespace EditorMathModel
         }
     }
 
-    void SetCanvasSelectedElementsBlockStatud(bool newValue)
+    void SetCanvasSelectedElementsBlockStatus(bool newValue)
     {
         for (int i = 0; i < CanvasElements.size(); i++)
         {
@@ -663,16 +685,16 @@ namespace EditorMathModel
         }
     }
 
-    void CanvasElementRenderRect()
+    void CanvasElementRenderRect(ImVec2 startPosition, ImVec2 endPosition, ImU32 colorBorder, ImU32 colorFill)
     {
-        /*draw_list->AddRect(
-            ImVec2(origin.x + CanvasElements[i].position.x, origin.y + CanvasElements[i].position.y),
-            ImVec2(origin.x + CanvasElements[i].position.x + UsedTexture.imageWidth, origin.y + CanvasElements[i].position.y + UsedTexture.imageHeight),
-            IM_COL32(150, 150, 255, 255));
+        draw_list->AddRect(
+            ImVec2(startPosition.x, startPosition.y),
+            ImVec2(endPosition.x, endPosition.y),
+            colorBorder);
         draw_list->AddRectFilled(
-            ImVec2(origin.x + CanvasElements[i].position.x, origin.y + CanvasElements[i].position.y),
-            ImVec2(origin.x + CanvasElements[i].position.x + UsedTexture.imageWidth, origin.y + CanvasElements[i].position.y + UsedTexture.imageHeight),
-            IM_COL32(100, 100, 200, 50));*/
+            ImVec2(startPosition.x, startPosition.y),
+            ImVec2(endPosition.x, endPosition.y),
+            colorFill);
     }
     
     void CanvasElementAddHover(int index)
@@ -714,33 +736,4 @@ namespace EditorMathModel
             }
         }
     }
-
-    //void RenderDragNDropElementWhileDragging()
-    //{
-    //    ImGuiIO& io = ImGui::GetIO();
-        // Canvas size and style
-        /*ImGui::SetNextWindowPos(ImVec2(0, 20)); // CHANGE 20 TO DYMANIC
-        ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x, viewport->WorkSize.y));
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
-        ImGui::Begin("MainWorkspace", NULL,
-            ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus);
-        ImGui::PopStyleVar();
-        // Canvas positioning
-        static ImVec2 scrolling(0.0f, 0.0f); // current scrolling
-        ImVec2 canvas_p0 = ImGui::GetCursorScreenPos();
-        ImVec2 canvas_sz = ImGui::GetContentRegionAvail();
-        ImVec2 canvas_p1 = ImVec2(canvas_p0.x + canvas_sz.x, canvas_p0.y + canvas_sz.y);
-        draw_list = ImGui::GetWindowDrawList();
-        draw_list->AddRectFilled(canvas_p0, canvas_p1, IM_COL32(0, 0, 0, 0));*/
-        //auto payload = ImGui::AcceptDragDropPayload("Element");
-        //int ElementNum = *(int*)payload->Data;
-    //    EditorMMTextureLoader::LoadedTexture Temp = TextureLoader.GetTextureByIndex(dragElementTextureIndex);
-        //ImVec2 screen_pos = ImGui::GetCursorScreenPos();
-    //    ImGui::SetNextWindowPos(ImVec2(io.MousePos.x, io.MousePos.y));
-    //    ImGui::Image((void*)Temp.myTexture, ImVec2(Temp.imageWidth, Temp.imageHeight));
-        //EditorMMTextureLoader::LoadedTexture UsedTexture = TextureLoader.GetTextureByIndex(dragElementTextureIndex);
-        //draw_list->AddImage((void*)UsedTexture.myTexture,
-        //    ImVec2(io.MousePos.x, io.MousePos.y),
-        //    ImVec2(io.MousePos.x + UsedTexture.imageWidth, io.MousePos.y + UsedTexture.imageHeight));
-    //}
 }
