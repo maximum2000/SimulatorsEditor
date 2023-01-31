@@ -30,9 +30,12 @@ namespace EditorMathModel
 
     // Forward declarations of helper functions
     void CreateDemoScenarioGUI();
-    void DrawTopBar(bool show_main_screen, bool show);
-    void DrawElementsWindow(bool show);
+    void DrawTopBar();
+    void DrawElementsWindow();
+    void DrawCanvasMapWindow();
     void DrawCanvas();
+    void DrawBottomBar();
+    void SearchLogic(char data[]);
     void CanvasDrawElements(ImGuiIO& io);
     void CanvasLogic(ImGuiIO& io);
     void CanvasElementLogic(ImGuiIO& io);
@@ -46,9 +49,12 @@ namespace EditorMathModel
     void CanvasElementAddHover(int index);
     void CanvasElementRemoveHover(int index);
     void CalculateSelectedElements();
+    bool IsCanvasElementHovered(int index);
+    void CanvasElementDelete(int countOfDeleteOperation);
 
     // Forward declarations of variables
     bool show_elements_window = false;
+    bool show_canvas_map_window = false;
     static ImVec2 mousePosition, origin;
     int selectedElementsCount = 0;
 
@@ -71,9 +77,6 @@ namespace EditorMathModel
         // Our state
         bool show_demo_window = true;
         bool show_another_window = false;
-        bool show = true;
-
-        bool show_main_screen = true;
 
         TextureLoader.LoadToList();
 
@@ -127,10 +130,15 @@ namespace EditorMathModel
             }*/
             if (show_elements_window)
             {
-                DrawElementsWindow(show);
+                DrawElementsWindow();
             }
+            if (show_canvas_map_window)
+            {
+                DrawCanvasMapWindow();
+            }
+            DrawTopBar();
             DrawCanvas();
-            DrawTopBar(show_main_screen, show);
+            DrawBottomBar();
             /*if (isDragElementFromWindow && dragElementTextureIndex != -1)
             {
                 RenderDragNDropElementWhileDragging();
@@ -141,10 +149,10 @@ namespace EditorMathModel
         EditorMMRender::Cleanup();
     }
 
-    void DrawElementsWindow(bool show)
+    void DrawElementsWindow()
     {
         ImGui::SetNextWindowSize(ImVec2(400, 400), 0);
-        ImGui::Begin("Elements", &show, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
+        ImGui::Begin("Elements", 0, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
         for (int i = 0; i < TextureLoader.GetTextureCount(); i++)
         {
             EditorMMTextureLoader::LoadedTexture Temp = TextureLoader.GetTextureByIndex(i);
@@ -160,83 +168,84 @@ namespace EditorMathModel
             {
                 ImGui::SetDragDropPayload("Element", &i, sizeof(int), ImGuiCond_Once);
                 ImGui::Text("Payload data is: %d", *(int*)ImGui::GetDragDropPayload()->Data);
-                //dragElementTextureIndex = i;
-                //isDragElementFromWindow = true;
                 ImGui::EndDragDropSource();
             }
             ImGui::PopID();
         }
         //ImGui::Text("hovered = %d", CanvasElementsHovered.size());
         //ImGui::Text("State: %d", currentState);
-        //ImGui::Text("Selected: %d", selectedElementsCount);
+        //ImGui::Text("Selected: |%s|", searchInput);
         if (CanvasElements.size() > 0) 
         {
             ImGui::Text("Element X center: %f", CanvasElements[0].centerPosition.x);
             ImGui::Text("Element Y center: %f", CanvasElements[0].centerPosition.y);
         }
-        if (CanvasElements.size() > 1)
-        {
-            ImGui::Text("Element X center: %f", CanvasElements[1].centerPosition.x);
-            ImGui::Text("Element Y center: %f", CanvasElements[1].centerPosition.y);
-        }
         ImGui::End();
     }
 
-    void DrawTopBar(bool show_main_screen, bool show)
+    void DrawCanvasMapWindow()
     {
-        if (show_main_screen)
+
+    }
+
+    void DrawTopBar()
+    {
+        const float footer_height_to_reserve = ImGui::GetStyle().ItemSpacing.y;
+        ImGui::SetNextWindowPos(ImVec2(0, 0), 0);
+        ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x, footer_height_to_reserve));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowMinSize, ImVec2(0.f, 0.f));
+        ImGui::Begin("Main Window", 0, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoMove |
+            ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoBringToFrontOnFocus);
+        if (ImGui::BeginMenuBar())
         {
-            ImGui::SetNextWindowPos(ImVec2(0, 0), 0);
-            ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize, 0);
-            ImGui::Begin("Main Window", &show, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoMove |
-                ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoBringToFrontOnFocus);
-            if (ImGui::BeginMenuBar())
+            if (ImGui::BeginMenu("File"))
             {
-                if (ImGui::BeginMenu("File"))
-                {
-                    if (ImGui::MenuItem("New")) {}
-                    if (ImGui::MenuItem("Open", "Ctrl+O")) {}
-                    //if (ImGui::BeginMenu("Open Recent")){}
-                    if (ImGui::MenuItem("Save", "Ctrl+S")) {}
-                    if (ImGui::MenuItem("Save As..")) {}
-                    ImGui::Separator();
-                    if (ImGui::MenuItem("Import")) {}
-                    if (ImGui::MenuItem("Export as")) {}
-                    ImGui::Separator();
-                    if (ImGui::MenuItem("Exit")) {}
-                    ImGui::EndMenu();
-                }
-                if (ImGui::BeginMenu("Edit"))
-                {
-                    if (ImGui::MenuItem("Undo", "Ctrl+Z")) {}
-                    if (ImGui::MenuItem("Redo", "Ctrl+Y")) {}
-                    ImGui::EndMenu();
-                }
-                if (ImGui::BeginMenu("Window"))
-                {
-                    if (ImGui::MenuItem("Elements window"))
-                    {
-                        show_elements_window = !show_elements_window;
-                    }
-                    ImGui::EndMenu();
-                }
-                if (ImGui::BeginMenu("Options"))
-                {
-                    ImGui::EndMenu();
-                }
-                ImGui::EndMenuBar();
+                if (ImGui::MenuItem("New")) {}
+                if (ImGui::MenuItem("Open", "Ctrl+O")) {}
+                //if (ImGui::BeginMenu("Open Recent")){}
+                if (ImGui::MenuItem("Save", "Ctrl+S")) {}
+                if (ImGui::MenuItem("Save As..")) {}
+                ImGui::Separator();
+                if (ImGui::MenuItem("Import")) {}
+                if (ImGui::MenuItem("Export as")) {}
+                ImGui::Separator();
+                if (ImGui::MenuItem("Exit")) {}
+                ImGui::EndMenu();
             }
-            ImGui::End();
+            if (ImGui::BeginMenu("Edit"))
+            {
+                if (ImGui::MenuItem("Undo", "Ctrl+Z")) {}
+                if (ImGui::MenuItem("Redo", "Ctrl+Y")) {}
+                ImGui::EndMenu();
+            }
+            if (ImGui::BeginMenu("Window"))
+            {
+                if (ImGui::MenuItem("Elements window"))
+                {
+                    show_elements_window = !show_elements_window;
+                }
+                if (ImGui::MenuItem("Canvas map window"))
+                {
+                    show_canvas_map_window = !show_canvas_map_window;
+                }
+                ImGui::EndMenu();
+            }
+            if (ImGui::BeginMenu("Options"))
+            {
+                ImGui::EndMenu();
+            }
+            ImGui::EndMenuBar();
         }
+        ImGui::End();
     }
 
     void DrawCanvas()
     {
         ImGuiIO& io = ImGui::GetIO();
+        const float footer_height_to_reserve = ImGui::GetFrameHeightWithSpacing();
         // Canvas size and style
-        ImGui::SetNextWindowPos(ImVec2(0, 20)); // CHANGE 20 TO DYMANIC
-        ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x, viewport->WorkSize.y));
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+        ImGui::SetNextWindowPos(ImVec2(0, footer_height_to_reserve - ImGui::GetStyle().ItemSpacing.y)); 
+        ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x, viewport->WorkSize.y - footer_height_to_reserve * 2));
         ImGui::Begin("MainWorkspace", NULL, 
             ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus 
             | ImGuiWindowFlags_NoScrollWithMouse);
@@ -297,12 +306,57 @@ namespace EditorMathModel
                     y = 0;
                     mousePosition.y = origin.y + TextureLoader.GetTextureByIndex(ElementNum).imageHeight / 2;
                 }
+                //std::string elemName = TextureLoader.GetTextureNameByIndex(ElementNum);
+                //CanvasElements.push_back({ elemName, ElementNum, ImVec2(x, y), mousePosition });
                 CanvasElements.push_back({ ElementNum, ImVec2(x, y), mousePosition });
             }
             ImGui::EndDragDropTarget();
         }
         CanvasDrawElements(io);
         CanvasElementLogic(io);
+    }
+
+    void DrawBottomBar()
+    {
+        const float footer_height_to_reserve = ImGui::GetStyle().ItemSpacing.y + ImGui::GetFrameHeightWithSpacing();
+        ImGui::SetNextWindowPos(ImVec2(0, ImGui::GetIO().DisplaySize.y  - footer_height_to_reserve)); // CHANGE 20 TO DYMANIC
+        ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x, footer_height_to_reserve));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+        ImGui::Begin("BottomMenuBar", NULL,
+            ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus
+            | ImGuiWindowFlags_NoScrollWithMouse);
+        ImGui::Separator();
+        ImGui::Text(" Selected elements: %d |", selectedElementsCount);
+        ImGui::SameLine();
+        static char searchInput[64] = ""; 
+        static float searchInputWidth = viewport->WorkSize.x / 10;
+        float searchItemPosition = searchInputWidth + ImGui::GetStyle().ItemSpacing.x;
+        ImGui::SameLine(ImGui::GetWindowWidth() - searchItemPosition);
+        ImGui::PushItemWidth(searchInputWidth);
+        ImGui::InputText("", searchInput, 64);
+        searchItemPosition += ImGui::CalcTextSize("Search:").x + ImGui::GetStyle().ItemSpacing.x;
+        ImGui::SameLine(ImGui::GetWindowWidth() - searchItemPosition);
+        ImGui::Text("Search:");
+        SearchLogic(searchInput);
+    }
+
+    void SearchLogic(char data[])
+    {
+        std::string searchValue = data;
+        for (int i = 0; i < CanvasElements.size(); i++)
+        {
+            CanvasElements[i].isSearched = false;
+        }
+        if (searchValue != "")
+        {
+            for (int i = 0; i < CanvasElements.size(); i++)
+            {
+                if (TextureLoader.GetTextureNameByIndex(CanvasElements[i].elementDataNumber).find(searchValue) != std::string::npos)
+                {
+                    CanvasElements[i].isSearched = true;
+                }
+            }
+        } 
     }
 
     void CanvasScrollingLogic()
@@ -332,13 +386,19 @@ namespace EditorMathModel
                         ImVec2(origin.x + CanvasElements[i].position.x, origin.y + CanvasElements[i].position.y),
                         ImVec2(origin.x + CanvasElements[i].position.x + UsedTexture.imageWidth, origin.y + CanvasElements[i].position.y + UsedTexture.imageHeight),
                         ColorData.CanvasElementHoverColorRect, ColorData.CanvasElementHoverColorRectFill);
-                    //ImGui::SetTooltip("Test tooltip. Name of element: %s", TextureLoader.GetTextureNameByIndex(CanvasElements[i].elementDataNumber));
                     ImGui::SetTooltip("Center X position: %f", CanvasElements[i].centerPosition.x);
                 }
                 else
                 {
                     CanvasElementRemoveHover(i);
                 }
+            }
+            if (CanvasElements[i].isSearched && !CanvasElements[i].isSelected && !IsCanvasElementHovered(i))
+            {
+                CanvasElementRenderRect(
+                    ImVec2(origin.x + CanvasElements[i].position.x, origin.y + CanvasElements[i].position.y),
+                    ImVec2(origin.x + CanvasElements[i].position.x + UsedTexture.imageWidth, origin.y + CanvasElements[i].position.y + UsedTexture.imageHeight),
+                    ColorData.CanvasElementSearchColorRect, ColorData.CanvasElementSearchColorRectFill);
             }
             if (CanvasElements[i].isSelected)
             {
@@ -429,6 +489,16 @@ namespace EditorMathModel
                 currentState = Rest;
             }
             isHoldMouseRightButton = false;
+        }
+        if (ImGui::IsKeyPressed(ImGuiKey_A)) 
+        {
+            if (io.KeyCtrl)
+            {
+                for (int i = 0; i < CanvasElements.size(); i++)
+                {
+                    CanvasElements[i].isSelected = true;
+                }
+            }
         }
         CanvasRectangleSelection(io, SelectionStartPosition);
         if (currentState == RectangleSelection || currentState == RectangleSelectionPlus)
@@ -638,6 +708,13 @@ namespace EditorMathModel
             }
             isHold = false;
         }
+        if (ImGui::IsKeyPressed(ImGuiKey_Delete))
+        {
+            if (currentState == Rest)
+            {
+                CanvasElementDelete(selectedElementsCount);
+            }
+        }
         if (currentState == ElementDrag)
         {
             for (int i = 0; i < CanvasElements.size(); i++)
@@ -735,5 +812,38 @@ namespace EditorMathModel
                 selectedElementsCount++;
             }
         }
+    }
+
+    bool IsCanvasElementHovered(int index)
+    {
+        for (int i = 0; i < CanvasElementsHovered.size(); i++)
+        {
+            if (CanvasElementsHovered[i] == index) 
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    void CanvasElementDelete(int countOfDeleteOperation) 
+    {
+        while (countOfDeleteOperation > 0)
+        {
+            for (int i = 0; i < CanvasElements.size(); i++)
+            {
+                if (CanvasElements[i].isSelected)
+                {
+                    if (IsCanvasElementHovered(i))
+                    {
+                        CanvasElementRemoveHover(i);
+                    }
+                    CanvasElements.erase(CanvasElements.begin() + i);
+                    countOfDeleteOperation--;
+                    break;
+                }
+            }
+        }
+        
     }
 }
