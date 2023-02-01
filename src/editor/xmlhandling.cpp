@@ -10,6 +10,7 @@
 #include <cctype>
 #include <string>
 #include <vector>
+#include "ScenarioElementsStorage.h"
 
 #pragma execution_character_set("utf-8")
 
@@ -21,6 +22,7 @@ namespace ScenariosEditorXML
 	void GetMinimalCoordinate();
 	void LoadElements();
 	void CoordinatesOldToNew(float *x, float *y);
+	std::vector<std::string> GetArguments(pugi::xml_node Element);
 	int GetPoint(const char* name, int pin_index);
 	pugi::xml_document Model;
 	void ScenariosDOM::LoadFrom(const char* path)
@@ -41,6 +43,8 @@ namespace ScenariosEditorXML
 		pugi::xml_node ElementParentNode = Model.child("root").child("scenarions2").child("elements");
 		for (pugi::xml_node Element : ElementParentNode.children())
 		{
+			std::vector<std::string> args = GetArguments(Element);
+			ScenariosEditorScenarioElement::AddElement(&args);
 			std::string name = Element.child("etalon").child("name").child_value();
 			std::transform(name.begin(), name.end(), name.begin(),
 				[](unsigned char c) { return std::tolower(c); });
@@ -101,11 +105,13 @@ namespace ScenariosEditorXML
 			if (std::stof(std::string(Element.child("y").child_value())) > maxy) maxy = std::stof(std::string(Element.child("y").child_value()));
 		}
 	}
+
 	void CoordinatesOldToNew(float* x, float* y)
 	{
 		*x *= 230.0f;
 	    *y *= 200.0f;
 	}
+
 	int GetPoint(const char* name, int pin_index)
 	{
 		int ret = pin_index == 0 ? 2 : 0;
@@ -121,5 +127,33 @@ namespace ScenariosEditorXML
 			}
 		}
 		return ret;
+	}
+
+	std::vector<std::string> GetArguments(pugi::xml_node Element)
+	{
+		// same order as xml, with exception: name of element placed first
+		std::vector<std::string> args;
+		args.push_back(std::string(Element.child("etalon").child("name").child_value()));
+		args.push_back(std::string(Element.child("ScenarioGUID").child_value()));
+		args.push_back(std::string(Element.child("x").child_value()));
+		args.push_back(std::string(Element.child("y").child_value()));
+		args.push_back(std::string(Element.child("alfa").child_value()));
+		pugi::xml_node CurrentPin = Element.child("pins").first_child();
+		while (CurrentPin != nullptr)
+		{
+			args.push_back(std::string(CurrentPin.child("id").child_value()));
+			CurrentPin = CurrentPin.next_sibling();
+		}
+		args.push_back("Separator_Pins");
+		args.push_back(std::string(Element.child("etalon").child("caption").child_value()));
+		pugi::xml_node CurrentAttribute = Element.child("etalon").child("attributes").first_child();
+		while (CurrentAttribute != nullptr)
+		{
+			args.push_back(std::string(CurrentAttribute.child("name").child_value()));
+			args.push_back(std::string(CurrentAttribute.child("valueF").child_value()));
+			args.push_back(std::string(CurrentAttribute.child("valueS").child_value()));
+			CurrentAttribute = CurrentAttribute.next_sibling();
+		}
+		return args;
 	}
 }

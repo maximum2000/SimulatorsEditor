@@ -12,6 +12,45 @@ Known problems:
 
 */
 
+//xmlhandling->xml_documents
+//scenariosgui->elementoncanvas
+//
+//ScenarioElement + Attribute
+//
+//[ChildClasses]
+//Add(Virtal, for each - it's own attributes)
+//	GetAttribures(virtual, returns it's attributes)
+//
+//		[Class]
+//vector - ScenarioElements - every
+//
+//ScenariosGui
+//ElementOnCanvas
+//{
+//	*ScenarioElement
+//}
+//onparamssections - *ScenarioElement.attributes
+//
+//xml - load, save only
+//
+//
+//
+//loading:
+//1) xml
+//foreach(element)
+//{
+//	2) ScenarioElement->ScenarioElements
+//	3) ElementOnCanvas->*ScenarioElement
+//}
+//params on canvas :
+//*ScenarioElement.GetAttribures, handle them
+//saving :
+//ScenarioElements->xml
+//adding new
+//ScenariosGui->create element(ret.ScenarioElement)->ElementOnCanvas
+//deleting - virtual function
+//editing - in scenario element - have as static
+
 #include <tchar.h>
 #include <iostream>
 #include <vector>
@@ -21,6 +60,7 @@ Known problems:
 #include "xmlhandling.h"
 #include "render.h"
 #include "ElementsData.h"
+
 
 using namespace ScenariosEditorElementsData;
 
@@ -66,7 +106,7 @@ namespace ScenariosEditorGUI {
 
 	void PreLoopSetup();
 	void MainLoop();
-
+	
 	void DrawMenu();
 	void MakeCanvas(const ImGuiViewport* viewport, ImGuiIO& io);
 	void DrawCanvas(const ImGuiViewport* viewport, ImGuiIO& io);
@@ -83,7 +123,7 @@ namespace ScenariosEditorGUI {
 	void CanvasLinkingLogic();
 	void CanvasDrawElems();
 	void CanvasDrawSelectedElems();
-	void CanvasElemsLogic(ImGuiIO& io, int* hover_on, ImVec2* SelectionStartPosition);
+	void CanvasElemsLogic(int* hover_on, ImVec2* SelectionStartPosition);
 	void CanvasSelectedElemsLogic(ImGuiIO& io);
 	void ParamsInitialization();
 	ImVec2 GetLinkingPointLocation(int Elem, int Point);
@@ -181,7 +221,7 @@ namespace ScenariosEditorGUI {
 		static ImVec2 SelectionStartPosition; // used for logic
 
 		CanvasDrawElems();
-		CanvasElemsLogic(io, &hover_on, &SelectionStartPosition);
+		CanvasElemsLogic(&hover_on, &SelectionStartPosition);
 
 		CanvasDrawLinking();
 		CanvasLinkingLogic();
@@ -373,6 +413,7 @@ namespace ScenariosEditorGUI {
 	// Draw canvas
 	void DrawCanvas(const ImGuiViewport* viewport, ImGuiIO& io)
 	{
+		const char * gfsdg = u8"Открыть";
 		// Canvas size and style
 		ImGui::SetNextWindowPos(ImVec2(viewport->WorkSize.x / 4, viewport->WorkPos.y));
 		ImGui::SetNextWindowSize(ImVec2(3 * viewport->WorkSize.x / 4, viewport->WorkSize.y));
@@ -499,7 +540,7 @@ namespace ScenariosEditorGUI {
 		}
 	}
 	// Handles elems-depending logic
-	void CanvasElemsLogic(ImGuiIO& io, int* hover_on, ImVec2* SelectionStartPosition)
+	void CanvasElemsLogic(int* hover_on, ImVec2* SelectionStartPosition)
 	{
 		static ImVec2 OldElementPosition;
 		for (int i = 0; i < Elems.size(); i++)
@@ -526,17 +567,14 @@ namespace ScenariosEditorGUI {
 			// Foreach element we determine if it contains in selection
 			if (CurrentState == Selection)
 			{
-				if (Elems[i].Pos.x + origin.x > (io.MousePos.x + SelectionStartPosition->x - max(io.MousePos.x, SelectionStartPosition->x))
-					&& Elems[i].Pos.x + origin.x < (io.MousePos.x + SelectionStartPosition->x - min(io.MousePos.x, SelectionStartPosition->x)))
+				if (Elems[i].Pos.x + origin.x + UsedTexture.Width / 2 > (MousePos.x + SelectionStartPosition->x - max(MousePos.x, SelectionStartPosition->x))
+					&& Elems[i].Pos.x + origin.x + UsedTexture.Height / 2 < (MousePos.x + SelectionStartPosition->x - min(MousePos.x, SelectionStartPosition->x))
+					&& Elems[i].Pos.y + origin.y + UsedTexture.Width / 2 > (MousePos.y + SelectionStartPosition->y - max(MousePos.y, SelectionStartPosition->y))
+					&& Elems[i].Pos.y + origin.y + UsedTexture.Height / 2 < (MousePos.y + SelectionStartPosition->y - min(MousePos.y, SelectionStartPosition->y))
+					&& std::find(SelectedElems.begin(), SelectedElems.end(), i) == SelectedElems.end()
+					)
 				{
-					if (Elems[i].Pos.y + origin.y > (io.MousePos.y + SelectionStartPosition->y - max(io.MousePos.y, SelectionStartPosition->y))
-						&& Elems[i].Pos.y + origin.y < (io.MousePos.y + SelectionStartPosition->y - min(io.MousePos.y, SelectionStartPosition->y)))
-					{
-						if (std::find(SelectedElems.begin(), SelectedElems.end(), i) == SelectedElems.end())
-						{
-							SelectedElems.push_back(i);
-						}
-					}
+					SelectedElems.push_back(i);
 				}
 			}
 		}

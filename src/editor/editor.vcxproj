@@ -143,10 +143,29 @@
     <ClInclude Include="..\imgui\stb_image.h" />
     <ClInclude Include="..\pugixml\src\pugiconfig.hpp" />
     <ClInclude Include="..\pugixml\src\pugixml.hpp" />
+    <ClInclude Include="Answer.h" />
+    <ClInclude Include="Arrow.h" />
+    <ClInclude Include="Clear.h" />
     <ClInclude Include="clearclass.h" />
+    <ClInclude Include="Danger.h" />
+    <ClInclude Include="ElementAttribute.h" />
+    <ClInclude Include="Message.h" />
+    <ClInclude Include="Outcome.h" />
+    <ClInclude Include="Pause.h" />
+    <ClInclude Include="Pilon.h" />
+    <ClInclude Include="Push.h" />
+    <ClInclude Include="Random.h" />
+    <ClInclude Include="ScenarioElement.h" />
+    <ClInclude Include="ScenarioElementsStorage.h" />
     <ClInclude Include="scenariosgui.h" />
     <ClInclude Include="render.h" />
     <ClInclude Include="ElementsData.h" />
+    <ClInclude Include="Script.h" />
+    <ClInclude Include="Select.h" />
+    <ClInclude Include="Sound.h" />
+    <ClInclude Include="Start.h" />
+    <ClInclude Include="Uzel.h" />
+    <ClInclude Include="VariableValue.h" />
     <ClInclude Include="xmlhandling.h" />
   </ItemGroup>
   <ItemGroup>
@@ -158,16 +177,30 @@
     <ClCompile Include="..\imgui\imgui_tables.cpp" />
     <ClCompile Include="..\imgui\imgui_widgets.cpp" />
     <ClCompile Include="..\pugixml\src\pugixml.cpp" />
+    <ClCompile Include="Answer.cpp" />
+    <ClCompile Include="Arrow.cpp" />
+    <ClCompile Include="Clear.cpp" />
     <ClCompile Include="clearclass.cpp" />
+    <ClCompile Include="Danger.cpp" />
+    <ClCompile Include="ElementAttribute.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Message.cpp" />
+    <ClCompile Include="Outcome.cpp" />
+    <ClCompile Include="Pause.cpp" />
+    <ClCompile Include="Pilon.cpp" />
+    <ClCompile Include="Push.cpp" />
+    <ClCompile Include="Random.cpp" />
     <ClCompile Include="ScenarioElement.cpp" />
+    <ClCompile Include="ScenarioElementsStorage.cpp" />
     <ClCompile Include="scenariosgui.cpp" />
-    <ClCompile Include="demoobj.cpp">
-      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\VR\Desktop\projects c++\SimulatorsEditor\src\imgui\backends;C:\Users\VR\Desktop\projects c++\SimulatorsEditor\src\imgui;C:\Users\VR\Desktop\projects\SimulatorsEditor\src\imgui;C:\Users\VR\Desktop\projects\SimulatorsEditor\src\imgui\backends;C:\Users\VR\Desktop\projects\SimulatorsEditor\src\pugixml\src;C:\Users\Михаил\Desktop\projects\SimulatorsEditor\src\imgui\backends;C:\Users\Михаил\Desktop\projects\SimulatorsEditor\src\imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-    </ClCompile>
-    <ClCompile Include="TempClasses.cpp" />
+    <ClCompile Include="Script.cpp" />
+    <ClCompile Include="Select.cpp" />
+    <ClCompile Include="Sound.cpp" />
+    <ClCompile Include="Start.cpp" />
     <ClCompile Include="render.cpp" />
     <ClCompile Include="ElementsData.cpp" />
+    <ClCompile Include="Uzel.cpp" />
+    <ClCompile Include="VariableValue.cpp" />
     <ClCompile Include="xmlhandling.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

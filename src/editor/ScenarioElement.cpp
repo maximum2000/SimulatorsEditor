@@ -1,12 +1,20 @@
-#include <string>
-#include <vector>
-class ScenarioElement
+#include "ScenarioElement.h"
+
+namespace ScenariosEditorScenarioElement
 {
-public:
-	
-protected:
-	//static constexpr const char* name = "demo";
-	std::string ScenarioGUID, name, caption;
-	float x, y, alfa;
-	std::vector<int> pins;
-};
+	ScenarioElement::ScenarioElement(std::vector<std::string>* args)
+	{
+		
+		ScenarioGUID = (*args)[1];
+		x = std::stof((*args)[2]);
+		y = std::stof((*args)[3]);
+		alfa = std::stof((*args)[4]);
+		int i = 5;
+		while ((*args)[i] != "Separator_Pins")
+		{
+			pins.push_back(std::stof((*args)[i++]));
+		}
+		caption = (*args)[++i];
+		(*args).erase((*args).begin(), (*args).begin() + ++i);
+	}
+}
