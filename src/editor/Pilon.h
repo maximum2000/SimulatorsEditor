@@ -9,6 +9,7 @@ namespace ScenariosEditorScenarioElement
 	public:
 		const static std::string ElementName;
 		Pilon(std::vector<std::string>* args);
+		std::vector<ElementAttribute*> GetAttributes();
 	private:
 		ElementAttribute objectName, x, y, z;
 	};

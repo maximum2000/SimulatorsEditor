@@ -17,4 +17,8 @@ namespace ScenariosEditorScenarioElement
 	ElementAttribute::ElementAttribute() {
 
 	}
+	int ElementAttribute::GetFormat()
+	{
+		return Format;
+	}
 }

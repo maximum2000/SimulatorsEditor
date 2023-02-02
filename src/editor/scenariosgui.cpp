@@ -60,9 +60,12 @@ Known problems:
 #include "xmlhandling.h"
 #include "render.h"
 #include "ElementsData.h"
+#include "ScenarioElement.h"
+#include "misc/cpp/imgui_stdlib.h"
 
 
 using namespace ScenariosEditorElementsData;
+using namespace ScenariosEditorScenarioElement;
 
 namespace ScenariosEditorGUI {
 
@@ -89,6 +92,7 @@ namespace ScenariosEditorGUI {
 		int Element;
 		ImVec2 Pos;
 		int Type;
+		std::shared_ptr<ScenarioElement> ElementInStorage;
 	};
 
 	struct LinkOnCanvas
@@ -245,7 +249,7 @@ namespace ScenariosEditorGUI {
 				int y = MousePosInCanvas.y - ElementsData::GetElementTexture(ElementNum).Height / 2;
 				if (x < 0) x = 0;
 				if (y < 0) y = 0;
-				Elems.push_back({ ElementNum, ImVec2(x, y), ElementsData::GetElementType(ElementNum) });
+				Elems.push_back({ ElementNum, ImVec2(x, y), ElementsData::GetElementType(ElementNum) }); // CHANGE HERE
 			}
 			ImGui::EndDragDropTarget();
 		}
@@ -332,7 +336,8 @@ namespace ScenariosEditorGUI {
 						{
 						CopyBuffer[i].Element,
 						ImVec2(CopyBuffer[i].Pos.x - min.x + MousePosInCanvas.x, CopyBuffer[i].Pos.y - min.y + MousePosInCanvas.y),
-						CopyBuffer[i].Type
+						CopyBuffer[i].Type,
+						CopyBuffer[i].ElementInStorage
 						});
 					SelectedElems.push_back(Elems.size() - 1);
 				}
@@ -600,7 +605,7 @@ namespace ScenariosEditorGUI {
 			// when SINGLE element clicked it draws on top of the others
 			else if (CurrentState == Rest && j < 2)
 			{
-				ToAdd = { Elems[SelectedElem].Element, Elems[SelectedElem].Pos, Elems[SelectedElem].Type };
+				ToAdd = { Elems[SelectedElem].Element, Elems[SelectedElem].Pos, Elems[SelectedElem].Type, Elems[SelectedElem].ElementInStorage };
 				Elems.erase(Elems.begin() + SelectedElem);
 				Elems.push_back(ToAdd);
 				SelectedElems[i] = -1;
@@ -711,10 +716,33 @@ namespace ScenariosEditorGUI {
 	{
 		if (SelectedElems.size() == 1)
 		{
+			std::vector<ElementAttribute*> Attributes = (*Elems[SelectedElems[0]].ElementInStorage).GetAttributes();
+			ImGui::InputText("Caption", &(Elems[SelectedElems[0]].ElementInStorage)->caption);
+			for (int i = 0; i < Attributes.size(); i++)
+			{
+				switch ((Attributes[i])->GetFormat())
+				{
+				case 0:
+					ImGui::InputText((Attributes[i])->Name.c_str(), &(Attributes[i])->ValueS);
+					break;
+				case 1: 
+				{
+					int State = (Attributes[i])->ValueF;
+					const char* items[] = { "False", "True"};
+					ImGui::Combo((Attributes[i])->Name.c_str(), &State, items, IM_ARRAYSIZE(items));
+					(Attributes[i])->ValueF = State;
+				}
+					break;
+				case 2:
+					ImGui::InputFloat((Attributes[i])->Name.c_str(), &(Attributes[i])->ValueF, 0.01f, 1.0f, "%.2f");
+					break;
+				}
+			}
+			
 			if (Elems[SelectedElems[0]].Element % 2 == 1)
 			{
-				static char str0[128] = "";
-				ImGui::InputText("param-text", str0, IM_ARRAYSIZE(str0));
+				//ImGui::InputText("param-text", str0, IM_ARRAYSIZE(str0));
+
 			}
 			else
 			{
@@ -724,10 +752,10 @@ namespace ScenariosEditorGUI {
 		}
 	}
 
-	// .h file helper functions realization
+	// .h file helper functions realisation
 	// 
 	// Add element on canvas
-	void AddElement(const char * name, float x, float y)
+	void AddElement(const char * name, float x, float y, std::shared_ptr<ScenarioElement> actual_element)
 	{
 		int j = -1;
 		for (int i = 0; i < ScenariosEditorElementsData::ElementsData::NumberOfElements(); i++)
@@ -738,7 +766,7 @@ namespace ScenariosEditorGUI {
 				break;
 			}
 		}
-		Elems.push_back(ElementOnCanvas{j, ImVec2(x,y), ScenariosEditorElementsData::ElementsData::GetElementType(j)});
+		Elems.push_back(ElementOnCanvas{ j, ImVec2(x,y), ScenariosEditorElementsData::ElementsData::GetElementType(j), actual_element });
 	}
 	// Add link on canvas
 	void AddLink(int element_a_index, int element_b_index, int element_a_point, int element_b_point)

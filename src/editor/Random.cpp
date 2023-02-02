@@ -6,4 +6,10 @@ namespace ScenariosEditorScenarioElement
 	{
 		need = SetAttributeFromSource(args, 2);
 	}
+	std::vector<ElementAttribute*> Random::GetAttributes()
+	{
+		std::vector<ElementAttribute*> ret;
+		ret.emplace_back(&need);
+		return ret;
+	}
 }

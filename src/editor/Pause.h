@@ -9,6 +9,7 @@ namespace ScenariosEditorScenarioElement
 	public:
 		const static std::string ElementName;
 		Pause(std::vector<std::string>* args);
+		std::vector<ElementAttribute*> GetAttributes();
 	private:
 		ElementAttribute Duration;
 	};

@@ -10,4 +10,14 @@ namespace ScenariosEditorScenarioElement
 		variable_B = SetAttributeFromSource(args, 0);
 		variable_fix_B = SetAttributeFromSource(args, 0);
 	}
+	std::vector<ElementAttribute*> VariableValue::GetAttributes()
+	{
+		std::vector<ElementAttribute*> ret;
+		ret.emplace_back(&variable_X);
+		ret.emplace_back(&variable_A);
+		ret.emplace_back(&variable_fix_A);
+		ret.emplace_back(&variable_B);
+		ret.emplace_back(&variable_fix_B);
+		return ret;
+	}
 }

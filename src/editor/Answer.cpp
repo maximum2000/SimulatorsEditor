@@ -11,4 +11,15 @@ namespace ScenariosEditorScenarioElement
 		Answer4 = SetAttributeFromSource(args, 0);
 		MyActionsButton = SetAttributeFromSource(args, 1);
 	}
+	std::vector<ElementAttribute*> Answer::GetAttributes()
+	{
+		std::vector<ElementAttribute*> ret;
+		ret.emplace_back(&Question);
+		ret.emplace_back(&Answer1);
+		ret.emplace_back(&Answer2);
+		ret.emplace_back(&Answer3);
+		ret.emplace_back(&Answer4);
+		ret.emplace_back(&MyActionsButton);
+		return ret;
+	}
 }

@@ -9,6 +9,7 @@ namespace ScenariosEditorScenarioElement
 	public:
 		const static std::string ElementName;
 		Danger(std::vector<std::string>* args);
+		std::vector<ElementAttribute*> GetAttributes();
 	private:
 		ElementAttribute gas, object, distance_to_object;
 	};

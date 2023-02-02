@@ -176,6 +176,7 @@
     <ClCompile Include="..\imgui\imgui_draw.cpp" />
     <ClCompile Include="..\imgui\imgui_tables.cpp" />
     <ClCompile Include="..\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="..\imgui\misc\cpp\imgui_stdlib.cpp" />
     <ClCompile Include="..\pugixml\src\pugixml.cpp" />
     <ClCompile Include="Answer.cpp" />
     <ClCompile Include="Arrow.cpp" />

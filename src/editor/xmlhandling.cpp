@@ -43,15 +43,14 @@ namespace ScenariosEditorXML
 		pugi::xml_node ElementParentNode = Model.child("root").child("scenarions2").child("elements");
 		for (pugi::xml_node Element : ElementParentNode.children())
 		{
-			std::vector<std::string> args = GetArguments(Element);
-			ScenariosEditorScenarioElement::AddElement(&args);
 			std::string name = Element.child("etalon").child("name").child_value();
 			std::transform(name.begin(), name.end(), name.begin(),
 				[](unsigned char c) { return std::tolower(c); });
 			float x = std::stof(std::string(Element.child("x").child_value())) - minx;
 			float y = (maxy - std::stof(std::string(Element.child("y").child_value())));
 			CoordinatesOldToNew(&x, &y);
-			ScenariosEditorGUI::AddElement(name.c_str(), x + 10, y + 10);
+			std::vector<std::string> args = GetArguments(Element);
+			ScenariosEditorGUI::AddElement(name.c_str(), x + 10, y + 10, ScenariosEditorScenarioElement::AddElement(&args));
 			std::vector<int> ElementPins;
 			pugi::xml_node CurrentPin = Element.child("pins").first_child();
 			while (CurrentPin != nullptr)

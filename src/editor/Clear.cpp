@@ -6,4 +6,8 @@ namespace ScenariosEditorScenarioElement
 	{
 
 	}
+	std::vector<ElementAttribute*> Clear::GetAttributes()
+	{
+		return std::vector<ElementAttribute*>();
+	}
 }
