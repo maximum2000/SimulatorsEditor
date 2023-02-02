@@ -9,6 +9,7 @@ Known problems:
 -Loading elements should clear Elems
 -Highlighting (static struct of colors, link)
 -Linking point are drawn over elements
+-Should edit imgui.cpp? https://github.com/ocornut/imgui/issues/1224
 
 */
 
@@ -110,7 +111,7 @@ namespace ScenariosEditorGUI {
 
 	void PreLoopSetup();
 	void MainLoop();
-	
+
 	void DrawMenu();
 	void MakeCanvas(const ImGuiViewport* viewport, ImGuiIO& io);
 	void DrawCanvas(const ImGuiViewport* viewport, ImGuiIO& io);
@@ -418,7 +419,7 @@ namespace ScenariosEditorGUI {
 	// Draw canvas
 	void DrawCanvas(const ImGuiViewport* viewport, ImGuiIO& io)
 	{
-		const char * gfsdg = u8"Открыть";
+		const char* gfsdg = u8"Открыть";
 		// Canvas size and style
 		ImGui::SetNextWindowPos(ImVec2(viewport->WorkSize.x / 4, viewport->WorkPos.y));
 		ImGui::SetNextWindowSize(ImVec2(3 * viewport->WorkSize.x / 4, viewport->WorkSize.y));
@@ -505,12 +506,12 @@ namespace ScenariosEditorGUI {
 	{
 		// clicked_on: 0 - offcanvas, 1 - canvas, 2 - linking point, 3 - element
 		// Right-mouse dragging causes canvas dragging
-		if (ImGui::IsMouseDragging(ImGuiMouseButton_Right) && CurrentState == Rest) 
+		if (ImGui::IsMouseDragging(ImGuiMouseButton_Right) && CurrentState == Rest)
 		{
 			CurrentState = CanvasDragging;
 		}
 		// Releasing right mouse while dragging will return to rest position
-		if (ImGui::IsMouseReleased(ImGuiMouseButton_Right) && CurrentState == CanvasDragging) 
+		if (ImGui::IsMouseReleased(ImGuiMouseButton_Right) && CurrentState == CanvasDragging)
 		{
 			CurrentState = Rest;
 		}
@@ -717,49 +718,64 @@ namespace ScenariosEditorGUI {
 		if (SelectedElems.size() == 1)
 		{
 			std::vector<ElementAttribute*> Attributes = (*Elems[SelectedElems[0]].ElementInStorage).GetAttributes();
-			ImGui::InputText("Caption", &(Elems[SelectedElems[0]].ElementInStorage)->caption);
-			for (int i = 0; i < Attributes.size(); i++)
+			if (ImGui::BeginTable("Attributes", 3, ImGuiTableFlags_SizingFixedFit))
 			{
-				switch ((Attributes[i])->GetFormat())
+				ImGui::TableSetupColumn("Names", ImGuiTableColumnFlags_WidthFixed);
+				ImGui::TableSetupColumn("Fields", ImGuiTableColumnFlags_WidthStretch);
+				ImGui::TableSetupColumn("Hints", ImGuiTableColumnFlags_WidthFixed);
+				ImGui::TableNextRow();
+				ImGui::TableSetColumnIndex(0);
+				ImGui::AlignTextToFramePadding();
+				ImGui::Text("Caption");
+				ImGui::TableSetColumnIndex(1);
+				ImGui::PushItemWidth(ImGui::GetColumnWidth());
+				ImGui::InputText("##Caption", &(Elems[SelectedElems[0]].ElementInStorage)->caption);
+				ImGui::PopItemWidth();
+				ImGui::TableSetColumnIndex(2);
+				ImGui::Text("Caption");
+				for (int i = 0; i < Attributes.size(); i++)
 				{
-				case 0:
-					ImGui::InputText((Attributes[i])->Name.c_str(), &(Attributes[i])->ValueS);
+					std::string label = std::string("##") + (Attributes[i])->Name;
+					ImGui::TableNextRow();
+					ImGui::TableSetColumnIndex(0);
+					ImGui::AlignTextToFramePadding();
+					ImGui::Text((Attributes[i])->Name.c_str());
+					ImGui::TableSetColumnIndex(1);
+					ImGui::PushItemWidth(ImGui::GetColumnWidth());
+					switch ((Attributes[i])->GetFormat())
+					{
+					case 0:
+						ImGui::InputText(label.c_str(), &(Attributes[i])->ValueS);
+						break;
+					case 1:
+					{
+						int State = (Attributes[i])->ValueF;
+						const char* items[] = { "False", "True" };
+						ImGui::Combo(label.c_str(), &State, items, IM_ARRAYSIZE(items));
+						(Attributes[i])->ValueF = State;
+					}
 					break;
-				case 1: 
-				{
-					int State = (Attributes[i])->ValueF;
-					const char* items[] = { "False", "True"};
-					ImGui::Combo((Attributes[i])->Name.c_str(), &State, items, IM_ARRAYSIZE(items));
-					(Attributes[i])->ValueF = State;
+					case 2:
+						ImGui::InputFloat(label.c_str(), &(Attributes[i])->ValueF, 0.01f, 1.0f, "%.2f");
+						break;
+					}
+					ImGui::PopItemWidth();
+					ImGui::TableSetColumnIndex(2);
+					ImGui::Text("HINT");
 				}
-					break;
-				case 2:
-					ImGui::InputFloat((Attributes[i])->Name.c_str(), &(Attributes[i])->ValueF, 0.01f, 1.0f, "%.2f");
-					break;
-				}
 			}
-			
-			if (Elems[SelectedElems[0]].Element % 2 == 1)
-			{
-				//ImGui::InputText("param-text", str0, IM_ARRAYSIZE(str0));
-
-			}
-			else
-			{
-				static int i0 = 123;
-				ImGui::InputInt("param-int", &i0);
-			}
+			ImGui::EndTable();
 		}
 	}
 
 	// .h file helper functions realisation
 	// 
 	// Add element on canvas
-	void AddElement(const char * name, float x, float y, std::shared_ptr<ScenarioElement> actual_element)
+	void AddElement(const char* name, float x, float y, std::shared_ptr<ScenarioElement> actual_element)
 	{
 		int j = -1;
 		for (int i = 0; i < ScenariosEditorElementsData::ElementsData::NumberOfElements(); i++)
-		{ 
+		{
 			if (!strcmp(ScenariosEditorElementsData::ElementsData::GetElementName(i), name))
 			{
 				j = i;
