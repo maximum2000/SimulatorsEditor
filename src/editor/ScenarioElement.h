@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include "ElementAttribute.h"
+#include <iostream>
 
 namespace ScenariosEditorScenarioElement
 {
@@ -9,7 +10,7 @@ namespace ScenariosEditorScenarioElement
 	{
 	public:
 		virtual std::vector<ElementAttribute*> GetAttributes() = 0;
-		virtual ~ScenarioElement() {}
+		virtual ~ScenarioElement() { }
 		ScenarioElement(std::vector<std::string>* args);
 		std::string caption;
 	protected:

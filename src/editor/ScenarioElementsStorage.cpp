@@ -41,4 +41,8 @@ namespace ScenariosEditorScenarioElement
 		else if (Danger::ElementName == (*args)[0]) ScenarioElements.emplace_back(std::make_shared<Danger>(args));
 		return ScenarioElements[ScenarioElements.size() - 1];
 	}
+	void ClearStorage()
+	{
+		ScenarioElements.clear();
+	}
 }

@@ -1,6 +1,7 @@
 #pragma once
 #include <d3d11.h>
 #include <vector>
+#include <string>
 
 namespace ScenariosEditorElementsData
 {
@@ -21,6 +22,7 @@ namespace ScenariosEditorElementsData
 		static const char* GetElementName(int index);
 		static Texture GetElementTexture(int index);
 		static int GetElementType(int index);
+		static std::string GetAttributeHint(std::string attribute);
 	private:
 		ElementsData() // forbid to create object of this class
 		{

@@ -7,4 +7,5 @@
 namespace ScenariosEditorScenarioElement
 {
 	std::shared_ptr<ScenariosEditorScenarioElement::ScenarioElement> AddElement(std::vector<std::string>* args);
+	void ClearStorage();
 }

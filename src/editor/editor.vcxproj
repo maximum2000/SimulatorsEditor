@@ -150,6 +150,7 @@
     <ClInclude Include="Danger.h" />
     <ClInclude Include="ElementAttribute.h" />
     <ClInclude Include="Message.h" />
+    <ClInclude Include="OpenFileDialog.h" />
     <ClInclude Include="Outcome.h" />
     <ClInclude Include="Pause.h" />
     <ClInclude Include="Pilon.h" />
@@ -186,6 +187,7 @@
     <ClCompile Include="ElementAttribute.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Message.cpp" />
+    <ClCompile Include="OpenFileDialog.cpp" />
     <ClCompile Include="Outcome.cpp" />
     <ClCompile Include="Pause.cpp" />
     <ClCompile Include="Pilon.cpp" />

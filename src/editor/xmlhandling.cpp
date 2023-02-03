@@ -17,25 +17,35 @@
 namespace ScenariosEditorXML
 {
 	static float minx = 0, maxy;
-	static int InsertAt;
 	static std::vector<std::vector<int>> Pins;
 	void GetMinimalCoordinate();
 	void LoadElements();
-	void CoordinatesOldToNew(float *x, float *y);
+	void Clear();
+	void CoordinatesOldToNew(float* x, float* y);
 	std::vector<std::string> GetArguments(pugi::xml_node Element);
 	int GetPoint(const char* name, int pin_index);
-	pugi::xml_document Model;
-	void ScenariosDOM::LoadFrom(const char* path)
+	pugi::xml_document Model, Testing;
+	void ScenariosDOM::LoadFrom(const wchar_t* path)
 	{
+		Clear();
 		pugi::xml_parse_result result = Model.load_file(path, pugi::parse_default, pugi::encoding_utf8);
-		std::cout << "Error description: " << result.description() << "\n";													// debug
-		std::cout << "Error offset: " << result.offset << " (error at [..." << (path + result.offset) << "]\n\n";
 		maxy = std::stof(std::string(Model.child("root").child("scenarions2").child("elements").first_child().child("y").child_value()));
 		GetMinimalCoordinate();
 		LoadElements();
 	}
-	void ScenariosDOM::SaveTo(const char* path)
+	void Clear()
 	{
+		minx = 0;
+		Pins.clear();
+	}
+	bool ScenariosDOM::CheckFile(const wchar_t* path)
+	{
+		if (Testing.load_file(path, pugi::parse_default, pugi::encoding_utf8).status != pugi::status_ok) return false;
+		else return true;
+	}
+	void ScenariosDOM::SaveTo(const wchar_t* path)
+	{
+		pugi::xml_parse_result result = Model.load_file(path, pugi::parse_default, pugi::encoding_utf8);
 		std::cout << Model.save_file(path);
 	}
 	void LoadElements()

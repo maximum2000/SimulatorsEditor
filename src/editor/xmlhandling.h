@@ -9,9 +9,9 @@ namespace ScenariosEditorXML
 	class ScenariosDOM
 	{
 	public:
-		void LoadFrom(const char* path);
-		void SaveTo(const char* path);
-		
+		void LoadFrom(const wchar_t* path);
+		void SaveTo(const wchar_t* path);
+		bool CheckFile(const wchar_t* path);
 	private:
 	};
 }

@@ -10,6 +10,7 @@ Known problems:
 -Highlighting (static struct of colors, link)
 -Linking point are drawn over elements
 -Should edit imgui.cpp? https://github.com/ocornut/imgui/issues/1224
+-Copy from file to file check
 
 */
 
@@ -62,7 +63,9 @@ Known problems:
 #include "render.h"
 #include "ElementsData.h"
 #include "ScenarioElement.h"
+#include "OpenFileDialog.h"
 #include "misc/cpp/imgui_stdlib.h"
+#include "ScenarioElementsStorage.h"
 
 
 using namespace ScenariosEditorElementsData;
@@ -121,6 +124,7 @@ namespace ScenariosEditorGUI {
 	void CanvasLogic(int hover_on, ImVec2* SelectionStartPosition, ImGuiIO& io);
 
 	// Helper functions
+	void ClearElements();
 	void ElementsMakeObjects();
 	void AddCanvasContextMenu();
 	void AddDragAndDropReciever();
@@ -184,7 +188,16 @@ namespace ScenariosEditorGUI {
 		{
 			if (ImGui::MenuItem(u8"Открыть", "Ctrl+O"))
 			{
-				Model.LoadFrom(u8"C:\\xmltest\\xmlold.model");
+				const wchar_t* File = ScenarioEditorFileDialog::OpenFileDialog();
+				if (size_t(File) != 0)
+				{
+					if (Model.CheckFile(File))
+					{
+						ClearElements();
+						Model.LoadFrom(File);
+					}
+					else MessageBoxW(NULL, L"При попытке открыть файл возникла ошибка", L"Ошибка", MB_OK);
+				}
 			}
 			//if (ImGui::MenuItem(u8"Недавние файлы..."))
 			//{
@@ -193,7 +206,7 @@ namespace ScenariosEditorGUI {
 			//}
 			if (ImGui::MenuItem(u8"Сохранить", "Ctrl+S"))
 			{
-				Model.SaveTo(u8"C:\\xmltest\\xmlpugi.model");
+				//Model.SaveTo(u8"C:\\xmltest\\xmlpugi.model");
 			}
 			if (ImGui::MenuItem(u8"Сохранить как...")) {}
 			ImGui::EndMenu();
@@ -209,6 +222,16 @@ namespace ScenariosEditorGUI {
 			 }*/
 		ImGui::EndMainMenuBar();
 	}
+	// Clear existing elements before loading new file
+	void ClearElements()
+	{
+		SelectedElems.clear();
+		Elems.clear();
+		Links.clear();
+		CurrentState = Rest;
+		ScenariosEditorScenarioElement::ClearStorage();
+	}
+
 
 	// Canvas section
 	void MakeCanvas(const ImGuiViewport* viewport, ImGuiIO& io)
@@ -732,7 +755,7 @@ namespace ScenariosEditorGUI {
 				ImGui::InputText("##Caption", &(Elems[SelectedElems[0]].ElementInStorage)->caption);
 				ImGui::PopItemWidth();
 				ImGui::TableSetColumnIndex(2);
-				ImGui::Text("Caption");
+				static const float wrap_width = 200.0f;
 				for (int i = 0; i < Attributes.size(); i++)
 				{
 					std::string label = std::string("##") + (Attributes[i])->Name;
@@ -761,7 +784,10 @@ namespace ScenariosEditorGUI {
 					}
 					ImGui::PopItemWidth();
 					ImGui::TableSetColumnIndex(2);
-					ImGui::Text("HINT");
+					ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + wrap_width);
+					ImGui::AlignTextToFramePadding();
+					ImGui::Text(ScenariosEditorElementsData::ElementsData::GetAttributeHint((Attributes[i])->Name).c_str(), wrap_width);
+					ImGui::PopTextWrapPos();
 				}
 			}
 			ImGui::EndTable();
