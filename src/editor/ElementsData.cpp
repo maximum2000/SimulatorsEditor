@@ -7,7 +7,7 @@
 namespace ScenariosEditorElementsData
 {
 	// Elements data
-	static const std::vector<const char*> ElementNames = { "uzel", "start", "clear", "message", "sound", "script", "pilon", "arrow",
+	static const std::vector<const char*> ElementNames = { "uzel", "Start", "clear", "message", "sound", "script", "pilon", "arrow",
 										"pause", "push", "select", "outcome", "answer", "variable_value", "random", "danger" };
 	static const std::vector<int> ElementTypes = { 1, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 11, 11, 11, 11 }; // pin amount and location
 	static std::map <std::string, std::string> AttributesHints = {

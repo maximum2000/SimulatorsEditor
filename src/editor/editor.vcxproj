@@ -161,6 +161,7 @@
     <ClInclude Include="scenariosgui.h" />
     <ClInclude Include="render.h" />
     <ClInclude Include="ElementsData.h" />
+    <ClInclude Include="ScenarioStorage.h" />
     <ClInclude Include="Script.h" />
     <ClInclude Include="Select.h" />
     <ClInclude Include="Sound.h" />
@@ -196,6 +197,7 @@
     <ClCompile Include="ScenarioElement.cpp" />
     <ClCompile Include="ScenarioElementsStorage.cpp" />
     <ClCompile Include="scenariosgui.cpp" />
+    <ClCompile Include="ScenarioStorage.cpp" />
     <ClCompile Include="Script.cpp" />
     <ClCompile Include="Select.cpp" />
     <ClCompile Include="Sound.cpp" />

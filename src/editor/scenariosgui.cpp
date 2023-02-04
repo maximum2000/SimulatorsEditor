@@ -66,6 +66,7 @@ Known problems:
 #include "OpenFileDialog.h"
 #include "misc/cpp/imgui_stdlib.h"
 #include "ScenarioElementsStorage.h"
+#include "ScenarioStorage.h"
 
 
 using namespace ScenariosEditorElementsData;
@@ -131,6 +132,7 @@ namespace ScenariosEditorGUI {
 	void CanvasDrawLinking();
 	void CanvasLinkingLogic();
 	void CanvasDrawElems();
+	void CanvasDrawCaption();
 	void CanvasDrawSelectedElems();
 	void CanvasElemsLogic(int* hover_on, ImVec2* SelectionStartPosition);
 	void CanvasSelectedElemsLogic(ImGuiIO& io);
@@ -193,6 +195,7 @@ namespace ScenariosEditorGUI {
 				{
 					if (Model.CheckFile(File))
 					{
+						ScenariosEditorScenarioElement::ClearScenarioElementStorage();
 						ClearElements();
 						Model.LoadFrom(File);
 					}
@@ -222,14 +225,13 @@ namespace ScenariosEditorGUI {
 			 }*/
 		ImGui::EndMainMenuBar();
 	}
-	// Clear existing elements before loading new file
+	// Clear existing elements
 	void ClearElements()
 	{
 		SelectedElems.clear();
 		Elems.clear();
 		Links.clear();
 		CurrentState = Rest;
-		ScenariosEditorScenarioElement::ClearStorage();
 	}
 
 
@@ -248,7 +250,8 @@ namespace ScenariosEditorGUI {
 
 		static ImVec2 SelectionStartPosition; // used for logic
 
-		CanvasDrawElems();
+		CanvasDrawCaption();
+
 		CanvasElemsLogic(&hover_on, &SelectionStartPosition);
 
 		CanvasDrawLinking();
@@ -256,7 +259,7 @@ namespace ScenariosEditorGUI {
 
 		CanvasDrawSelectedElems();
 		CanvasSelectedElemsLogic(io);
-
+		CanvasDrawElems();
 		CanvasLogic(hover_on, &SelectionStartPosition, io);
 		ImGui::End();
 	}
@@ -520,6 +523,19 @@ namespace ScenariosEditorGUI {
 			);
 		}
 	}
+	// Draw captin
+	void CanvasDrawCaption()
+	{
+		float font_size = 20;
+		float wrap_size = 400;
+		float shift_x = 200;
+		float shift_y = 20;
+		for (ElementOnCanvas Elem : Elems)
+		{
+			if (origin.y + Elem.Pos.y > 0)
+			canvas_draw_list->AddText(ImGui::GetFont(), font_size, ImVec2(origin.x + Elem.Pos.x + shift_x, origin.y + Elem.Pos.y + shift_y), IM_COL32(0, 0, 0, 255), (Elem.ElementInStorage)->caption.c_str(), (const char*)0, wrap_size);
+		}
+	}
 
 
 	// Logic functions, using state machine, used to handle io actions
@@ -681,6 +697,18 @@ namespace ScenariosEditorGUI {
 		ImGui::SetNextWindowPos(viewport->WorkPos);
 		ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x / 4, (viewport->WorkSize.y / 3) - 29));
 		ImGui::Begin(u8"—ценарии", NULL, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+		static int selected = -1;
+		std::vector<std::string> Scenarios = ScenarioEditorScenarioStorage::GetScenarioNames();
+		for (int i = 0; i < Scenarios.size(); i++)
+		{
+			if (ImGui::Selectable((Scenarios[i] + u8"##" + (char)i).c_str(), selected == i))
+			{
+				selected = i;
+				CurrentState = Rest;
+				ScenarioEditorScenarioStorage::SetActualScenario(i);
+				ScenariosEditorScenarioElement::LoadElements();
+			}
+		}
 		ImGui::End();
 	}
 
@@ -819,5 +847,14 @@ namespace ScenariosEditorGUI {
 	const char* GetNameOfElementOnCanvas(int index)
 	{
 		return ElementsData::GetElementName(Elems[index].Element);
+	}
+	int GetNumOfElement(std::shared_ptr<ScenariosEditorScenarioElement::ScenarioElement> Elem)
+	{
+		for (int i = 0; i < Elems.size(); i++)
+		{
+			if (Elems[i].ElementInStorage == Elem)
+				return i;
+		}
+		return -1;
 	}
 }

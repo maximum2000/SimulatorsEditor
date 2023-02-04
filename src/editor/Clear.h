@@ -5,7 +5,7 @@ namespace ScenariosEditorScenarioElement
 	class Clear : public ScenarioElement
 	{
 	public:
-		const static std::string ElementName;
+		const static std::string ElementName; std::string getElementName() { return ElementName; }
 		Clear(std::vector<std::string>* args);
 		std::vector<ElementAttribute*> GetAttributes();
 	private:

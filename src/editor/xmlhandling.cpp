@@ -11,32 +11,24 @@
 #include <string>
 #include <vector>
 #include "ScenarioElementsStorage.h"
+#include "ScenarioStorage.h"
+#include <rpc.h>
+#include <rpcdce.h>
+#pragma comment(lib, "Rpcrt4.lib")
 
 #pragma execution_character_set("utf-8")
 
 namespace ScenariosEditorXML
 {
-	static float minx = 0, maxy;
-	static std::vector<std::vector<int>> Pins;
-	void GetMinimalCoordinate();
-	void LoadElements();
-	void Clear();
-	void CoordinatesOldToNew(float* x, float* y);
+	void LoadElementsToStorage();
+	void LoadScenariosToStorage();
 	std::vector<std::string> GetArguments(pugi::xml_node Element);
-	int GetPoint(const char* name, int pin_index);
 	pugi::xml_document Model, Testing;
 	void ScenariosDOM::LoadFrom(const wchar_t* path)
 	{
-		Clear();
 		pugi::xml_parse_result result = Model.load_file(path, pugi::parse_default, pugi::encoding_utf8);
-		maxy = std::stof(std::string(Model.child("root").child("scenarions2").child("elements").first_child().child("y").child_value()));
-		GetMinimalCoordinate();
-		LoadElements();
-	}
-	void Clear()
-	{
-		minx = 0;
-		Pins.clear();
+		LoadElementsToStorage();
+		LoadScenariosToStorage();
 	}
 	bool ScenariosDOM::CheckFile(const wchar_t* path)
 	{
@@ -48,96 +40,56 @@ namespace ScenariosEditorXML
 		pugi::xml_parse_result result = Model.load_file(path, pugi::parse_default, pugi::encoding_utf8);
 		std::cout << Model.save_file(path);
 	}
-	void LoadElements()
+	void LoadElementsToStorage()
 	{
 		pugi::xml_node ElementParentNode = Model.child("root").child("scenarions2").child("elements");
 		for (pugi::xml_node Element : ElementParentNode.children())
 		{
-			std::string name = Element.child("etalon").child("name").child_value();
-			std::transform(name.begin(), name.end(), name.begin(),
-				[](unsigned char c) { return std::tolower(c); });
-			float x = std::stof(std::string(Element.child("x").child_value())) - minx;
-			float y = (maxy - std::stof(std::string(Element.child("y").child_value())));
-			CoordinatesOldToNew(&x, &y);
 			std::vector<std::string> args = GetArguments(Element);
-			ScenariosEditorGUI::AddElement(name.c_str(), x + 10, y + 10, ScenariosEditorScenarioElement::AddElement(&args));
-			std::vector<int> ElementPins;
-			pugi::xml_node CurrentPin = Element.child("pins").first_child();
-			while (CurrentPin != nullptr)
-			{
-				ElementPins.push_back(std::stof(std::string(CurrentPin.child("id").child_value())));
-				CurrentPin = CurrentPin.next_sibling();
-			}
-			Pins.push_back(ElementPins);
+			ScenariosEditorScenarioElement::AddScenarioElementStorageElement(&args);
+			std::string name = Element.child("etalon").child("name").child_value();
 		}
 		pugi::xml_node LinksParentNode = Model.child("root").child("scenarions2").child("scenarion_links");
 		for (pugi::xml_node Link : LinksParentNode.children())
 		{
-			int ElemA = -1, ElemB = -1;
-			int PointA = -1, PointB = -1;
 			int PinA = std::stof(std::string(Link.child("pinA").child_value()));
 			int PinB = std::stof(std::string(Link.child("pinB").child_value()));
-			for (int i = 0; i < Pins.size(); i++)
-			{
-				int count = 2;
-				std::vector<int> CurrentElemPins = Pins[i];
-				for (int j = 0; j < CurrentElemPins.size(); j++)
-				{
-					if (CurrentElemPins[j] == PinA)
-					{
-						count--;
-						ElemA = i;
-						const char* test = ScenariosEditorGUI::GetNameOfElementOnCanvas(ElemA);
-						PointA = GetPoint(ScenariosEditorGUI::GetNameOfElementOnCanvas(ElemA), j);
-					}
-					if (CurrentElemPins[j] == PinB)
-					{
-						count--;
-						ElemB = i;
-						PointB = GetPoint(ScenariosEditorGUI::GetNameOfElementOnCanvas(i), j);
-					}
-					if (!count) break;
-				}
-			}
-			if (ElemA != -1 && ElemB != -1)
-			{
-				ScenariosEditorGUI::AddLink(ElemA, ElemB, PointA, PointB);
-			}
+			std::vector<int> ToAdd;
+			ToAdd.push_back(PinA);
+			ToAdd.push_back(PinB);
+			ScenariosEditorScenarioElement::AddScenarioElementStorageLink(ToAdd);
 		}
 	}
-	void GetMinimalCoordinate()
+	void LoadScenariosToStorage()
 	{
-		pugi::xml_node ElementParentNode = Model.child("root").child("scenarions2").child("elements");
-		for (pugi::xml_node Element : ElementParentNode.children())
+		ScenarioEditorScenarioStorage::ClearScenarioStorage();
+		pugi::xml_node ScenarioParentNode = Model.child("root").child("scenarions2");
+		for (pugi::xml_node Scenario : ScenarioParentNode.children())
 		{
-			if (std::stof(std::string(Element.child("x").child_value())) < minx) minx = std::stof(std::string(Element.child("x").child_value()));
-			if (std::stof(std::string(Element.child("y").child_value())) > maxy) maxy = std::stof(std::string(Element.child("y").child_value()));
-		}
-	}
-
-	void CoordinatesOldToNew(float* x, float* y)
-	{
-		*x *= 230.0f;
-	    *y *= 200.0f;
-	}
-
-	int GetPoint(const char* name, int pin_index)
-	{
-		int ret = pin_index == 0 ? 2 : 0;
-		if (!strcmp("uzel", name)) return 0;
-		if (!strcmp("start", name)) return 2;
-		if (!strcmp("answer", name) || !strcmp("variable_value", name) || !strcmp("random", name) || !strcmp("danger", name))
-		{
-			switch (pin_index)
+			if (std::strcmp(Scenario.name(), "scenario"))
 			{
-			case 0: return 0;
-			case 1: return 3;
-			case 2: return 1;
+				return;
 			}
+			const char * charguid = Scenario.child("startGUID").child_value();
+			unsigned char ucharguid[50];
+			int Current = 0;
+			while (charguid[Current] != '\0')
+			{
+				std::cout << charguid[Current] << '\n';
+				ucharguid[Current] = (unsigned char)charguid[Current];
+				Current++;
+			}
+			ucharguid[Current] = '\0';
+			UUID ToAdd;
+			UuidFromStringA(ucharguid, &ToAdd);
+			std::string ScenarioName = Scenario.child("Name").child_value();
+			if (Scenario.child("Name").child_value() == "") ScenarioName = u8"<Без имени>";
+			ScenarioEditorScenarioStorage::AddScenarioStorageElement(
+				ScenarioName,
+				ToAdd
+			);
 		}
-		return ret;
 	}
-
 	std::vector<std::string> GetArguments(pugi::xml_node Element)
 	{
 		// same order as xml, with exception: name of element placed first
