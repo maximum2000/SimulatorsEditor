@@ -156,6 +156,7 @@
     <ClInclude Include="Pilon.h" />
     <ClInclude Include="Push.h" />
     <ClInclude Include="Random.h" />
+    <ClInclude Include="SaveFileDialog.h" />
     <ClInclude Include="ScenarioElement.h" />
     <ClInclude Include="ScenarioElementsStorage.h" />
     <ClInclude Include="scenariosgui.h" />
@@ -194,6 +195,7 @@
     <ClCompile Include="Pilon.cpp" />
     <ClCompile Include="Push.cpp" />
     <ClCompile Include="Random.cpp" />
+    <ClCompile Include="SaveFileDialog.cpp" />
     <ClCompile Include="ScenarioElement.cpp" />
     <ClCompile Include="ScenarioElementsStorage.cpp" />
     <ClCompile Include="scenariosgui.cpp" />

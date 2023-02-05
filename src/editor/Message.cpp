@@ -7,6 +7,11 @@ namespace ScenariosEditorScenarioElement
 		Text = SetAttributeFromSource(args, 0);
 		WithButtonOk = SetAttributeFromSource(args, 1);
 	}
+	Message::Message() : ScenarioElement::ScenarioElement()
+	{
+		Text = ElementAttribute(u8"Text",0);
+		WithButtonOk = ElementAttribute(u8"WithButtonOk",1);
+	}
 	std::vector<ElementAttribute*> Message::GetAttributes()
 	{
 		std::vector<ElementAttribute*> ret;

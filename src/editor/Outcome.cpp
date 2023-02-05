@@ -16,6 +16,20 @@ namespace ScenariosEditorScenarioElement
 		MakingDecisions = SetAttributeFromSource(args, 1);
 		ActionsPerformed = SetAttributeFromSource(args, 1);
 	}
+	Outcome::Outcome() : ScenarioElement::ScenarioElement()
+	{
+		messageToReport = ElementAttribute(u8"messageToReport",0);
+		isError = ElementAttribute(u8"isError",1);
+		causeToReport = ElementAttribute(u8"causeToReport",0);
+		LossesHealthAndDead = ElementAttribute(u8"LossesHealthAndDead",2);
+		LossesEcology = ElementAttribute(u8"LossesEcology",2);
+		LossesEconomic = ElementAttribute(u8"LossesEconomic",2);
+		LossesOther = ElementAttribute(u8"LossesOther",2);
+		Detection = ElementAttribute(u8"Detection",1);
+		Diagnostics = ElementAttribute(u8"Diagnostics",1);
+		MakingDecisions = ElementAttribute(u8"MakingDecisions",1);
+		ActionsPerformed = ElementAttribute(u8"ActionsPerformed",1);
+	}
 	std::vector<ElementAttribute*> Outcome::GetAttributes()
 	{
 		std::vector<ElementAttribute*> ret;

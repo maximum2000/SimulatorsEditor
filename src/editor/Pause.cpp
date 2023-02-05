@@ -6,6 +6,10 @@ namespace ScenariosEditorScenarioElement
 	{
 		Duration = SetAttributeFromSource(args, 2);
 	}
+	Pause::Pause() : ScenarioElement::ScenarioElement()
+	{
+		Duration = ElementAttribute(u8"Duration",2);
+	}
 	std::vector<ElementAttribute*> Pause::GetAttributes()
 	{
 		std::vector<ElementAttribute*> ret;

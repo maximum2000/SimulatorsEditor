@@ -67,6 +67,7 @@ Known problems:
 #include "misc/cpp/imgui_stdlib.h"
 #include "ScenarioElementsStorage.h"
 #include "ScenarioStorage.h"
+#include "SaveFileDialog.h"
 
 
 using namespace ScenariosEditorElementsData;
@@ -156,6 +157,7 @@ namespace ScenariosEditorGUI {
 		ImGui::StyleColorsLight();
 		io.Fonts->AddFontFromFileTTF(u8"C:/Users/VR/Desktop/projects/SimulatorsEditor/src/editor/LiberationSans.ttf", 22.0f, NULL, io.Fonts->GetGlyphRangesCyrillic());
 		ElementsData::Initialization();
+		ScenarioEditorScenarioStorage::ClearScenarioStorage();
 	}
 
 	// Main loop
@@ -209,9 +211,16 @@ namespace ScenariosEditorGUI {
 			//}
 			if (ImGui::MenuItem(u8"Сохранить", "Ctrl+S"))
 			{
-				//Model.SaveTo(u8"C:\\xmltest\\xmlpugi.model");
+
 			}
-			if (ImGui::MenuItem(u8"Сохранить как...")) {}
+			if (ImGui::MenuItem(u8"Сохранить как..."))
+			{
+				const wchar_t* File = ScenarioEditorFileDialog::SaveFileDialog();
+				if (size_t(File) != 0)
+				{
+					Model.SaveTo(File);
+				}
+			}
 			ImGui::EndMenu();
 
 		}
@@ -276,7 +285,12 @@ namespace ScenariosEditorGUI {
 				int y = MousePosInCanvas.y - ElementsData::GetElementTexture(ElementNum).Height / 2;
 				if (x < 0) x = 0;
 				if (y < 0) y = 0;
-				Elems.push_back({ ElementNum, ImVec2(x, y), ElementsData::GetElementType(ElementNum) }); // CHANGE HERE
+				unsigned int type = ElementsData::GetElementType(ElementNum);
+				int pin_count;
+				for (pin_count = 0; type > 0; type >>= 1)
+					if (type & 1) pin_count++;
+				Elems.push_back({ ElementNum, ImVec2(x, y), ElementsData::GetElementType(ElementNum),
+				ScenariosEditorScenarioElement::AddScenarioElementStorageElement(ScenariosEditorElementsData::ElementsData::GetElementName(ElementNum), x, y, 0.00f, pin_count) });
 			}
 			ImGui::EndDragDropTarget();
 		}
@@ -425,6 +439,12 @@ namespace ScenariosEditorGUI {
 			{
 				if (*ClickedType != Point || *ClickedElem != Elem)
 				{
+					std::vector<int> ToAdd;
+					int index = ScenariosEditorScenarioElement::GetPinIndex((*Elems[*ClickedElem].ElementInStorage).getElementName().c_str(), *ClickedType);
+					ToAdd.push_back((*Elems[*ClickedElem].ElementInStorage).pins[index]);
+					index = ScenariosEditorScenarioElement::GetPinIndex((*Elems[Elem].ElementInStorage).getElementName().c_str(), Point);
+					ToAdd.push_back((*Elems[Elem].ElementInStorage).pins[index]);
+					ScenariosEditorScenarioElement::AddScenarioElementStorageLink(ToAdd);
 					Links.push_back({ {*ClickedType, Point},{*ClickedElem, Elem} });
 				}
 			}
@@ -445,7 +465,6 @@ namespace ScenariosEditorGUI {
 	// Draw canvas
 	void DrawCanvas(const ImGuiViewport* viewport, ImGuiIO& io)
 	{
-		const char* gfsdg = u8"Открыть";
 		// Canvas size and style
 		ImGui::SetNextWindowPos(ImVec2(viewport->WorkSize.x / 4, viewport->WorkPos.y));
 		ImGui::SetNextWindowSize(ImVec2(3 * viewport->WorkSize.x / 4, viewport->WorkSize.y));
@@ -533,7 +552,7 @@ namespace ScenariosEditorGUI {
 		for (ElementOnCanvas Elem : Elems)
 		{
 			if (origin.y + Elem.Pos.y > 0)
-			canvas_draw_list->AddText(ImGui::GetFont(), font_size, ImVec2(origin.x + Elem.Pos.x + shift_x, origin.y + Elem.Pos.y + shift_y), IM_COL32(0, 0, 0, 255), (Elem.ElementInStorage)->caption.c_str(), (const char*)0, wrap_size);
+				canvas_draw_list->AddText(ImGui::GetFont(), font_size, ImVec2(origin.x + Elem.Pos.x + shift_x, origin.y + Elem.Pos.y + shift_y), IM_COL32(0, 0, 0, 255), (Elem.ElementInStorage)->caption.c_str(), (const char*)0, wrap_size);
 		}
 	}
 
@@ -641,6 +660,7 @@ namespace ScenariosEditorGUI {
 				if (x < 0) x = 0;
 				if (y < 0) y = 0;
 				Elems[SelectedElem].Pos = ImVec2(x, y);
+				ScenariosEditorScenarioElement::UpdateCoordinates(Elems[SelectedElem].ElementInStorage, x, y);
 			}
 			// when SINGLE element clicked it draws on top of the others
 			else if (CurrentState == Rest && j < 2)

@@ -6,6 +6,10 @@ namespace ScenariosEditorScenarioElement
 	{
 		Names = SetAttributeFromSource(args, 0);
 	}
+	Push::Push() : ScenarioElement::ScenarioElement()
+	{
+		Names = ElementAttribute(u8"Names",0);
+	}
 	std::vector<ElementAttribute*> Push::GetAttributes()
 	{
 		std::vector<ElementAttribute*> ret;

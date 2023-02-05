@@ -9,6 +9,13 @@ namespace ScenariosEditorScenarioElement
 		y = SetAttributeFromSource(args, 2);
 		z = SetAttributeFromSource(args, 2);
 	}
+	Pilon::Pilon() : ScenarioElement::ScenarioElement()
+	{
+		objectName = ElementAttribute(u8"objectName",0);
+		x = ElementAttribute(u8"x",2);
+		y = ElementAttribute(u8"y",2);
+		z = ElementAttribute(u8"z",2);
+	}
 	std::vector<ElementAttribute*> Pilon::GetAttributes()
 	{
 		std::vector<ElementAttribute*> ret;

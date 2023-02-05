@@ -10,5 +10,6 @@ namespace ScenarioEditorScenarioStorage
 	std::vector<std::string> GetScenarioNames();
 	void SetActualScenario(int Scenario);
 	std::string GetActualGUID();
+	std::vector<std::vector<std::string>> GetScenarios();
 }
 

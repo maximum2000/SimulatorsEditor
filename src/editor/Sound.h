@@ -9,6 +9,7 @@ namespace ScenariosEditorScenarioElement
 	public:
 		const static std::string ElementName; std::string getElementName() { return ElementName; }
 		Sound(std::vector<std::string>* args);
+		Sound();
 		std::vector<ElementAttribute*> GetAttributes();
 	private:
 		ElementAttribute Name;

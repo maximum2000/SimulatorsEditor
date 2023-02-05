@@ -14,6 +14,8 @@
 #include "ScenarioStorage.h"
 #include <rpc.h>
 #include <rpcdce.h>
+#include <iomanip>
+#include <sstream>
 #pragma comment(lib, "Rpcrt4.lib")
 
 #pragma execution_character_set("utf-8")
@@ -22,6 +24,7 @@ namespace ScenariosEditorXML
 {
 	void LoadElementsToStorage();
 	void LoadScenariosToStorage();
+	void LoadElementsFromStorage();
 	std::vector<std::string> GetArguments(pugi::xml_node Element);
 	pugi::xml_document Model, Testing;
 	void ScenariosDOM::LoadFrom(const wchar_t* path)
@@ -37,7 +40,7 @@ namespace ScenariosEditorXML
 	}
 	void ScenariosDOM::SaveTo(const wchar_t* path)
 	{
-		pugi::xml_parse_result result = Model.load_file(path, pugi::parse_default, pugi::encoding_utf8);
+		LoadElementsFromStorage();
 		std::cout << Model.save_file(path);
 	}
 	void LoadElementsToStorage()
@@ -54,12 +57,69 @@ namespace ScenariosEditorXML
 		{
 			int PinA = std::stof(std::string(Link.child("pinA").child_value()));
 			int PinB = std::stof(std::string(Link.child("pinB").child_value()));
+			
 			std::vector<int> ToAdd;
 			ToAdd.push_back(PinA);
 			ToAdd.push_back(PinB);
 			ScenariosEditorScenarioElement::AddScenarioElementStorageLink(ToAdd);
 		}
 	}
+	// fix later
+	void LoadElementsFromStorage()
+	{
+
+		Model.child("root").child("scenarions2").remove_children();
+		for (std::vector<std::string> Scenario : ScenarioEditorScenarioStorage::GetScenarios())
+		{
+			if (Scenario[0] == u8"<Вне сценария>") continue;
+			pugi::xml_node ScenarioNode = Model.child("root").child("scenarions2").append_child("scenario");
+			ScenarioNode.append_child("startGUID");
+			ScenarioNode.child("startGUID").text().set(Scenario[1].c_str());
+			ScenarioNode.append_child("Name");
+			ScenarioNode.child("Name").text().set(Scenario[0].c_str());
+		}
+		Model.child("root").child("scenarions2").append_child("elements");
+		for (std::shared_ptr<ScenariosEditorScenarioElement::ScenarioElement> Element : ScenariosEditorScenarioElement::GetScenarioElements())
+		{
+			pugi::xml_node ElementNode = Model.child("root").child("scenarions2").child("elements").append_child("element");
+			ElementNode.append_child("ScenarioGUID");
+			ElementNode.child("ScenarioGUID").text().set((*Element).ScenarioGUID.c_str());
+			ElementNode.append_child("x");
+			ElementNode.child("x").text().set(std::to_string((*Element).x).c_str());
+			ElementNode.append_child("y");
+			ElementNode.child("y").text().set(std::to_string((*Element).y).c_str());
+			ElementNode.append_child("alfa");
+			std::stringstream Float;
+			Float << std::fixed << std::setprecision(2) << (*Element).alfa;
+			ElementNode.child("alfa").text().set(Float.str().c_str());
+			ElementNode.append_child("pins");
+			for (int Pin : (*Element).pins)
+			{
+				ElementNode.child("pins").append_child("pin").append_child("id").text().set(Pin);
+			}
+			pugi::xml_node Etalon = ElementNode.append_child("etalon");
+			Etalon.append_child("name").text().set((*Element).getElementName().c_str());
+			Etalon.append_child("caption").text().set((*Element).caption.c_str());
+			Etalon.append_child("attributes");
+			for (ScenariosEditorScenarioElement::ElementAttribute* Attribute : (*Element).GetAttributes())
+			{ 
+				pugi::xml_node Node = Etalon.child("attributes").append_child("scenario_attribute");
+				Node.append_child("name").text().set(Attribute->Name.c_str());
+				std::stringstream Float;
+				Float << std::fixed << std::setprecision(2) << Attribute->ValueF;
+				Node.append_child("valueF").text().set(Float.str().c_str());
+				Node.append_child("valueS").text().set(Attribute->ValueS.c_str());
+			}
+		}
+		pugi::xml_node Links = Model.child("root").child("scenarions2").append_child("scenarion_links");
+		for (std::vector<int> Link : ScenariosEditorScenarioElement::GetLinks())
+		{
+			pugi::xml_node LinkNode = Links.append_child("scenarion_link");
+			LinkNode.append_child("pinA").text().set(Link[0]);
+			LinkNode.append_child("pinB").text().set(Link[1]);
+		}
+	}
+
 	void LoadScenariosToStorage()
 	{
 		ScenarioEditorScenarioStorage::ClearScenarioStorage();

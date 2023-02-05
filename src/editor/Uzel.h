@@ -8,6 +8,7 @@ namespace ScenariosEditorScenarioElement
 	public:
 		const static std::string ElementName; std::string getElementName() { return ElementName; }
 		Uzel(std::vector<std::string>* args);
+		Uzel();
 		std::vector<ElementAttribute*> GetAttributes();
 	private:
 	};

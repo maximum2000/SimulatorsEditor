@@ -7,6 +7,11 @@ namespace ScenariosEditorScenarioElement
 		Names = SetAttributeFromSource(args, 0);
 		NeedPush = SetAttributeFromSource(args, 1);
 	}
+	Select::Select() : ScenarioElement::ScenarioElement()
+	{
+		Names = ElementAttribute(u8"Names",0);
+		NeedPush = ElementAttribute(u8"NeedPush",1);
+	}
 	std::vector<ElementAttribute*> Select::GetAttributes()
 	{
 		std::vector<ElementAttribute*> ret;

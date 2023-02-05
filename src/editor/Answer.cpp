@@ -22,4 +22,13 @@ namespace ScenariosEditorScenarioElement
 		ret.emplace_back(&MyActionsButton);
 		return ret;
 	}
+	Answer::Answer() : ScenarioElement::ScenarioElement()
+	{
+		Question = ElementAttribute(u8"Question",0);
+		Answer1 = ElementAttribute(u8"Answer1",0);
+		Answer2 = ElementAttribute(u8"Answer2",0);
+		Answer3 = ElementAttribute(u8"Answer3",0);
+		Answer4 = ElementAttribute(u8"Answer4",0);
+		MyActionsButton = ElementAttribute(u8"MyActionsButton",1);
+	}
 }

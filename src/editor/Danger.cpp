@@ -8,6 +8,12 @@ namespace ScenariosEditorScenarioElement
 		object = SetAttributeFromSource(args, 0);
 		distance_to_object = SetAttributeFromSource(args, 2);
 	}
+	Danger::Danger() : ScenarioElement::ScenarioElement()
+	{
+		gas = ElementAttribute::ElementAttribute(u8"gas",2);
+		object = ElementAttribute::ElementAttribute(u8"object",0);
+		distance_to_object = ElementAttribute::ElementAttribute(u8"distance_to_object",2);
+	}
 	std::vector<ElementAttribute*> Danger::GetAttributes()
 	{
 		std::vector<ElementAttribute*> ret;

@@ -17,6 +17,7 @@ namespace ScenariosEditorScenarioElement
 		virtual ~ScenarioElement() { }
 		virtual std::string getElementName() = 0;
 		ScenarioElement(std::vector<std::string>* args);
+		ScenarioElement();
 		std::string caption;
 		std::string ScenarioGUID;
 		float x, y, alfa;

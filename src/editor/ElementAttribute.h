@@ -8,11 +8,13 @@ namespace ScenariosEditorScenarioElement
 	{
 	public:
 		ElementAttribute(std::string Name, std::string  ValueF, std::string ValueS, int Format);
-		ElementAttribute();
+		ElementAttribute(std::string Name, int Format);
+		ElementAttribute() {}
 		std::string Name, ValueS;
 		float ValueF;
 		int GetFormat();
 	protected:
+		
 		int Format;
 		/*
 		Format:

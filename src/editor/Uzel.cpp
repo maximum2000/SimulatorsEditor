@@ -6,6 +6,9 @@ namespace ScenariosEditorScenarioElement
 	{
 
 	}
+	Uzel::Uzel() : ScenarioElement::ScenarioElement()
+	{
+	}
 	std::vector<ElementAttribute*> Uzel::GetAttributes()
 	{
 		return std::vector<ElementAttribute*>();

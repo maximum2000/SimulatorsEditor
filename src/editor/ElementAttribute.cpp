@@ -14,8 +14,11 @@ namespace ScenariosEditorScenarioElement
 		(*args).erase((*args).begin(), (*args).begin() + 3);
 		return ret;
 	}
-	ElementAttribute::ElementAttribute() {
-
+	ElementAttribute::ElementAttribute(std::string Name, int Format) {
+		this->Name = Name;
+		ValueF = 0.00f;
+		ValueS = "";
+		this->Format = Format;
 	}
 	int ElementAttribute::GetFormat()
 	{
