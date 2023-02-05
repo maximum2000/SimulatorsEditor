@@ -130,6 +130,8 @@ namespace ScenariosEditorGUI {
 	void ElementsMakeObjects();
 	void AddCanvasContextMenu();
 	void AddDragAndDropReciever();
+	void AddElementGUI(int Element, ImVec2 Pos, int Type);
+	void AddLinkGUI(int PointA, int PointB, int ElemA, int ElemB);
 	void CanvasDrawLinking();
 	void CanvasLinkingLogic();
 	void CanvasDrawElems();
@@ -273,6 +275,28 @@ namespace ScenariosEditorGUI {
 		ImGui::End();
 	}
 
+	void AddElementGUI(int Element, ImVec2 Pos, int Type)
+	{
+		unsigned int type = ElementsData::GetElementType(Element);
+		int pin_count;
+		for (pin_count = 0; type > 0; type >>= 1)
+			if (type & 1) pin_count++;
+		Elems.push_back({ Element, Pos, ElementsData::GetElementType(Element),
+				ScenariosEditorScenarioElement::AddScenarioElementStorageElement(ScenariosEditorElementsData::ElementsData::GetElementName(Element), Pos.x, Pos.y, 0.00f, pin_count) });
+	}
+
+	void AddLinkGUI(int PointA,  int PointB, int ElemA, int ElemB)
+	{
+		std::vector<int> ToAdd;
+		int index = ScenariosEditorScenarioElement::GetPinIndex((*Elems[ElemA].ElementInStorage).getElementName().c_str(), PointA);
+		std::cout << "here";
+		ToAdd.push_back((*Elems[ElemA].ElementInStorage).pins[index]);
+		index = ScenariosEditorScenarioElement::GetPinIndex((*Elems[ElemB].ElementInStorage).getElementName().c_str(), PointB);
+		ToAdd.push_back((*Elems[ElemB].ElementInStorage).pins[index]);
+		ScenariosEditorScenarioElement::AddScenarioElementStorageLink(ToAdd);
+		Links.push_back({ {PointA, PointB},{ElemA, ElemB} });
+	}
+
 	void AddDragAndDropReciever()
 	{
 		// canvas is drag'n'drop reciever
@@ -285,12 +309,7 @@ namespace ScenariosEditorGUI {
 				int y = MousePosInCanvas.y - ElementsData::GetElementTexture(ElementNum).Height / 2;
 				if (x < 0) x = 0;
 				if (y < 0) y = 0;
-				unsigned int type = ElementsData::GetElementType(ElementNum);
-				int pin_count;
-				for (pin_count = 0; type > 0; type >>= 1)
-					if (type & 1) pin_count++;
-				Elems.push_back({ ElementNum, ImVec2(x, y), ElementsData::GetElementType(ElementNum),
-				ScenariosEditorScenarioElement::AddScenarioElementStorageElement(ScenariosEditorElementsData::ElementsData::GetElementName(ElementNum), x, y, 0.00f, pin_count) });
+				AddElementGUI(ElementNum, ImVec2(x, y), ElementsData::GetElementType(ElementNum));
 			}
 			ImGui::EndDragDropTarget();
 		}
@@ -373,22 +392,15 @@ namespace ScenariosEditorGUI {
 				}
 				for (int i = 0; i < CopyBuffer.size(); i++)
 				{
-					Elems.push_back(
-						{
-						CopyBuffer[i].Element,
+					AddElementGUI(CopyBuffer[i].Element,
 						ImVec2(CopyBuffer[i].Pos.x - min.x + MousePosInCanvas.x, CopyBuffer[i].Pos.y - min.y + MousePosInCanvas.y),
-						CopyBuffer[i].Type,
-						CopyBuffer[i].ElementInStorage
-						});
+						CopyBuffer[i].Type);
 					SelectedElems.push_back(Elems.size() - 1);
 				}
 				for (int k = 0; k < LinksBuffer.size(); k++)
 				{
-					Links.push_back(
-						{
-						{LinksBuffer[k].Points[0], LinksBuffer[k].Points[1]},
-						{ElemsSize + LinksBuffer[k].Elems[0], ElemsSize + LinksBuffer[k].Elems[1]}
-						});
+					AddLinkGUI(LinksBuffer[k].Points[0], LinksBuffer[k].Points[1],
+						ElemsSize + LinksBuffer[k].Elems[0], ElemsSize + LinksBuffer[k].Elems[1]);
 				}
 			}
 			ImGui::EndPopup();
@@ -445,7 +457,7 @@ namespace ScenariosEditorGUI {
 					index = ScenariosEditorScenarioElement::GetPinIndex((*Elems[Elem].ElementInStorage).getElementName().c_str(), Point);
 					ToAdd.push_back((*Elems[Elem].ElementInStorage).pins[index]);
 					ScenariosEditorScenarioElement::AddScenarioElementStorageLink(ToAdd);
-					Links.push_back({ {*ClickedType, Point},{*ClickedElem, Elem} });
+					AddLinkGUI(*ClickedType, Point, *ClickedElem, Elem);
 				}
 			}
 			IsLinking = !IsLinking;
@@ -689,7 +701,6 @@ namespace ScenariosEditorGUI {
 		static int ClickedType;
 		for (int i = 0; i < Elems.size(); i++)
 		{
-			Texture UsedTexture = ElementsData::GetElementTexture(Elems[i].Element);
 			if (Elems[i].Type & 1)
 			{
 				AddLinkingPoint(0, &ClickedElem, &ClickedType, i);
