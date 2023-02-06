@@ -30,7 +30,9 @@ namespace EditorMathModel
 
     // Forward declarations of helper functions
     void CreateDemoScenarioGUI();
-    
+
+    // сделать функцию из состояний с вызов функции логики в зависимости от состояния
+
 #pragma region Draw Blocks of interface (declaration)
     void DrawTopBar();
     void DrawElementsWindow();
@@ -41,12 +43,14 @@ namespace EditorMathModel
 #pragma region Additional draws (definition)
     void CanvasDrawElements(ImGuiIO& io);
     void CanvasElementRenderRect(ImVec2 startPosition, ImVec2 endPosition, ImU32 colorBorder, ImU32 colorFill);
+    void DrawDragNDropWindow();
 #pragma endregion
 #pragma region Control Function (declaration)
 #pragma endregion
 #pragma region Logic functions (declaration)
     void SearchLogic(char data[]);
     void CanvasLogic(ImGuiIO& io);
+    void CanvasRectangleSelectionLogic();
     void CanvasElementLogic(ImGuiIO& io);
 #pragma endregion
 #pragma region Helper function for Rectangle Selection (declaration)
@@ -412,6 +416,10 @@ namespace EditorMathModel
             ImVec2(endPosition.x, endPosition.y),
             colorFill);
     }
+    void DrawDragNDropWindow()
+    {
+
+    }
 #pragma endregion
 #pragma region Control Function (definition)
 
@@ -565,6 +573,10 @@ namespace EditorMathModel
             }
         }
     }
+    void CanvasRectangleSelectionLogic()
+    {
+
+    }
     void CanvasElementLogic(ImGuiIO& io)
     {
         static bool isHold = false;
@@ -620,6 +632,7 @@ namespace EditorMathModel
             }
         }
     }
+
 #pragma endregion
 #pragma region Helper function for Rectangle Selection (definition)
     void CanvasRectangleSelection(ImGuiIO& io, ImVec2 SelectionStartPosition)
