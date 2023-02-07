@@ -1,5 +1,7 @@
 #include "ScenarioStorage.h"
-
+#include <combaseapi.h>
+#include "ScenarioStorage.h"
+#include "ScenarioElementsStorage.h"
 
 namespace ScenarioEditorScenarioStorage
 {
@@ -16,12 +18,20 @@ namespace ScenarioEditorScenarioStorage
 	{
 		ActualScenario = 0;
 		Scenarios.clear();
-		Scenarios.push_back({ u8"<Вне сценария>", NULL });
+		Scenarios.push_back({ u8"", NULL });
 	}
+
+	void SetActualScenarioName(std::string Name)
+	{
+		if (ActualScenario == 0) return;
+		Scenarios[ActualScenario].Name = Name;
+	}
+
 	void AddScenarioStorageElement(std::string name, GUID guid)
 	{
 		Scenarios.push_back({ name, guid });
 	}
+
 	std::vector<std::string> GetScenarioNames()
 	{
 		std::vector<std::string> ret;
@@ -31,10 +41,64 @@ namespace ScenarioEditorScenarioStorage
 		}
 		return ret;
 	}
+
+	void RemoveScenario(std::string GUID)
+	{
+		int Scenario = -1;
+		for (int i = 0; i < Scenarios.size(); i++)
+		{
+			if (GetGUID(i) == GUID)
+			{
+				Scenario = i;
+				break;
+			}
+		}
+		Scenarios.erase(Scenarios.begin() + Scenario);
+	}
+
+	void DoubleScenario(std::string ScenarioGUID)
+	{
+		int Scenario = -1;
+		for (int i = 0; i < Scenarios.size(); i++)
+		{
+			if (GetGUID(i) == ScenarioGUID)
+			{
+				Scenario = i;
+				break;
+			}
+		}
+		GUID gidReference;
+		HRESULT hCreateGuid = CoCreateGuid(&gidReference);
+		Scenarios.push_back({ Scenarios[Scenario].Name, gidReference});
+	}
+
+	void CreateNewScenario()
+	{
+		GUID gidReference;
+		HRESULT hCreateGuid = CoCreateGuid(&gidReference);
+		Scenarios.push_back({ u8"", gidReference });
+	}
+
 	void SetActualScenario(int Scenario)
 	{
 		ActualScenario = Scenario;
 	}
+	
+	void SwapScenario(int index_a, int index_b)
+	{
+		Scenario mem = Scenarios[index_a];
+		Scenarios[index_a] = Scenarios[index_b];
+		Scenarios[index_b] = mem;
+		if (index_a == ActualScenario)
+		{
+			ActualScenario = index_b;
+		}
+		else if (index_b == ActualScenario)
+		{
+			ActualScenario = index_a;
+		}
+	}
+
 	std::string GetActualGUID()
 	{
 		return std::string(GetGUID(ActualScenario));

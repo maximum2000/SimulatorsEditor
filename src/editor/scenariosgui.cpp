@@ -130,8 +130,13 @@ namespace ScenariosEditorGUI {
 	void ElementsMakeObjects();
 	void AddCanvasContextMenu();
 	void AddDragAndDropReciever();
-	void AddElementGUI(int Element, ImVec2 Pos, int Type);
+	void AddElementGUI(int Element, ImVec2 Pos, int Type, std::shared_ptr<ScenarioElement> CopyOrigin);
 	void AddLinkGUI(int PointA, int PointB, int ElemA, int ElemB);
+	std::vector<ElementOnCanvas>::iterator DeleteElementGUI(std::vector<ElementOnCanvas>::iterator iter);
+	std::vector<LinkOnCanvas>::iterator DeleteLinkGUI(std::vector<LinkOnCanvas>::iterator iter);
+	void RemoveSelectedScenario(std::string GUID);
+	void DoubleSelectedScenario(std::string GUID);
+	static void HelpMarker(const char* desc);
 	void CanvasDrawLinking();
 	void CanvasLinkingLogic();
 	void CanvasDrawElems();
@@ -275,26 +280,55 @@ namespace ScenariosEditorGUI {
 		ImGui::End();
 	}
 
-	void AddElementGUI(int Element, ImVec2 Pos, int Type)
+	void AddElementGUI(int Element, ImVec2 Pos, int Type, std::shared_ptr<ScenarioElement> CopyOrigin = nullptr)
 	{
+		if (ScenariosEditorElementsData::ElementsData::GetElementName(Element) == u8"Start")
+		{
+			for (ElementOnCanvas Elem : Elems)
+				if (ScenariosEditorElementsData::ElementsData::GetElementName(Elem.Element) == u8"Start") return;
+			// Only one "Start" element should be allowed
+		}
 		unsigned int type = ElementsData::GetElementType(Element);
 		int pin_count;
 		for (pin_count = 0; type > 0; type >>= 1)
 			if (type & 1) pin_count++;
-		Elems.push_back({ Element, Pos, ElementsData::GetElementType(Element),
-				ScenariosEditorScenarioElement::AddScenarioElementStorageElement(ScenariosEditorElementsData::ElementsData::GetElementName(Element), Pos.x, Pos.y, 0.00f, pin_count) });
+		CopyOrigin == nullptr ?
+			Elems.push_back({ Element, Pos, ElementsData::GetElementType(Element),
+				ScenariosEditorScenarioElement::AddScenarioElementStorageElement(ScenariosEditorElementsData::ElementsData::GetElementName(Element), Pos.x, Pos.y, 0.00f, pin_count) })
+			:
+			Elems.push_back({ Element, Pos, ElementsData::GetElementType(Element),
+				ScenariosEditorScenarioElement::AddScenarioElementStorageElement(ScenariosEditorElementsData::ElementsData::GetElementName(Element), Pos.x, Pos.y, 0.00f, pin_count, CopyOrigin) });
 	}
 
-	void AddLinkGUI(int PointA,  int PointB, int ElemA, int ElemB)
+	void AddLinkGUI(int PointA, int PointB, int ElemA, int ElemB)
 	{
 		std::vector<int> ToAdd;
+
 		int index = ScenariosEditorScenarioElement::GetPinIndex((*Elems[ElemA].ElementInStorage).getElementName().c_str(), PointA);
-		std::cout << "here";
 		ToAdd.push_back((*Elems[ElemA].ElementInStorage).pins[index]);
 		index = ScenariosEditorScenarioElement::GetPinIndex((*Elems[ElemB].ElementInStorage).getElementName().c_str(), PointB);
 		ToAdd.push_back((*Elems[ElemB].ElementInStorage).pins[index]);
 		ScenariosEditorScenarioElement::AddScenarioElementStorageLink(ToAdd);
+		std::cout << ToAdd[0] << ToAdd[1];
 		Links.push_back({ {PointA, PointB},{ElemA, ElemB} });
+	}
+
+	std::vector<ElementOnCanvas>::iterator DeleteElementGUI(std::vector<ElementOnCanvas>::iterator iter)
+	{
+		ScenariosEditorScenarioElement::RemoveScenarioElementStorageElement((*iter).ElementInStorage);
+		return Elems.erase(iter);
+	}
+
+	std::vector<LinkOnCanvas>::iterator DeleteLinkGUI(std::vector<LinkOnCanvas>::iterator iter)
+	{
+		std::vector<int> ToRem;
+		int index = ScenariosEditorScenarioElement::GetPinIndex((*Elems[(*iter).Elems[0]].ElementInStorage).getElementName().c_str(), (*iter).Points[0]);
+		ToRem.push_back((*Elems[(*iter).Elems[0]].ElementInStorage).pins[index]);
+		index = ScenariosEditorScenarioElement::GetPinIndex((*Elems[(*iter).Elems[1]].ElementInStorage).getElementName().c_str(), (*iter).Points[1]);
+		ToRem.push_back((*Elems[(*iter).Elems[1]].ElementInStorage).pins[index]);
+		ScenariosEditorScenarioElement::RemoveScenarioElementStorageLink(ToRem);
+		std::cout << ToRem[0] << ToRem[1];
+		return Links.erase(iter);
 	}
 
 	void AddDragAndDropReciever()
@@ -331,11 +365,10 @@ namespace ScenariosEditorGUI {
 				for (int i = SelectedElems.size() - 1; i >= 0; i--)
 				{
 					int SelectedElem = SelectedElems[i];
-					Elems.erase(Elems.begin() + SelectedElem);
 					std::vector<LinkOnCanvas>::iterator k = Links.begin();
 					while (k != Links.end())
 					{
-						if ((*k).Elems[0] == SelectedElem || (*k).Elems[1] == SelectedElem) k = Links.erase(k);
+						if ((*k).Elems[0] == SelectedElem || (*k).Elems[1] == SelectedElem) k = DeleteLinkGUI(k);
 						else
 						{
 							if ((*k).Elems[0] > SelectedElem) (*k).Elems[0]--;
@@ -343,6 +376,7 @@ namespace ScenariosEditorGUI {
 							++k;
 						}
 					}
+					DeleteElementGUI(Elems.begin() + SelectedElem);
 				}
 				SelectedElems.clear();
 			}
@@ -353,6 +387,7 @@ namespace ScenariosEditorGUI {
 				std::vector<int> Positions;
 				for (int i = 0; i < SelectedElems.size(); i++)
 				{
+					if (ScenariosEditorElementsData::ElementsData::GetElementName(Elems[SelectedElems[i]].Element) == "Start") continue;
 					CopyBuffer.push_back(Elems[SelectedElems[i]]);
 					Positions.push_back(SelectedElems[i]);
 				}
@@ -372,7 +407,7 @@ namespace ScenariosEditorGUI {
 					while (k != Links.end())
 					{
 						int SelectedElem = SelectedElems[i];
-						if ((*k).Elems[0] == SelectedElem || (*k).Elems[1] == SelectedElem) k = Links.erase(k);
+						if ((*k).Elems[0] == SelectedElem || (*k).Elems[1] == SelectedElem) k = DeleteLinkGUI(k);
 						else
 						{
 							++k;
@@ -394,7 +429,7 @@ namespace ScenariosEditorGUI {
 				{
 					AddElementGUI(CopyBuffer[i].Element,
 						ImVec2(CopyBuffer[i].Pos.x - min.x + MousePosInCanvas.x, CopyBuffer[i].Pos.y - min.y + MousePosInCanvas.y),
-						CopyBuffer[i].Type);
+						CopyBuffer[i].Type, CopyBuffer[i].ElementInStorage);
 					SelectedElems.push_back(Elems.size() - 1);
 				}
 				for (int k = 0; k < LinksBuffer.size(); k++)
@@ -451,12 +486,6 @@ namespace ScenariosEditorGUI {
 			{
 				if (*ClickedType != Point || *ClickedElem != Elem)
 				{
-					std::vector<int> ToAdd;
-					int index = ScenariosEditorScenarioElement::GetPinIndex((*Elems[*ClickedElem].ElementInStorage).getElementName().c_str(), *ClickedType);
-					ToAdd.push_back((*Elems[*ClickedElem].ElementInStorage).pins[index]);
-					index = ScenariosEditorScenarioElement::GetPinIndex((*Elems[Elem].ElementInStorage).getElementName().c_str(), Point);
-					ToAdd.push_back((*Elems[Elem].ElementInStorage).pins[index]);
-					ScenariosEditorScenarioElement::AddScenarioElementStorageLink(ToAdd);
 					AddLinkGUI(*ClickedType, Point, *ClickedElem, Elem);
 				}
 			}
@@ -720,7 +749,18 @@ namespace ScenariosEditorGUI {
 		}
 	}
 
-
+	static void HelpMarker(const char* desc)
+	{
+		ImGui::TextDisabled("(?)");
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+		{
+			ImGui::BeginTooltip();
+			ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+			ImGui::TextUnformatted(desc);
+			ImGui::PopTextWrapPos();
+			ImGui::EndTooltip();
+		}
+	}
 
 	// scenarios section
 	void DrawScenariosSection(const ImGuiViewport* viewport)
@@ -728,19 +768,99 @@ namespace ScenariosEditorGUI {
 		ImGui::SetNextWindowPos(viewport->WorkPos);
 		ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x / 4, (viewport->WorkSize.y / 3) - 29));
 		ImGui::Begin(u8"Сценарии", NULL, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+		if (ImGui::Button(u8"Создать сценарий"))
+		{
+			ScenarioEditorScenarioStorage::CreateNewScenario();
+		}
+		ImGui::SameLine();
 		static int selected = -1;
 		std::vector<std::string> Scenarios = ScenarioEditorScenarioStorage::GetScenarioNames();
-		for (int i = 0; i < Scenarios.size(); i++)
+		if (selected > 0 && selected < Scenarios.size())
 		{
-			if (ImGui::Selectable((Scenarios[i] + u8"##" + (char)i).c_str(), selected == i))
+			if (ImGui::Button(u8"Дублировать выбранный"))
 			{
-				selected = i;
+				DoubleSelectedScenario(ScenarioEditorScenarioStorage::GetActualGUID());
+				Scenarios = ScenarioEditorScenarioStorage::GetScenarioNames();
+				selected = Scenarios.size() - 1;
+
+			}
+			ImGui::SameLine();
+			if (ImGui::Button(u8"Удалить выбранный"))
+			{
+				RemoveSelectedScenario(ScenarioEditorScenarioStorage::GetActualGUID());
+				Scenarios = ScenarioEditorScenarioStorage::GetScenarioNames();
+				selected = 0;
+			}
+		}
+		ImGui::SameLine();
+		HelpMarker(
+			u8"Имя сценария идентично значению аттрибута \"Names\" элемента \"Start\"\n"
+			"Элемет \"Start\" в сценарии может быть только один");
+		std::vector<std::vector<std::string>> ScenarioList = ScenarioEditorScenarioStorage::GetScenarios();
+		int test = 0;
+		for (int n = 0; n < Scenarios.size(); n++)
+		{
+			std::string GUID = ScenarioList[n][1];
+			std::string item = Scenarios[n];
+			if (item == "")
+			{
+				if (GUID == "")
+					item = u8"<Вне сценария>";
+				else item = u8"<Без имени>";
+			}
+			if (ImGui::Selectable((item + u8"##" + GUID).c_str(), selected == n))
+			{
+				selected = n;
 				CurrentState = Rest;
-				ScenarioEditorScenarioStorage::SetActualScenario(i);
+				ScenarioEditorScenarioStorage::SetActualScenario(n);
 				ScenariosEditorScenarioElement::LoadElements();
+			}
+			if (ImGui::IsItemActive() && !ImGui::IsItemHovered())
+			{
+				int n_next = n + (ImGui::GetMouseDragDelta(0).y < 0.f ? -1 : 1);
+				if (n != 0 && n_next >= 1 && n_next < Scenarios.size())
+				{
+					if (n_next == selected) selected = n;
+					else if (n == selected) selected = n_next;
+					ScenarioEditorScenarioStorage::SwapScenario(n, n_next);
+					ImGui::ResetMouseDragDelta();
+				}
 			}
 		}
 		ImGui::End();
+	}
+
+	void RemoveSelectedScenario(std::string GUID)
+	{
+		ScenarioEditorScenarioStorage::RemoveScenario(GUID);
+		std::vector<ElementOnCanvas>::iterator k = Elems.begin();
+		while (k != Elems.end())
+		{
+			k = DeleteElementGUI(k);
+		}
+		ScenarioEditorScenarioStorage::SetActualScenario(0);
+		ScenariosEditorScenarioElement::LoadElements();
+	}
+
+	void DoubleSelectedScenario(std::string GUID)
+	{
+		std::vector<ElementOnCanvas> PreviousElems = Elems;
+		std::vector<LinkOnCanvas> PreviousLinks = Links;
+		ScenarioEditorScenarioStorage::DoubleScenario(GUID); 
+		ScenarioEditorScenarioStorage::SetActualScenario(ScenarioEditorScenarioStorage::GetScenarios().size()-1);
+		ScenariosEditorScenarioElement::LoadElements();
+		std::vector<ElementOnCanvas>::iterator k = PreviousElems.begin();
+		while (k != PreviousElems.end())
+		{
+			AddElementGUI((*k).Element, (*k).Pos, (*k).Type, (*k).ElementInStorage);
+			++k;
+		}
+		std::vector<LinkOnCanvas>::iterator j = PreviousLinks.begin();
+		while (j != PreviousLinks.end())
+		{
+			AddLinkGUI((*j).Points[0], (*j).Points[1], (*j).Elems[0], (*j).Elems[1]);
+			++j;
+		}
 	}
 
 	// elements section
@@ -817,6 +937,8 @@ namespace ScenariosEditorGUI {
 				static const float wrap_width = 200.0f;
 				for (int i = 0; i < Attributes.size(); i++)
 				{
+					if (ScenariosEditorElementsData::ElementsData::GetElementName(Elems[SelectedElems[0]].Element) == "Start" &&
+						(Attributes[i])->Name == "Name") ScenarioEditorScenarioStorage::SetActualScenarioName((Attributes[i])->ValueS);
 					std::string label = std::string("##") + (Attributes[i])->Name;
 					ImGui::TableNextRow();
 					ImGui::TableSetColumnIndex(0);

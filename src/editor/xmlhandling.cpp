@@ -25,6 +25,7 @@ namespace ScenariosEditorXML
 	void LoadElementsToStorage();
 	void LoadScenariosToStorage();
 	void LoadElementsFromStorage();
+	void InitializeDOM();
 	std::vector<std::string> GetArguments(pugi::xml_node Element);
 	pugi::xml_document Model, Testing;
 	void ScenariosDOM::LoadFrom(const wchar_t* path)
@@ -67,11 +68,11 @@ namespace ScenariosEditorXML
 	// fix later
 	void LoadElementsFromStorage()
 	{
-
+		if (Model.child("root") == nullptr) InitializeDOM();
 		Model.child("root").child("scenarions2").remove_children();
 		for (std::vector<std::string> Scenario : ScenarioEditorScenarioStorage::GetScenarios())
 		{
-			if (Scenario[0] == u8"<Вне сценария>") continue;
+			if (Scenario[1] == "") continue;
 			pugi::xml_node ScenarioNode = Model.child("root").child("scenarions2").append_child("scenario");
 			ScenarioNode.append_child("startGUID");
 			ScenarioNode.child("startGUID").text().set(Scenario[1].c_str());
@@ -120,6 +121,18 @@ namespace ScenariosEditorXML
 		}
 	}
 
+	void InitializeDOM()
+	{
+		pugi::xml_node root = Model.append_child("root");
+		pugi::xml_node screen = root.append_child("screen");
+		screen.append_child("zoom").text().set("5.599999");
+		screen.append_child("x").text().set("0");
+		screen.append_child("y").text().set("0");
+		root.append_child("elements");
+		root.append_child("links");
+		root.append_child("scenarions2");
+	}
+
 	void LoadScenariosToStorage()
 	{
 		ScenarioEditorScenarioStorage::ClearScenarioStorage();
@@ -143,7 +156,6 @@ namespace ScenariosEditorXML
 			UUID ToAdd;
 			UuidFromStringA(ucharguid, &ToAdd);
 			std::string ScenarioName = Scenario.child("Name").child_value();
-			if (Scenario.child("Name").child_value() == "") ScenarioName = u8"<Без имени>";
 			ScenarioEditorScenarioStorage::AddScenarioStorageElement(
 				ScenarioName,
 				ToAdd

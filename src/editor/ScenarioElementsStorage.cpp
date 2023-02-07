@@ -60,6 +60,20 @@ namespace ScenariosEditorScenarioElement
 		return ScenarioElements[ScenarioElements.size() - 1];
 	
 	}
+	// Copy element
+	std::shared_ptr<ScenariosEditorScenarioElement::ScenarioElement> AddScenarioElementStorageElement(std::string ElementName, float x, float y, float alfa, int pin_count, std::shared_ptr<ScenarioElement> CopyOrigin)
+	{
+		std::shared_ptr<ScenariosEditorScenarioElement::ScenarioElement> ret = AddScenarioElementStorageElement(ElementName, x, y, alfa, pin_count);
+		(*ret).caption = (*CopyOrigin).caption;
+		for (int i = 0; i < (*CopyOrigin).GetAttributes().size(); i++)
+		{
+			(*ret).GetAttributes()[i]->Name = (*CopyOrigin).GetAttributes()[i]->Name;
+			(*ret).GetAttributes()[i]->ValueF = (*CopyOrigin).GetAttributes()[i]->ValueF;
+			(*ret).GetAttributes()[i]->ValueS = (*CopyOrigin).GetAttributes()[i]->ValueS;
+		}
+		return ret;
+
+	}
 	// Add existing element
 	std::shared_ptr<ScenariosEditorScenarioElement::ScenarioElement> AddScenarioElementStorageElement(std::vector<std::string>* args)
 	{
@@ -89,6 +103,39 @@ namespace ScenariosEditorScenarioElement
 	void AddScenarioElementStorageLink(std::vector<int> args)
 	{
 		Links.push_back(args);
+	}
+
+	void RemoveScenarioElementStorageElement(std::shared_ptr<ScenarioElement> Element)
+	{
+		MaxPin = 0;
+		for (int i = 0; i < ScenarioElements.size(); i++)
+		{
+			if (Element == ScenarioElements[i])
+			{
+				ScenarioElements.erase(ScenarioElements.begin() + i);
+				return;
+			}
+			for (int Pin : (*ScenarioElements[i]).pins)
+			{
+				if (Pin > MaxPin) MaxPin = Pin;
+			}
+		}
+		
+	}
+
+	void RemoveScenarioElementStorageLink(std::vector<int> args)
+	{
+		for (int i = 0; i < Links.size(); i++)
+		{
+			if (args[0] == Links[i][0])
+			{
+				if (args[1] == Links[i][1])
+				{
+					Links.erase(Links.begin() + i);
+					return;
+				}
+			}
+		}
 	}
 
 	void ClearScenarioElementStorage()
@@ -147,13 +194,14 @@ namespace ScenariosEditorScenarioElement
 	void SetMinimalCoordinates()
 	{
 		minx = std::numeric_limits<float>::max();
-		maxy = std::numeric_limits<float>::min();
+		maxy = 0;
 		for (std::shared_ptr<ScenarioElement> Element : ScenarioElements)
 		{
 			if ((*Element).ScenarioGUID != ScenarioEditorScenarioStorage::GetActualGUID()) continue;
 			if ((*Element).x < minx) minx = (*Element).x;
 			if ((*Element).y > maxy) maxy = (*Element).y;
 		}
+		if (minx == std::numeric_limits<float>::max()) minx = 0;
 	}
 
 	void CoordinatesOldToNew(float* x, float* y)
