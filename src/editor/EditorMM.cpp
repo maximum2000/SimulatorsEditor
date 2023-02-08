@@ -19,20 +19,30 @@
 
 namespace EditorMathModel
 {
-    enum CanvasState
+    enum ProgrammState
     {
-        Rest,
-        RectangleSelection,
-        RectangleSelectionPlus,
-        ElementDrag,
-        CanvasDrag
+        /* 0*/Rest,
+        /* 1*/CanvasSelection,
+        /* 2*/ElementSelection,
+        /* 3*/ElementWindowSelection,
+        /* 4*/CanvasMapWindowSelection,
+        /* 5*/TopBarSelection,
+        /* 6*/BottomBarSelection,
+        /* 7*/ElementHover,
+        /* 8*/RectangleSelection,
+        /* 9*/RectangleSelectionPlus,
+        /*10*/ElementDrag,
+        /*11*/CanvasDrag
     };
 
     // Forward declarations of helper functions
     void CreateDemoScenarioGUI();
 
-    // ñäåëàòü ôóíêöèþ èç ñîñòîÿíèé ñ âûçîâ ôóíêöèè ëîãèêè â çàâèñèìîñòè îò ñîñòîÿíèÿ
-
+    std::string DEBUGstate(int index);
+#pragma region State Machine (declaration)
+    void StateMachineSetState(ProgrammState newState);
+    void StateMachineLogic(ImGuiIO& io);
+#pragma endregion
 #pragma region Draw Blocks of interface (declaration)
     void DrawTopBar();
     void DrawElementsWindow();
@@ -49,9 +59,9 @@ namespace EditorMathModel
 #pragma endregion
 #pragma region Logic functions (declaration)
     void SearchLogic(char data[]);
-    void CanvasLogic(ImGuiIO& io);
+    //void CanvasLogic(ImGuiIO& io);
     void CanvasRectangleSelectionLogic();
-    void CanvasElementLogic(ImGuiIO& io);
+    //void CanvasElementLogic(ImGuiIO& io);
 #pragma endregion
 #pragma region Helper function for Rectangle Selection (declaration)
     void CanvasRectangleSelection(ImGuiIO& io, ImVec2 SelectionStartPosition);
@@ -62,10 +72,10 @@ namespace EditorMathModel
     void ClearCanvasSelectedElementsAll();
     void ResetCanvasSelectedElementsAll();
     void SetCanvasSelectedElementsBlockStatus(bool newValue);
-    void CanvasElementAddHover(int index);
-    void CanvasElementRemoveHover(int index);
+    //void CanvasElementAddHover(int index);
+    //void CanvasElementRemoveHover(int index);
     void CalculateSelectedCanvasElements();
-    bool IsCanvasElementHovered(int index);
+    //bool IsCanvasElementHovered(int index);
     void CanvasElementDelete(int countOfDeleteOperation);
 #pragma endregion
 
@@ -74,6 +84,7 @@ namespace EditorMathModel
     bool show_canvas_map_window = false;
     static ImVec2 mousePosition, origin;
     int selectedElementsCount = 0;
+    static ImVec2 mousePositionOnClick;
 
     // ImGui data
     const ImGuiViewport* viewport;
@@ -83,8 +94,8 @@ namespace EditorMathModel
     EditorMMTextureLoader::TextureLoader TextureLoader;
     EditorMMColorData::ColorData ColorData;
     static std::vector<CanvasElement> CanvasElements;
-    static std::vector<int> CanvasElementsHovered;
-    CanvasState currentState = Rest;
+    static int CurrentHoveredElementIndex = -1;
+    ProgrammState currentState = Rest;
 
     void CreateDemoScenarioGUI()
     {
@@ -98,6 +109,7 @@ namespace EditorMathModel
         TextureLoader.LoadToList();
 
         viewport = ImGui::GetMainViewport();
+        ImGuiIO& io = ImGui::GetIO();
 
         // Main loop
         bool done = false;
@@ -162,6 +174,7 @@ namespace EditorMathModel
             }*/
             EditorMMRender::Render();
             CalculateSelectedCanvasElements();
+            StateMachineLogic(io);
         }
         EditorMMRender::Cleanup();
     }
@@ -171,6 +184,137 @@ namespace EditorMathModel
 
     }
 
+    std::string DEBUGstate(int index)
+    {
+        switch (index)
+        {
+        case 0: return "Rest";
+        case 1: return "CanvasSelection";
+        case 2: return "ElementSelection";
+        case 3: return "ElementWindowSelection";
+        case 4: return "CanvasMapWindowSelection";
+        case 5: return "TopBarSelection";
+        case 6: return "BottomBarSelection";
+        case 7: return "ElementHover";
+        case 8: return "RectangleSelection";
+        case 9: return "RectangleSelectionPlus";
+        case 10: return "ElementDrag";
+        case 11: return "CanvasDrag";
+        }
+        return "null";
+    }
+
+#pragma region State Machine (definition)
+    void StateMachineSetState(ProgrammState newState)
+    {
+        if (currentState < 8)
+        {
+            currentState = newState;
+        } 
+        else if (newState == Rest)
+        {
+            currentState = newState;
+        }
+    }
+    void StateMachineLogic(ImGuiIO& io)
+    {
+        // ÍÅÄÎÐÀÁÎÒÎÍÍÎÅ ÑÎÑÒÎßÍÈÅ: ÅÑËÈ ÍÀÆÀÒÜ ÍÀ ÂÛÁÐÀÍÍÛÉ ÝËÅÌÅÍÒ, ÎÍ ÍÅ ÑÁÐÎÑÈÒ ÂÛÄÅËÅÍÈÅ Ñ ÎÑÒÀËÜÍÛÕ ÝËÅÌÅÍÒÎÂ, ÏÐÈ ÍÅ ÄÐÀÃÅ
+        static clock_t startTimerLeftMouseButton;
+        static double leftMouseButtonTimeHold = 100;
+        //startTimerLeftMouseButton = clock();
+        //leftMouseButtonTimeHold = (((double)clock() - startTimerLeftMouseButton) / CLOCKS_PER_SEC);
+        //leftMouseButtonTimeHold = 100;
+        if (currentState == ElementHover)
+        {
+            if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+            {
+                mousePositionOnClick = io.MousePos;
+                if (io.KeyShift)
+                {
+                    CanvasElements[CurrentHoveredElementIndex].isSelected = !CanvasElements[CurrentHoveredElementIndex].isSelected;
+                }
+                else
+                {
+                    if (CanvasElements[CurrentHoveredElementIndex].isSelected == false)
+                    {
+                        ClearCanvasSelectedElementsAll();
+                    }
+                    CanvasElements[CurrentHoveredElementIndex].isSelected = true;
+                }
+            }
+            if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+            {
+                StateMachineSetState(Rest);
+            }
+            if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
+            {
+                if (mousePositionOnClick.x != io.MousePos.x)
+                {
+                    if (CanvasElements[CurrentHoveredElementIndex].isSelected == true)
+                    {
+                        StateMachineSetState(ElementDrag);
+                    }
+                }
+                /*if (CanvasElements[CurrentHoveredElementIndex].isSelected == true)
+                {
+                    StateMachineSetState(ElementDrag);
+                }*/
+            }
+        }
+        if (currentState == ElementDrag)
+        {
+            for (int i = 0; i < CanvasElements.size(); i++)
+            {
+                if (CanvasElements[i].isSelected)
+                {
+                    CanvasElements[i].position.x = CanvasElements[i].position.x + io.MouseDelta.x;
+                    CanvasElements[i].position.y = CanvasElements[i].position.y + io.MouseDelta.y;
+                    CanvasElements[i].centerPosition.x = CanvasElements[i].centerPosition.x + io.MouseDelta.x;
+                    CanvasElements[i].centerPosition.y = CanvasElements[i].centerPosition.y + io.MouseDelta.y;
+                }
+            }
+            if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+            {
+                StateMachineSetState(Rest);
+            }
+        }
+        if (currentState == CanvasSelection)
+        {
+            if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+            {
+                mousePositionOnClick = io.MousePos;
+            }
+            if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+            {
+                ClearCanvasSelectedElementsAll();
+                StateMachineSetState(Rest);
+            }
+            if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
+            {
+                StateMachineSetState(RectangleSelection);
+            }
+        }
+        if (currentState == RectangleSelection)
+        {
+            if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
+            {
+                SelectElementsInsideRectangle(io, mousePositionOnClick);
+                //UnselectElementsInsideRectangle(io, mousePositionOnClick);
+            }
+            if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+            {
+                StateMachineSetState(Rest);
+            }
+        }
+        if (ImGui::IsKeyPressed(ImGuiKey_Delete))
+        {
+            if (currentState < 8)
+            {
+                CanvasElementDelete(selectedElementsCount);
+            }
+        }
+    }
+#pragma endregion
 #pragma region Draw Blocks of interface (definition)
     void DrawElementsWindow()
     {
@@ -196,12 +340,18 @@ namespace EditorMathModel
             ImGui::PopID();
         }
         //ImGui::Text("hovered = %d", CanvasElementsHovered.size());
-        //ImGui::Text("State: %d", currentState);
+        ImGui::Text("State: %s", DEBUGstate(currentState));
+        ImGui::Text("State: %d", currentState);
         //ImGui::Text("Selected: |%s|", searchInput);
-        if (CanvasElements.size() > 0)
+        /*if (CanvasElements.size() > 0)
         {
             ImGui::Text("Element X center: %f", CanvasElements[0].centerPosition.x);
             ImGui::Text("Element Y center: %f", CanvasElements[0].centerPosition.y);
+        }*/
+        if (ImGui::IsWindowHovered())
+        {
+            //currentState = ElementWindowSelection;
+            StateMachineSetState(ElementWindowSelection);
         }
         ImGui::End();
     }
@@ -257,7 +407,11 @@ namespace EditorMathModel
             }
             ImGui::EndMenuBar();
         }
-        ImGui::End();
+        if (ImGui::IsWindowHovered())
+        {
+            StateMachineSetState(TopBarSelection);
+        }
+        //ImGui::End();
     }
     void DrawCanvas()
     {
@@ -282,7 +436,12 @@ namespace EditorMathModel
         ImGui::SetItemAllowOverlap();
         if (ImGui::IsItemHovered())
         {
-            CanvasLogic(io);
+            StateMachineSetState(CanvasSelection);
+            //CanvasLogic(io);
+        }
+        if (currentState == RectangleSelection)
+        {
+            CanvasRectangleSelection(io, mousePositionOnClick);
         }
         // Canvas scrolling
         /*const bool IsWorkspaceActive = ImGui::IsItemActive();
@@ -333,7 +492,6 @@ namespace EditorMathModel
             ImGui::EndDragDropTarget();
         }
         CanvasDrawElements(io);
-        CanvasElementLogic(io);
     }
     void DrawBottomBar()
     {
@@ -356,6 +514,11 @@ namespace EditorMathModel
         searchItemPosition += ImGui::CalcTextSize("Search:").x + ImGui::GetStyle().ItemSpacing.x;
         ImGui::SameLine(ImGui::GetWindowWidth() - searchItemPosition);
         ImGui::Text("Search:");
+        if (ImGui::IsWindowHovered())
+        {
+            StateMachineSetState(BottomBarSelection);
+        }
+        ImGui::End();
         SearchLogic(searchInput);
     }
 #pragma endregion
@@ -373,23 +536,24 @@ namespace EditorMathModel
                 ImVec2(UsedTexture.imageWidth, UsedTexture.imageHeight),
                 ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
             ImGui::SetItemAllowOverlap();
-            if (currentState == Rest)
+            if ((CurrentHoveredElementIndex == -1 || CurrentHoveredElementIndex == i) && currentState < 8)
             {
                 if (ImGui::IsItemHovered())
                 {
-                    CanvasElementAddHover(i);
+                    CurrentHoveredElementIndex = i;
+                    StateMachineSetState(ElementHover);
                     CanvasElementRenderRect(
                         ImVec2(origin.x + CanvasElements[i].position.x, origin.y + CanvasElements[i].position.y),
                         ImVec2(origin.x + CanvasElements[i].position.x + UsedTexture.imageWidth, origin.y + CanvasElements[i].position.y + UsedTexture.imageHeight),
                         ColorData.CanvasElementHoverColorRect, ColorData.CanvasElementHoverColorRectFill);
                     ImGui::SetTooltip("Center X position: %f", CanvasElements[i].centerPosition.x);
-                }
+                } 
                 else
                 {
-                    CanvasElementRemoveHover(i);
+                    CurrentHoveredElementIndex = -1;
                 }
             }
-            if (CanvasElements[i].isSearched && !CanvasElements[i].isSelected && !IsCanvasElementHovered(i))
+            if (CanvasElements[i].isSearched && !CanvasElements[i].isSelected && CurrentHoveredElementIndex != i)
             {
                 CanvasElementRenderRect(
                     ImVec2(origin.x + CanvasElements[i].position.x, origin.y + CanvasElements[i].position.y),
@@ -443,7 +607,7 @@ namespace EditorMathModel
             }
         }
     }
-    void CanvasLogic(ImGuiIO& io)
+    /*void CanvasLogic(ImGuiIO& io)
     {
         static ImVec2 SelectionStartPosition;
         static bool isHoldMouseLeftButton = false;
@@ -572,12 +736,12 @@ namespace EditorMathModel
                 }
             }
         }
-    }
+    }*/
     void CanvasRectangleSelectionLogic()
     {
 
     }
-    void CanvasElementLogic(ImGuiIO& io)
+    /*void CanvasElementLogic(ImGuiIO& io)
     {
         static bool isHold = false;
         if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
@@ -631,17 +795,13 @@ namespace EditorMathModel
                 }
             }
         }
-    }
-
+    }*/
 #pragma endregion
 #pragma region Helper function for Rectangle Selection (definition)
     void CanvasRectangleSelection(ImGuiIO& io, ImVec2 SelectionStartPosition)
     {
-        if (currentState == RectangleSelection || currentState == RectangleSelectionPlus)
-        {
-            draw_list->AddRect(SelectionStartPosition, io.MousePos, IM_COL32(255, 255, 255, 255));
-            draw_list->AddRectFilled(SelectionStartPosition, io.MousePos, IM_COL32(255, 255, 255, 15));
-        }
+        draw_list->AddRect(SelectionStartPosition, io.MousePos, IM_COL32(255, 255, 255, 255));
+        draw_list->AddRectFilled(SelectionStartPosition, io.MousePos, IM_COL32(255, 255, 255, 15));
     }
     void SelectElementsInsideRectangle(ImGuiIO& io, ImVec2 start)
     {
@@ -796,7 +956,7 @@ namespace EditorMathModel
             CanvasElements[i].isBlockSelection = newValue;
         }
     }
-    void CanvasElementAddHover(int index)
+    /*void CanvasElementAddHover(int index)
     {
         bool isWasHovered = false;
         for (int i = 0; i < CanvasElementsHovered.size(); i++)
@@ -811,8 +971,8 @@ namespace EditorMathModel
         {
             CanvasElementsHovered.push_back(index);
         }
-    }
-    void CanvasElementRemoveHover(int index)
+    }*/
+    /*void CanvasElementRemoveHover(int index)
     {
         for (int i = 0; i < CanvasElementsHovered.size(); i++)
         {
@@ -821,7 +981,7 @@ namespace EditorMathModel
                 CanvasElementsHovered.erase(CanvasElementsHovered.begin() + i);
             }
         }
-    }
+    }*/
     void CalculateSelectedCanvasElements()
     {
         selectedElementsCount = 0;
@@ -833,7 +993,7 @@ namespace EditorMathModel
             }
         }
     }
-    bool IsCanvasElementHovered(int index)
+    /*bool IsCanvasElementHovered(int index)
     {
         for (int i = 0; i < CanvasElementsHovered.size(); i++)
         {
@@ -843,7 +1003,7 @@ namespace EditorMathModel
             }
         }
         return false;
-    }
+    }*/
     void CanvasElementDelete(int countOfDeleteOperation)
     {
         while (countOfDeleteOperation > 0)
@@ -852,12 +1012,12 @@ namespace EditorMathModel
             {
                 if (CanvasElements[i].isSelected)
                 {
-                    if (IsCanvasElementHovered(i))
-                    {
-                        CanvasElementRemoveHover(i);
-                    }
                     CanvasElements.erase(CanvasElements.begin() + i);
                     countOfDeleteOperation--;
+                    if (CurrentHoveredElementIndex == i)
+                    {
+                        CurrentHoveredElementIndex = -1;
+                    }
                     break;
                 }
             }

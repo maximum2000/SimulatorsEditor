@@ -30,6 +30,14 @@
     {
         return std::string(ElementNames[index]);
     }
+    int TextureLoader::GetTextureWidthByIndex(int index)
+    {
+        return Textures[index].imageWidth;
+    }
+    int TextureLoader::GetTextureHeightByIndex(int index)
+    {
+        return Textures[index].imageHeight;
+    }
 
     void TextureLoader::LoadToList()
     {

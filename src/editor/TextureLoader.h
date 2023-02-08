@@ -19,5 +19,7 @@ namespace EditorMMTextureLoader
 		int GetTextureCount();
 		LoadedTexture GetTextureByIndex(int index);
 		std::string GetTextureNameByIndex(int index);
+		int GetTextureWidthByIndex(int index);
+		int GetTextureHeightByIndex(int index);
 	};
 }
