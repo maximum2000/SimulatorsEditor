@@ -17,15 +17,13 @@
 #include "Random.h"
 #include "Danger.h"
 #include "scenariosgui.h"
+#include "CanvasPositioning.h"
 
 namespace ScenariosEditorScenarioElement
 {
-	static float minx, maxy;
 	static int MaxPin = 0;
 	std::vector<std::vector<int>> Links;
 	static std::vector<std::shared_ptr<ScenarioElement>> ScenarioElements;
-	void SetMinimalCoordinates();
-	void SetMinimalCoordinates(std::vector<std::shared_ptr<ScenarioElement>> Optimized);
 	void CoordinatesOldToNew(float* x, float* y);
 	void UpdateCoordinates(float* x, float* y);
 	int GetPoint(const char* name, int pin_index);
@@ -50,9 +48,7 @@ namespace ScenariosEditorScenarioElement
 		else if (Danger::ElementName == ElementName) ScenarioElements.emplace_back(std::make_shared<Danger>());
 		(*ScenarioElements[ScenarioElements.size() - 1]).ScenarioGUID = ScenarioEditorScenarioStorage::GetActualGUID();
 		x /= 230.0f;
-		y /= 200.0f;
-		x += minx;
-		y = maxy - y;
+		y /= -200.0f;
 		(*ScenarioElements[ScenarioElements.size() - 1]).x = x;
 		(*ScenarioElements[ScenarioElements.size() - 1]).y = y;
 		(*ScenarioElements[ScenarioElements.size() - 1]).alfa = alfa;
@@ -155,15 +151,21 @@ namespace ScenariosEditorScenarioElement
 			if ((*Element).ScenarioGUID != ActualGUID) continue;
 			OptimizedVector.push_back(Element);
 		}
-		SetMinimalCoordinates(OptimizedVector);
-		
+		float sum_x = 0;
+		float sum_y = 0;
 		for (std::shared_ptr<ScenarioElement> Element : OptimizedVector)
 		{
-			float x = (*Element).x - minx;
-			float y = maxy - (*Element).y;
+			float x = (*Element).x;
+			float y = (*Element).y;
 			CoordinatesOldToNew(&x, &y);
-			ScenariosEditorGUI::AddElement((*Element).getElementName().c_str(), x + 10, y + 10, Element);
+			sum_x += x;
+			sum_y += y;
+			ScenariosEditorGUI::AddElement((*Element).getElementName().c_str(), x, y, Element);
 		}
+		if (OptimizedVector.size() != 0)
+			ScenariosEditorCanvasPositioning::SetCurrentScenarioCenter(sum_x / OptimizedVector.size(), sum_y / OptimizedVector.size());
+		else 
+			ScenariosEditorCanvasPositioning::SetCurrentScenarioCenter(0, 0);
 		for (std::vector<int> Link : Links)
 		{
 			int ElemA = -1, ElemB = -1;
@@ -198,35 +200,10 @@ namespace ScenariosEditorScenarioElement
 		}
 	}
 
-	void SetMinimalCoordinates(std::vector<std::shared_ptr<ScenarioElement>> Optimized)
-	{
-		minx = std::numeric_limits<float>::max();
-		maxy = 0;
-		for (std::shared_ptr<ScenarioElement> Element : Optimized)
-		{
-			if ((*Element).x < minx) minx = (*Element).x;
-			if ((*Element).y > maxy) maxy = (*Element).y;
-		}
-		if (minx == std::numeric_limits<float>::max()) minx = 0;
-	}
-
-	void SetMinimalCoordinates()
-	{
-		minx = std::numeric_limits<float>::max();
-		maxy = 0;
-		for (std::shared_ptr<ScenarioElement> Element : ScenarioElements)
-		{
-			if ((*Element).ScenarioGUID != ScenarioEditorScenarioStorage::GetActualGUID()) continue;
-			if ((*Element).x < minx) minx = (*Element).x;
-			if ((*Element).y > maxy) maxy = (*Element).y;
-		}
-		if (minx == std::numeric_limits<float>::max()) minx = 0;
-	}
-
 	void CoordinatesOldToNew(float* x, float* y)
 	{
 		*x *= 230.0f;
-		*y *= 200.0f;
+		*y *= -200.0f;
 	}
 
 	void UpdateCoordinates(std::shared_ptr<ScenarioElement> Elem, float new_x, float new_y)
@@ -234,9 +211,7 @@ namespace ScenariosEditorScenarioElement
 		float x = new_x;
 		float y = new_y;
 		x /= 230.0f;
-		y /= 200.0f;
-		x += minx;
-		y = maxy - y;
+		y /= -200.0f;
 		(*Elem).x = x;
 		(*Elem).y = y;
 	}

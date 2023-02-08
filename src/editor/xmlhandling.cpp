@@ -3,6 +3,7 @@
 //
 
 #include "xmlhandling.h"
+
 #include <iostream>
 #include "pugixml.hpp"
 #include "scenariosgui.h"
@@ -58,14 +59,13 @@ namespace ScenariosEditorXML
 		{
 			int PinA = std::stof(std::string(Link.child("pinA").child_value()));
 			int PinB = std::stof(std::string(Link.child("pinB").child_value()));
-			
 			std::vector<int> ToAdd;
 			ToAdd.push_back(PinA);
 			ToAdd.push_back(PinB);
 			ScenariosEditorScenarioElement::AddScenarioElementStorageLink(ToAdd);
 		}
 	}
-	// fix later
+
 	void LoadElementsFromStorage()
 	{
 		if (Model.child("root") == nullptr) InitializeDOM();
@@ -148,7 +148,6 @@ namespace ScenariosEditorXML
 			int Current = 0;
 			while (charguid[Current] != '\0')
 			{
-				std::cout << charguid[Current] << '\n';
 				ucharguid[Current] = (unsigned char)charguid[Current];
 				Current++;
 			}

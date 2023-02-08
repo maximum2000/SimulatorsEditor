@@ -69,10 +69,12 @@ Known problems:
 #include "ScenarioElementsStorage.h"
 #include "ScenarioStorage.h"
 #include "SaveFileDialog.h"
+#include "CanvasPositioning.h"
 
 
 using namespace ScenariosEditorElementsData;
 using namespace ScenariosEditorScenarioElement;
+using namespace ScenariosEditorCanvasPositioning;
 
 namespace ScenariosEditorGUI {
 
@@ -110,6 +112,7 @@ namespace ScenariosEditorGUI {
 
 	static ImVec2 scrolling(0.0f, 0.0f); // current scrolling, can be put out of global later
 	static ImVec2 MousePosInCanvas, origin, MousePos;
+	static int SelectedElemGUI = -1;
 
 	static std::vector<ElementOnCanvas> Elems;
 	static std::vector<LinkOnCanvas> Links;
@@ -177,6 +180,9 @@ namespace ScenariosEditorGUI {
 		io.Fonts->Build();
 		ElementsData::Initialization();
 		ScenarioEditorScenarioStorage::ClearScenarioStorage();
+
+		SetCanvasScrollingRef(&scrolling);
+		SetDefaulScreenPos();
 	}
 
 	// Main loop
@@ -197,7 +203,6 @@ namespace ScenariosEditorGUI {
 			DrawScenariosSection(viewport);
 			DrawElementsSection(viewport);
 			DrawParamsSection(viewport);
-
 			ImGui::ShowDemoWindow(); // remove later
 			ScenariosEditorRender::EndFrame();
 		}
@@ -220,6 +225,7 @@ namespace ScenariosEditorGUI {
 						ClearElements();
 						Model.LoadFrom(File);
 						CurrentFile = File;
+						SelectedElemGUI = -1;
 					}
 					else MessageBoxW(NULL, L"При попытке открыть файл возникла ошибка", L"Ошибка", MB_OK);
 				}
@@ -353,8 +359,6 @@ namespace ScenariosEditorGUI {
 				int ElementNum = *(int*)payload->Data;
 				int x = MousePosInCanvas.x - ElementsData::GetElementTexture(ElementNum).Width / 2;
 				int y = MousePosInCanvas.y - ElementsData::GetElementTexture(ElementNum).Height / 2;
-				if (x < 0) x = 0;
-				if (y < 0) y = 0;
 				AddElementGUI(ElementNum, ImVec2(x, y), ElementsData::GetElementType(ElementNum));
 			}
 			ImGui::EndDragDropTarget();
@@ -646,8 +650,6 @@ namespace ScenariosEditorGUI {
 			CurrentState = CanvasDragging;
 			scrolling.x += io.MouseDelta.x;
 			scrolling.y += io.MouseDelta.y;
-			if (scrolling.x > 0.0f) scrolling.x = 0.0f;
-			if (scrolling.y > 0.0f) scrolling.y = 0.0f;
 			break;
 		case Selection:
 			canvas_draw_list->AddRect(*SelectionStartPosition, io.MousePos, IM_COL32(0, 0, 0, 255));
@@ -710,8 +712,6 @@ namespace ScenariosEditorGUI {
 			{
 				int x = Elems[SelectedElem].Pos.x + io.MouseDelta.x;
 				int y = Elems[SelectedElem].Pos.y + io.MouseDelta.y;
-				if (x < 0) x = 0;
-				if (y < 0) y = 0;
 				Elems[SelectedElem].Pos = ImVec2(x, y);
 				ScenariosEditorScenarioElement::UpdateCoordinates(Elems[SelectedElem].ElementInStorage, x, y);
 			}
@@ -780,41 +780,40 @@ namespace ScenariosEditorGUI {
 		ImGui::SetNextWindowPos(viewport->WorkPos);
 		ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x / 4, (viewport->WorkSize.y / 3) - 29));
 		ImGui::Begin(u8"Сценарии", NULL, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
-		
-		
-			if (ImGui::Button(u8"Создать сценарий"))
+		if (ImGui::Button(u8"Создать сценарий"))
+		{
+			ScenarioEditorScenarioStorage::CreateNewScenario();
+		}
+		ImGui::SameLine();
+		std::vector<std::string> Scenarios = ScenarioEditorScenarioStorage::GetScenarioNames();
+		if (SelectedElemGUI > 0 && SelectedElemGUI < Scenarios.size())
+		{
+			if (ImGui::Button(u8"Дублировать выбранный"))
 			{
-				ScenarioEditorScenarioStorage::CreateNewScenario();
-			}
-			ImGui::SameLine();
-			static int selected = -1;
-			std::vector<std::string> Scenarios = ScenarioEditorScenarioStorage::GetScenarioNames();
-			if (selected > 0 && selected < Scenarios.size())
-			{
-				if (ImGui::Button(u8"Дублировать выбранный"))
-				{
-					DoubleSelectedScenario(ScenarioEditorScenarioStorage::GetActualGUID());
-					Scenarios = ScenarioEditorScenarioStorage::GetScenarioNames();
-					selected = Scenarios.size() - 1;
+				DoubleSelectedScenario(ScenarioEditorScenarioStorage::GetActualGUID());
+				Scenarios = ScenarioEditorScenarioStorage::GetScenarioNames();
+				SelectedElemGUI = Scenarios.size() - 1;
 
-				}
-				ImGui::SameLine();
-				if (ImGui::Button(u8"Удалить выбранный"))
-				{
-					RemoveSelectedScenario(ScenarioEditorScenarioStorage::GetActualGUID());
-					Scenarios = ScenarioEditorScenarioStorage::GetScenarioNames();
-					selected = 0;
-				}
 			}
 			ImGui::SameLine();
-			HelpMarker(
-				u8"Имя сценария идентично значению аттрибута \"Caption\" элемента \"Start\"\n"
-				"Элемет \"Start\" в сценарии может быть только один");
-			const float footer_height_to_reserve = (ImGui::GetStyle().ItemSpacing.y*2) + ImGui::GetTextLineHeight();
-			if (ImGui::BeginChild("ScrollingRegion", ImVec2(0, -footer_height_to_reserve), false, ImGuiWindowFlags_HorizontalScrollbar))
+			if (ImGui::Button(u8"Удалить выбранный"))
 			{
+				RemoveSelectedScenario(ScenarioEditorScenarioStorage::GetActualGUID());
+				Scenarios = ScenarioEditorScenarioStorage::GetScenarioNames();
+				SelectedElemGUI = 0;
+			}
+		}
+		
+		ImGui::SameLine();
+		HelpMarker(
+			u8"Имя сценария идентично значению аттрибута \"Caption\" элемента \"Start\"\n"
+			"Элемет \"Start\" в сценарии может быть только один");
+		static bool ShouldCenter = true;
+		ImGui::Checkbox(u8"Центрировать при загрузке сценария", &ShouldCenter);
+		const float footer_height_to_reserve = (ImGui::GetStyle().ItemSpacing.y * 2) + ImGui::GetTextLineHeight();
+		if (ImGui::BeginChild("ScrollingRegion", ImVec2(0, -footer_height_to_reserve), false, ImGuiWindowFlags_HorizontalScrollbar))
+		{
 			std::vector<std::vector<std::string>> ScenarioList = ScenarioEditorScenarioStorage::GetScenarios();
-			int test = 0;
 			for (int n = 0; n < Scenarios.size(); n++)
 			{
 				std::string GUID = ScenarioList[n][1];
@@ -825,20 +824,21 @@ namespace ScenariosEditorGUI {
 						item = u8"<Вне сценария>";
 					else item = u8"<Без имени>";
 				}
-				if (ImGui::Selectable((item + u8"##" + GUID).c_str(), selected == n))
+				if (ImGui::Selectable((item + u8"##" + GUID).c_str(), SelectedElemGUI == n))
 				{
-					selected = n;
+					SelectedElemGUI = n;
 					CurrentState = Rest;
 					ScenarioEditorScenarioStorage::SetActualScenario(n);
 					ScenariosEditorScenarioElement::LoadElements();
+					if (ShouldCenter) CenterScenario();
 				}
 				if (ImGui::IsItemActive() && !ImGui::IsItemHovered())
 				{
 					int n_next = n + (ImGui::GetMouseDragDelta(0).y < 0.f ? -1 : 1);
 					if (n != 0 && n_next >= 1 && n_next < Scenarios.size())
 					{
-						if (n_next == selected) selected = n;
-						else if (n == selected) selected = n_next;
+						if (n_next == SelectedElemGUI) SelectedElemGUI = n;
+						else if (n == SelectedElemGUI) SelectedElemGUI = n_next;
 						ScenarioEditorScenarioStorage::SwapScenario(n, n_next);
 						ImGui::ResetMouseDragDelta();
 					}
@@ -850,7 +850,7 @@ namespace ScenariosEditorGUI {
 		if (CurrentFile == L"")
 			ImGui::Text(u8"Файл не выбран");
 		else
-			ImGui::Text((u8"Выбранный файл: " + std::string(CurrentFile.begin(),CurrentFile.end())).c_str());
+			ImGui::Text((u8"Выбранный файл: " + std::string(CurrentFile.begin(), CurrentFile.end())).c_str());
 		ImGui::End();
 	}
 
@@ -870,8 +870,8 @@ namespace ScenariosEditorGUI {
 	{
 		std::vector<ElementOnCanvas> PreviousElems = Elems;
 		std::vector<LinkOnCanvas> PreviousLinks = Links;
-		ScenarioEditorScenarioStorage::DoubleScenario(GUID); 
-		ScenarioEditorScenarioStorage::SetActualScenario(ScenarioEditorScenarioStorage::GetScenarios().size()-1);
+		ScenarioEditorScenarioStorage::DoubleScenario(GUID);
+		ScenarioEditorScenarioStorage::SetActualScenario(ScenarioEditorScenarioStorage::GetScenarios().size() - 1);
 		ScenariosEditorScenarioElement::LoadElements();
 		std::vector<ElementOnCanvas>::iterator k = PreviousElems.begin();
 		while (k != PreviousElems.end())
@@ -979,7 +979,7 @@ namespace ScenariosEditorGUI {
 					case 0:
 						for (int j = 0; j < (Attributes[i])->ValueS.size(); j++)
 							if ((Attributes[i])->ValueS[j] == '\n') count++;
-						ImGui::InputTextMultiline(label.c_str(), &(Attributes[i])->ValueS, ImVec2(-FLT_MIN, ImGui::GetTextLineHeight() * (count+1)));
+						ImGui::InputTextMultiline(label.c_str(), &(Attributes[i])->ValueS, ImVec2(-FLT_MIN, ImGui::GetTextLineHeight() * (count + 1)));
 						//ImGui::InputText(label.c_str(), &(Attributes[i])->ValueS);
 						break;
 					case 1:

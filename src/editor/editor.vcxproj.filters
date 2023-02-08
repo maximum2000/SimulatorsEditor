@@ -129,6 +129,9 @@
     <ClInclude Include="SaveFileDialog.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
+    <ClInclude Include="CanvasPositioning.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\imgui\imgui.cpp">
@@ -240,6 +243,9 @@
       <Filter>Исходные файлы</Filter>
     </ClCompile>
     <ClCompile Include="SaveFileDialog.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="CanvasPositioning.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
   </ItemGroup>
