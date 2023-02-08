@@ -55,13 +55,10 @@ namespace EditorMathModel
     void CanvasElementRenderRect(ImVec2 startPosition, ImVec2 endPosition, ImU32 colorBorder, ImU32 colorFill);
     void DrawDragNDropWindow();
 #pragma endregion
-#pragma region Control Function (declaration)
-#pragma endregion
 #pragma region Logic functions (declaration)
     void SearchLogic(char data[]);
     //void CanvasLogic(ImGuiIO& io);
     void CanvasRectangleSelectionLogic();
-    //void CanvasElementLogic(ImGuiIO& io);
 #pragma endregion
 #pragma region Helper function for Rectangle Selection (declaration)
     void CanvasRectangleSelection(ImGuiIO& io, ImVec2 SelectionStartPosition);
@@ -72,10 +69,7 @@ namespace EditorMathModel
     void ClearCanvasSelectedElementsAll();
     void ResetCanvasSelectedElementsAll();
     void SetCanvasSelectedElementsBlockStatus(bool newValue);
-    //void CanvasElementAddHover(int index);
-    //void CanvasElementRemoveHover(int index);
     void CalculateSelectedCanvasElements();
-    //bool IsCanvasElementHovered(int index);
     void CanvasElementDelete(int countOfDeleteOperation);
 #pragma endregion
 
@@ -583,9 +577,6 @@ namespace EditorMathModel
 
     }
 #pragma endregion
-#pragma region Control Function (definition)
-
-#pragma endregion
 #pragma region Logic functions (definition)
     void SearchLogic(char data[])
     {
@@ -739,61 +730,6 @@ namespace EditorMathModel
     {
 
     }
-    /*void CanvasElementLogic(ImGuiIO& io)
-    {
-        static bool isHold = false;
-        if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
-        {
-            if (!isHold)
-            {
-                if (CanvasElementsHovered.size() > 0)
-                {
-                    currentState = ElementDrag;
-                    if (io.KeyShift)
-                    {
-                        CanvasElements[CanvasElementsHovered[0]].isSelected = !CanvasElements[CanvasElementsHovered[0]].isSelected;
-                    }
-                    else
-                    {
-                        if (CanvasElements[CanvasElementsHovered[0]].isSelected == false)
-                        {
-                            ClearCanvasSelectedElementsAll();
-                        }
-                        CanvasElements[CanvasElementsHovered[0]].isSelected = true;
-                    }
-                }
-            }
-            isHold = true;
-        }
-        if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
-        {
-            if (isHold)
-            {
-                currentState = Rest;
-            }
-            isHold = false;
-        }
-        if (ImGui::IsKeyPressed(ImGuiKey_Delete))
-        {
-            if (currentState == Rest)
-            {
-                CanvasElementDelete(selectedElementsCount);
-            }
-        }
-        if (currentState == ElementDrag)
-        {
-            for (int i = 0; i < CanvasElements.size(); i++)
-            {
-                if (CanvasElements[i].isSelected)
-                {
-                    CanvasElements[i].position.x = CanvasElements[i].position.x + io.MouseDelta.x;
-                    CanvasElements[i].position.y = CanvasElements[i].position.y + io.MouseDelta.y;
-                    CanvasElements[i].centerPosition.x = CanvasElements[i].centerPosition.x + io.MouseDelta.x;
-                    CanvasElements[i].centerPosition.y = CanvasElements[i].centerPosition.y + io.MouseDelta.y;
-                }
-            }
-        }
-    }*/
 #pragma endregion
 #pragma region Helper function for Rectangle Selection (definition)
     void CanvasRectangleSelection(ImGuiIO& io, ImVec2 SelectionStartPosition)
@@ -954,32 +890,6 @@ namespace EditorMathModel
             CanvasElements[i].isBlockSelection = newValue;
         }
     }
-    /*void CanvasElementAddHover(int index)
-    {
-        bool isWasHovered = false;
-        for (int i = 0; i < CanvasElementsHovered.size(); i++)
-        {
-            if (CanvasElementsHovered[i] == index)
-            {
-                isWasHovered = true;
-                break;
-            }
-        }
-        if (!isWasHovered)
-        {
-            CanvasElementsHovered.push_back(index);
-        }
-    }*/
-    /*void CanvasElementRemoveHover(int index)
-    {
-        for (int i = 0; i < CanvasElementsHovered.size(); i++)
-        {
-            if (CanvasElementsHovered[i] == index)
-            {
-                CanvasElementsHovered.erase(CanvasElementsHovered.begin() + i);
-            }
-        }
-    }*/
     void CalculateSelectedCanvasElements()
     {
         selectedElementsCount = 0;
@@ -991,17 +901,6 @@ namespace EditorMathModel
             }
         }
     }
-    /*bool IsCanvasElementHovered(int index)
-    {
-        for (int i = 0; i < CanvasElementsHovered.size(); i++)
-        {
-            if (CanvasElementsHovered[i] == index)
-            {
-                return true;
-            }
-        }
-        return false;
-    }*/
     void CanvasElementDelete(int countOfDeleteOperation)
     {
         while (countOfDeleteOperation > 0)
