@@ -218,7 +218,6 @@ namespace EditorMathModel
     }
     void StateMachineLogic(ImGuiIO& io)
     {
-        // ÍÅÄÎÐÀÁÎÒÎÍÍÎÅ ÑÎÑÒÎßÍÈÅ: ÅÑËÈ ÍÀÆÀÒÜ ÍÀ ÂÛÁÐÀÍÍÛÉ ÝËÅÌÅÍÒ, ÎÍ ÍÅ ÑÁÐÎÑÈÒ ÂÛÄÅËÅÍÈÅ Ñ ÎÑÒÀËÜÍÛÕ ÝËÅÌÅÍÒÎÂ, ÏÐÈ ÍÅ ÄÐÀÃÅ
         static clock_t startTimerLeftMouseButton;
         static double leftMouseButtonTimeHold = 100;
         //startTimerLeftMouseButton = clock();
@@ -241,24 +240,14 @@ namespace EditorMathModel
                     }
                     CanvasElements[CurrentHoveredElementIndex].isSelected = true;
                 }
+                StateMachineSetState(ElementDrag);
             }
             if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
             {
-                StateMachineSetState(Rest);
-            }
-            if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
-            {
-                if (mousePositionOnClick.x != io.MousePos.x)
+                if (CurrentHoveredElementIndex == -1)
                 {
-                    if (CanvasElements[CurrentHoveredElementIndex].isSelected == true)
-                    {
-                        StateMachineSetState(ElementDrag);
-                    }
+                    StateMachineSetState(Rest);
                 }
-                /*if (CanvasElements[CurrentHoveredElementIndex].isSelected == true)
-                {
-                    StateMachineSetState(ElementDrag);
-                }*/
             }
         }
         if (currentState == ElementDrag)
@@ -275,6 +264,11 @@ namespace EditorMathModel
             }
             if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
             {
+                if (mousePositionOnClick.x == io.MousePos.x && !io.KeyShift)
+                {
+                    ClearCanvasSelectedElementsAll();
+                    CanvasElements[CurrentHoveredElementIndex].isSelected = true;
+                }
                 StateMachineSetState(Rest);
             }
         }
@@ -342,6 +336,7 @@ namespace EditorMathModel
         //ImGui::Text("hovered = %d", CanvasElementsHovered.size());
         ImGui::Text("State: %s", DEBUGstate(currentState));
         ImGui::Text("State: %d", currentState);
+        ImGui::Text("Hovered index: %d", CurrentHoveredElementIndex);
         //ImGui::Text("Selected: |%s|", searchInput);
         /*if (CanvasElements.size() > 0)
         {
