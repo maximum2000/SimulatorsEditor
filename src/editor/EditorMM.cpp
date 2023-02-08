@@ -71,6 +71,7 @@ namespace EditorMathModel
     void SetCanvasSelectedElementsBlockStatus(bool newValue);
     void CalculateSelectedCanvasElements();
     void CanvasElementDelete(int countOfDeleteOperation);
+    void CanvasElementsDragByValue(float xDelta, float yDelta);
 #pragma endregion
 
     // Forward declarations of variables
@@ -239,16 +240,7 @@ namespace EditorMathModel
         }
         if (currentState == ElementDrag)
         {
-            for (int i = 0; i < CanvasElements.size(); i++)
-            {
-                if (CanvasElements[i].isSelected)
-                {
-                    CanvasElements[i].position.x = CanvasElements[i].position.x + io.MouseDelta.x;
-                    CanvasElements[i].position.y = CanvasElements[i].position.y + io.MouseDelta.y;
-                    CanvasElements[i].centerPosition.x = CanvasElements[i].centerPosition.x + io.MouseDelta.x;
-                    CanvasElements[i].centerPosition.y = CanvasElements[i].centerPosition.y + io.MouseDelta.y;
-                }
-            }
+            CanvasElementsDragByValue(io.MouseDelta.x, io.MouseDelta.y);
             if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
             {
                 if (mousePositionOnClick.x == io.MousePos.x && !io.KeyShift)
@@ -266,13 +258,7 @@ namespace EditorMathModel
                 mousePositionOnClick = io.MousePos;
                 if (io.KeyShift)
                 {
-                    for (int i = 0; i < CanvasElements.size(); i++)
-                    {
-                        if (CanvasElements[i].isSelected)
-                        {
-                            CanvasElements[i].isBlockSelection = true;
-                        }
-                    }
+                    SetCanvasSelectedElementsBlockStatus(true);
                 }
                 StateMachineSetState(RectangleSelection);
             }
@@ -883,11 +869,21 @@ namespace EditorMathModel
             }
         }
     }
-    void SetCanvasSelectedElementsBlockStatus(bool newValue)
+    void SetCanvasSelectedElementsBlockStatus(bool newValue = false)
     {
         for (int i = 0; i < CanvasElements.size(); i++)
         {
-            CanvasElements[i].isBlockSelection = newValue;
+            if (newValue)
+            {
+                if (CanvasElements[i].isSelected)
+                {
+                    CanvasElements[i].isBlockSelection = true;
+                }
+            }
+            else 
+            {
+                CanvasElements[i].isBlockSelection = newValue;
+            }
         }
     }
     void CalculateSelectedCanvasElements()
@@ -920,6 +916,19 @@ namespace EditorMathModel
             }
         }
 
+    }
+    void CanvasElementsDragByValue(float xDelta, float yDelta)
+    {
+        for (int i = 0; i < CanvasElements.size(); i++)
+        {
+            if (CanvasElements[i].isSelected)
+            {
+                CanvasElements[i].position.x = CanvasElements[i].position.x + xDelta;
+                CanvasElements[i].position.y = CanvasElements[i].position.y + yDelta;
+                CanvasElements[i].centerPosition.x = CanvasElements[i].centerPosition.x + xDelta;
+                CanvasElements[i].centerPosition.y = CanvasElements[i].centerPosition.y + yDelta;
+            }
+        }
     }
 #pragma endregion
 }
