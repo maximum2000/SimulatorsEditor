@@ -42,7 +42,7 @@ namespace ScenariosEditorXML
 	void ScenariosDOM::SaveTo(const wchar_t* path)
 	{
 		LoadElementsFromStorage();
-		std::cout << Model.save_file(path);
+		Model.save_file(path);
 	}
 	void LoadElementsToStorage()
 	{

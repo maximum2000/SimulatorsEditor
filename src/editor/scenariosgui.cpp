@@ -6,11 +6,12 @@
 
 Known problems:
 
--Loading elements should clear Elems
+-Loading elements should clear Elems // FIXED
 -Highlighting (static struct of colors, link)
--Linking point are drawn over elements
--Should edit imgui.cpp? https://github.com/ocornut/imgui/issues/1224
+-Linking point are drawn over elements // FIXED
+-Should edit imgui.cpp? https://github.com/ocornut/imgui/issues/1224 // FIXED: using multiline now
 -Copy from file to file check
+-Should check space on disk
 
 */
 
@@ -113,6 +114,7 @@ namespace ScenariosEditorGUI {
 	static std::vector<ElementOnCanvas> Elems;
 	static std::vector<LinkOnCanvas> Links;
 	static std::vector<int> SelectedElems;
+	static std::wstring CurrentFile = L"";
 
 	void PreLoopSetup();
 	void MainLoop();
@@ -162,7 +164,17 @@ namespace ScenariosEditorGUI {
 	{
 		ImGuiIO& io = ImGui::GetIO(); (void)io;
 		ImGui::StyleColorsLight();
-		io.Fonts->AddFontFromFileTTF(u8"C:/Users/VR/Desktop/projects/SimulatorsEditor/src/editor/LiberationSans.ttf", 22.0f, NULL, io.Fonts->GetGlyphRangesCyrillic());
+
+		ImVector<ImWchar> ranges;
+		ImFontGlyphRangesBuilder builder;
+		builder.AddChar(0x2116);                               // Add a specific character
+		builder.AddChar(0x2013);
+		builder.AddChar(0x202F);
+		builder.AddRanges(io.Fonts->GetGlyphRangesCyrillic()); // Add one of the default ranges
+		builder.BuildRanges(&ranges);                          // Build the final result (ordered ranges with all the unique characters submitted)
+
+		io.Fonts->AddFontFromFileTTF(u8"C:/Users/VR/Desktop/projects/SimulatorsEditor/src/editor/LiberationSans.ttf", 22.0f, NULL, ranges.Data);
+		io.Fonts->Build();
 		ElementsData::Initialization();
 		ScenarioEditorScenarioStorage::ClearScenarioStorage();
 	}
@@ -207,6 +219,7 @@ namespace ScenariosEditorGUI {
 						ScenariosEditorScenarioElement::ClearScenarioElementStorage();
 						ClearElements();
 						Model.LoadFrom(File);
+						CurrentFile = File;
 					}
 					else MessageBoxW(NULL, L"При попытке открыть файл возникла ошибка", L"Ошибка", MB_OK);
 				}
@@ -216,9 +229,9 @@ namespace ScenariosEditorGUI {
 			//    //
 			//    ImGui::EndMenu();
 			//}
-			if (ImGui::MenuItem(u8"Сохранить", "Ctrl+S"))
+			if (ImGui::MenuItem(u8"Сохранить", "Ctrl+S", false, CurrentFile != L""))
 			{
-
+				Model.SaveTo(CurrentFile.c_str());
 			}
 			if (ImGui::MenuItem(u8"Сохранить как..."))
 			{
@@ -226,6 +239,7 @@ namespace ScenariosEditorGUI {
 				if (size_t(File) != 0)
 				{
 					Model.SaveTo(File);
+					CurrentFile = File;
 				}
 			}
 			ImGui::EndMenu();
@@ -309,7 +323,6 @@ namespace ScenariosEditorGUI {
 		index = ScenariosEditorScenarioElement::GetPinIndex((*Elems[ElemB].ElementInStorage).getElementName().c_str(), PointB);
 		ToAdd.push_back((*Elems[ElemB].ElementInStorage).pins[index]);
 		ScenariosEditorScenarioElement::AddScenarioElementStorageLink(ToAdd);
-		std::cout << ToAdd[0] << ToAdd[1];
 		Links.push_back({ {PointA, PointB},{ElemA, ElemB} });
 	}
 
@@ -327,7 +340,6 @@ namespace ScenariosEditorGUI {
 		index = ScenariosEditorScenarioElement::GetPinIndex((*Elems[(*iter).Elems[1]].ElementInStorage).getElementName().c_str(), (*iter).Points[1]);
 		ToRem.push_back((*Elems[(*iter).Elems[1]].ElementInStorage).pins[index]);
 		ScenariosEditorScenarioElement::RemoveScenarioElementStorageLink(ToRem);
-		std::cout << ToRem[0] << ToRem[1];
 		return Links.erase(iter);
 	}
 
@@ -768,65 +780,77 @@ namespace ScenariosEditorGUI {
 		ImGui::SetNextWindowPos(viewport->WorkPos);
 		ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x / 4, (viewport->WorkSize.y / 3) - 29));
 		ImGui::Begin(u8"Сценарии", NULL, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
-		if (ImGui::Button(u8"Создать сценарий"))
-		{
-			ScenarioEditorScenarioStorage::CreateNewScenario();
-		}
-		ImGui::SameLine();
-		static int selected = -1;
-		std::vector<std::string> Scenarios = ScenarioEditorScenarioStorage::GetScenarioNames();
-		if (selected > 0 && selected < Scenarios.size())
-		{
-			if (ImGui::Button(u8"Дублировать выбранный"))
+		
+		
+			if (ImGui::Button(u8"Создать сценарий"))
 			{
-				DoubleSelectedScenario(ScenarioEditorScenarioStorage::GetActualGUID());
-				Scenarios = ScenarioEditorScenarioStorage::GetScenarioNames();
-				selected = Scenarios.size() - 1;
-
+				ScenarioEditorScenarioStorage::CreateNewScenario();
 			}
 			ImGui::SameLine();
-			if (ImGui::Button(u8"Удалить выбранный"))
+			static int selected = -1;
+			std::vector<std::string> Scenarios = ScenarioEditorScenarioStorage::GetScenarioNames();
+			if (selected > 0 && selected < Scenarios.size())
 			{
-				RemoveSelectedScenario(ScenarioEditorScenarioStorage::GetActualGUID());
-				Scenarios = ScenarioEditorScenarioStorage::GetScenarioNames();
-				selected = 0;
-			}
-		}
-		ImGui::SameLine();
-		HelpMarker(
-			u8"Имя сценария идентично значению аттрибута \"Names\" элемента \"Start\"\n"
-			"Элемет \"Start\" в сценарии может быть только один");
-		std::vector<std::vector<std::string>> ScenarioList = ScenarioEditorScenarioStorage::GetScenarios();
-		int test = 0;
-		for (int n = 0; n < Scenarios.size(); n++)
-		{
-			std::string GUID = ScenarioList[n][1];
-			std::string item = Scenarios[n];
-			if (item == "")
-			{
-				if (GUID == "")
-					item = u8"<Вне сценария>";
-				else item = u8"<Без имени>";
-			}
-			if (ImGui::Selectable((item + u8"##" + GUID).c_str(), selected == n))
-			{
-				selected = n;
-				CurrentState = Rest;
-				ScenarioEditorScenarioStorage::SetActualScenario(n);
-				ScenariosEditorScenarioElement::LoadElements();
-			}
-			if (ImGui::IsItemActive() && !ImGui::IsItemHovered())
-			{
-				int n_next = n + (ImGui::GetMouseDragDelta(0).y < 0.f ? -1 : 1);
-				if (n != 0 && n_next >= 1 && n_next < Scenarios.size())
+				if (ImGui::Button(u8"Дублировать выбранный"))
 				{
-					if (n_next == selected) selected = n;
-					else if (n == selected) selected = n_next;
-					ScenarioEditorScenarioStorage::SwapScenario(n, n_next);
-					ImGui::ResetMouseDragDelta();
+					DoubleSelectedScenario(ScenarioEditorScenarioStorage::GetActualGUID());
+					Scenarios = ScenarioEditorScenarioStorage::GetScenarioNames();
+					selected = Scenarios.size() - 1;
+
+				}
+				ImGui::SameLine();
+				if (ImGui::Button(u8"Удалить выбранный"))
+				{
+					RemoveSelectedScenario(ScenarioEditorScenarioStorage::GetActualGUID());
+					Scenarios = ScenarioEditorScenarioStorage::GetScenarioNames();
+					selected = 0;
+				}
+			}
+			ImGui::SameLine();
+			HelpMarker(
+				u8"Имя сценария идентично значению аттрибута \"Caption\" элемента \"Start\"\n"
+				"Элемет \"Start\" в сценарии может быть только один");
+			const float footer_height_to_reserve = (ImGui::GetStyle().ItemSpacing.y*2) + ImGui::GetTextLineHeight();
+			if (ImGui::BeginChild("ScrollingRegion", ImVec2(0, -footer_height_to_reserve), false, ImGuiWindowFlags_HorizontalScrollbar))
+			{
+			std::vector<std::vector<std::string>> ScenarioList = ScenarioEditorScenarioStorage::GetScenarios();
+			int test = 0;
+			for (int n = 0; n < Scenarios.size(); n++)
+			{
+				std::string GUID = ScenarioList[n][1];
+				std::string item = Scenarios[n];
+				if (item == "")
+				{
+					if (GUID == "")
+						item = u8"<Вне сценария>";
+					else item = u8"<Без имени>";
+				}
+				if (ImGui::Selectable((item + u8"##" + GUID).c_str(), selected == n))
+				{
+					selected = n;
+					CurrentState = Rest;
+					ScenarioEditorScenarioStorage::SetActualScenario(n);
+					ScenariosEditorScenarioElement::LoadElements();
+				}
+				if (ImGui::IsItemActive() && !ImGui::IsItemHovered())
+				{
+					int n_next = n + (ImGui::GetMouseDragDelta(0).y < 0.f ? -1 : 1);
+					if (n != 0 && n_next >= 1 && n_next < Scenarios.size())
+					{
+						if (n_next == selected) selected = n;
+						else if (n == selected) selected = n_next;
+						ScenarioEditorScenarioStorage::SwapScenario(n, n_next);
+						ImGui::ResetMouseDragDelta();
+					}
 				}
 			}
 		}
+		ImGui::EndChild();
+		ImGui::Separator();
+		if (CurrentFile == L"")
+			ImGui::Text(u8"Файл не выбран");
+		else
+			ImGui::Text((u8"Выбранный файл: " + std::string(CurrentFile.begin(),CurrentFile.end())).c_str());
 		ImGui::End();
 	}
 
@@ -931,14 +955,17 @@ namespace ScenariosEditorGUI {
 				ImGui::Text("Caption");
 				ImGui::TableSetColumnIndex(1);
 				ImGui::PushItemWidth(ImGui::GetColumnWidth());
-				ImGui::InputText("##Caption", &(Elems[SelectedElems[0]].ElementInStorage)->caption);
+				int count = 1;
+				for (int j = 0; j < (Elems[SelectedElems[0]].ElementInStorage)->caption.size(); j++)
+					if ((Elems[SelectedElems[0]].ElementInStorage)->caption[j] == '\n') count++;
+				ImGui::InputTextMultiline("##Caption", &(Elems[SelectedElems[0]].ElementInStorage)->caption, ImVec2(-FLT_MIN, ImGui::GetTextLineHeight() * (count + 1)));
+				if (ScenariosEditorElementsData::ElementsData::GetElementName(Elems[SelectedElems[0]].Element) == "Start")
+					ScenarioEditorScenarioStorage::SetActualScenarioName((Elems[SelectedElems[0]].ElementInStorage)->caption);
 				ImGui::PopItemWidth();
 				ImGui::TableSetColumnIndex(2);
 				static const float wrap_width = 200.0f;
 				for (int i = 0; i < Attributes.size(); i++)
 				{
-					if (ScenariosEditorElementsData::ElementsData::GetElementName(Elems[SelectedElems[0]].Element) == "Start" &&
-						(Attributes[i])->Name == "Name") ScenarioEditorScenarioStorage::SetActualScenarioName((Attributes[i])->ValueS);
 					std::string label = std::string("##") + (Attributes[i])->Name;
 					ImGui::TableNextRow();
 					ImGui::TableSetColumnIndex(0);
@@ -946,10 +973,14 @@ namespace ScenariosEditorGUI {
 					ImGui::Text((Attributes[i])->Name.c_str());
 					ImGui::TableSetColumnIndex(1);
 					ImGui::PushItemWidth(ImGui::GetColumnWidth());
+					int count = 1;
 					switch ((Attributes[i])->GetFormat())
 					{
 					case 0:
-						ImGui::InputText(label.c_str(), &(Attributes[i])->ValueS);
+						for (int j = 0; j < (Attributes[i])->ValueS.size(); j++)
+							if ((Attributes[i])->ValueS[j] == '\n') count++;
+						ImGui::InputTextMultiline(label.c_str(), &(Attributes[i])->ValueS, ImVec2(-FLT_MIN, ImGui::GetTextLineHeight() * (count+1)));
+						//ImGui::InputText(label.c_str(), &(Attributes[i])->ValueS);
 						break;
 					case 1:
 					{

@@ -16,7 +16,7 @@ namespace ScenariosEditorScenarioElement
 	Start::Start() : ScenarioElement::ScenarioElement()
 	{
 		Name = ElementAttribute(u8"Name",0);
-		Description = ElementAttribute(u8"Description",0);
+		Description = ElementAttribute(u8"Discription",0);
 		start_user_x = ElementAttribute(u8"start_user_x",2);
 		start_user_y = ElementAttribute(u8"start_user_y",2);
 		start_user_z = ElementAttribute(u8"start_user_z",2);

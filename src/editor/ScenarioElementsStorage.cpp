@@ -25,6 +25,7 @@ namespace ScenariosEditorScenarioElement
 	std::vector<std::vector<int>> Links;
 	static std::vector<std::shared_ptr<ScenarioElement>> ScenarioElements;
 	void SetMinimalCoordinates();
+	void SetMinimalCoordinates(std::vector<std::shared_ptr<ScenarioElement>> Optimized);
 	void CoordinatesOldToNew(float* x, float* y);
 	void UpdateCoordinates(float* x, float* y);
 	int GetPoint(const char* name, int pin_index);
@@ -141,16 +142,23 @@ namespace ScenariosEditorScenarioElement
 	void ClearScenarioElementStorage()
 	{
 		ScenarioElements.clear();
+		Links.clear();
 	}
 
 	void LoadElements()
 	{
 		ScenariosEditorGUI::ClearElements();
 		std::string ActualGUID = ScenarioEditorScenarioStorage::GetActualGUID();
-		SetMinimalCoordinates();
+		std::vector<std::shared_ptr<ScenarioElement>> OptimizedVector;
 		for (std::shared_ptr<ScenarioElement> Element : ScenarioElements)
 		{
 			if ((*Element).ScenarioGUID != ActualGUID) continue;
+			OptimizedVector.push_back(Element);
+		}
+		SetMinimalCoordinates(OptimizedVector);
+		
+		for (std::shared_ptr<ScenarioElement> Element : OptimizedVector)
+		{
 			float x = (*Element).x - minx;
 			float y = maxy - (*Element).y;
 			CoordinatesOldToNew(&x, &y);
@@ -162,9 +170,8 @@ namespace ScenariosEditorScenarioElement
 			int PointA = -1, PointB = -1;
 			int PinA = Link[0];
 			int PinB = Link[1];
-			for (std::shared_ptr<ScenarioElement> Element : ScenarioElements)
+			for (std::shared_ptr<ScenarioElement> Element : OptimizedVector)
 			{
-				if ((*Element).ScenarioGUID != ActualGUID) continue;
 				int count = 2;
 				std::vector<int> CurrentElemPins = (*Element).pins;
 				for (int j = 0; j < CurrentElemPins.size(); j++)
@@ -189,6 +196,18 @@ namespace ScenariosEditorScenarioElement
 				ScenariosEditorGUI::AddLink(ElemA, ElemB, PointA, PointB);
 			}
 		}
+	}
+
+	void SetMinimalCoordinates(std::vector<std::shared_ptr<ScenarioElement>> Optimized)
+	{
+		minx = std::numeric_limits<float>::max();
+		maxy = 0;
+		for (std::shared_ptr<ScenarioElement> Element : Optimized)
+		{
+			if ((*Element).x < minx) minx = (*Element).x;
+			if ((*Element).y > maxy) maxy = (*Element).y;
+		}
+		if (minx == std::numeric_limits<float>::max()) minx = 0;
 	}
 
 	void SetMinimalCoordinates()
