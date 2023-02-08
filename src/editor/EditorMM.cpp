@@ -57,8 +57,6 @@ namespace EditorMathModel
 #pragma endregion
 #pragma region Logic functions (declaration)
     void SearchLogic(char data[]);
-    //void CanvasLogic(ImGuiIO& io);
-    void CanvasRectangleSelectionLogic();
 #pragma endregion
 #pragma region Helper function for Rectangle Selection (declaration)
     void CanvasRectangleSelection(ImGuiIO& io, ImVec2 SelectionStartPosition);
@@ -262,6 +260,10 @@ namespace EditorMathModel
                 }
                 StateMachineSetState(RectangleSelection);
             }
+            if (ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+            {
+                StateMachineSetState(CanvasDrag);
+            }
         }
         if (currentState == RectangleSelection)
         {
@@ -270,6 +272,34 @@ namespace EditorMathModel
             if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
             {
                 SetCanvasSelectedElementsBlockStatus(false);
+                StateMachineSetState(Rest);
+            }
+        }
+        if (currentState == CanvasDrag)
+        {
+            ImVec2 newOrigin = ImVec2(origin.x + io.MouseDelta.x, origin.y + io.MouseDelta.y);
+            if (newOrigin.x > 0)
+            {
+                newOrigin.x = 0;
+            }
+            if (newOrigin.y > 0)
+            {
+                newOrigin.y = 0;
+            }
+            origin = newOrigin;
+            /*for (int i = 0; i < CanvasElements.size(); i++)
+            {
+                if (newOrigin.x < 0)
+                {
+                    CanvasElements[i].centerPosition.x += xDelta;
+                }
+                if (newOrigin.y < 0)
+                {
+                    CanvasElements[i].centerPosition.y += yDelta;
+                }
+            }*/
+            if (ImGui::IsMouseReleased(ImGuiMouseButton_Right))
+            {
                 StateMachineSetState(Rest);
             }
         }
@@ -415,7 +445,6 @@ namespace EditorMathModel
         if (ImGui::IsItemHovered())
         {
             StateMachineSetState(CanvasSelection);
-            //CanvasLogic(io);
         }
         if (currentState == RectangleSelection)
         {
@@ -581,140 +610,6 @@ namespace EditorMathModel
                 }
             }
         }
-    }
-    /*void CanvasLogic(ImGuiIO& io)
-    {
-        static ImVec2 SelectionStartPosition;
-        static bool isHoldMouseLeftButton = false;
-        static bool isHoldMouseRightButton = false;
-        static bool isPossibleForCreateRectangleSelection = true;
-        static clock_t startTimerRightMouseButton;
-        if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
-        {
-            if (!isHoldMouseLeftButton)
-            {
-                if (CanvasElementsHovered.size() > 0)
-                {
-                    isPossibleForCreateRectangleSelection = false;
-                }
-                else
-                {
-                    if (!io.KeyShift)
-                    {
-                        ClearCanvasSelectedElementsAll();
-                    }
-                }
-                if (isPossibleForCreateRectangleSelection)
-                {
-                    SelectionStartPosition = io.MousePos;
-                    currentState = RectangleSelection;
-                    if (io.KeyShift)
-                    {
-                        currentState = RectangleSelectionPlus;
-                        for (int i = 0; i < CanvasElements.size(); i++)
-                        {
-                            if (CanvasElements[i].isSelected)
-                            {
-                                CanvasElements[i].isBlockSelection = true;
-                            }
-                        }
-                    }
-                }
-            }
-            isHoldMouseLeftButton = true;
-        }
-        if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
-        {
-            if (isHoldMouseLeftButton)
-            {
-                isPossibleForCreateRectangleSelection = true;
-                currentState = Rest;
-                SetCanvasSelectedElementsBlockStatus(false);
-            }
-            isHoldMouseLeftButton = false;
-        }
-        if (ImGui::IsMouseDown(ImGuiMouseButton_Right))
-        {
-            if (!isHoldMouseRightButton)
-            {
-                startTimerRightMouseButton = clock();
-                currentState = CanvasDrag;
-            }
-            isHoldMouseRightButton = true;
-        }
-        if (ImGui::IsMouseReleased(ImGuiMouseButton_Right))
-        {
-            if (isHoldMouseRightButton)
-            {
-                clock_t currentTime = clock();
-                if ((((double)currentTime - startTimerRightMouseButton) / CLOCKS_PER_SEC) < 0.1)
-                {
-                    if (!io.KeyShift)
-                    {
-                        ClearCanvasSelectedElementsAll();
-                    }
-                    else
-                    {
-                        ResetCanvasSelectedElementsAll();
-                    }
-                }
-                currentState = Rest;
-            }
-            isHoldMouseRightButton = false;
-        }
-        if (ImGui::IsKeyPressed(ImGuiKey_A))
-        {
-            if (io.KeyCtrl)
-            {
-                for (int i = 0; i < CanvasElements.size(); i++)
-                {
-                    CanvasElements[i].isSelected = true;
-                }
-            }
-        }
-        CanvasRectangleSelection(io, SelectionStartPosition);
-        if (currentState == RectangleSelection || currentState == RectangleSelectionPlus)
-        {
-            SelectElementsInsideRectangle(io, SelectionStartPosition);
-            UnselectElementsInsideRectangle(io, SelectionStartPosition);
-        }
-        if (currentState == CanvasDrag)
-        {
-            double xDelta = io.MouseDelta.x;
-            double yDelta = io.MouseDelta.y;
-            ImVec2 newOrigin = ImVec2(origin.x + xDelta, origin.y + yDelta);
-            if (newOrigin.x > 0)
-            {
-                origin.x = 0;
-            }
-            else
-            {
-                origin.x = newOrigin.x;
-            }
-            if (newOrigin.y > 0)
-            {
-                origin.y = 0;
-            }
-            else
-            {
-                origin.y = newOrigin.y;
-            }
-            for (int i = 0; i < CanvasElements.size(); i++)
-            {
-                if (newOrigin.x < 0)
-                {
-                    CanvasElements[i].centerPosition.x += xDelta;
-                }
-                if (newOrigin.y < 0)
-                {
-                    CanvasElements[i].centerPosition.y += yDelta;
-                }
-            }
-        }
-    }*/
-    void CanvasRectangleSelectionLogic()
-    {
-
     }
 #pragma endregion
 #pragma region Helper function for Rectangle Selection (definition)
