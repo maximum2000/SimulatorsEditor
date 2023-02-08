@@ -218,8 +218,8 @@ namespace EditorMathModel
     }
     void StateMachineLogic(ImGuiIO& io)
     {
-        static clock_t startTimerLeftMouseButton;
-        static double leftMouseButtonTimeHold = 100;
+        //static clock_t startTimerLeftMouseButton;
+        //static double leftMouseButtonTimeHold = 100;
         //startTimerLeftMouseButton = clock();
         //leftMouseButtonTimeHold = (((double)clock() - startTimerLeftMouseButton) / CLOCKS_PER_SEC);
         //leftMouseButtonTimeHold = 100;
@@ -241,13 +241,6 @@ namespace EditorMathModel
                     CanvasElements[CurrentHoveredElementIndex].isSelected = true;
                 }
                 StateMachineSetState(ElementDrag);
-            }
-            if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
-            {
-                if (CurrentHoveredElementIndex == -1)
-                {
-                    StateMachineSetState(Rest);
-                }
             }
         }
         if (currentState == ElementDrag)
@@ -277,26 +270,26 @@ namespace EditorMathModel
             if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
             {
                 mousePositionOnClick = io.MousePos;
-            }
-            if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
-            {
-                ClearCanvasSelectedElementsAll();
-                StateMachineSetState(Rest);
-            }
-            if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
-            {
+                if (io.KeyShift)
+                {
+                    for (int i = 0; i < CanvasElements.size(); i++)
+                    {
+                        if (CanvasElements[i].isSelected)
+                        {
+                            CanvasElements[i].isBlockSelection = true;
+                        }
+                    }
+                }
                 StateMachineSetState(RectangleSelection);
             }
         }
         if (currentState == RectangleSelection)
         {
-            if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
-            {
-                SelectElementsInsideRectangle(io, mousePositionOnClick);
-                //UnselectElementsInsideRectangle(io, mousePositionOnClick);
-            }
+            SelectElementsInsideRectangle(io, mousePositionOnClick);
+            UnselectElementsInsideRectangle(io, mousePositionOnClick);
             if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
             {
+                SetCanvasSelectedElementsBlockStatus(false);
                 StateMachineSetState(Rest);
             }
         }
@@ -305,6 +298,16 @@ namespace EditorMathModel
             if (currentState < 8)
             {
                 CanvasElementDelete(selectedElementsCount);
+            }
+        }
+        if (ImGui::IsKeyPressed(ImGuiKey_A))
+        {
+            if (io.KeyCtrl)
+            {
+                for (int i = 0; i < CanvasElements.size(); i++)
+                {
+                    CanvasElements[i].isSelected = true;
+                }
             }
         }
     }
