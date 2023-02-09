@@ -287,17 +287,6 @@ namespace EditorMathModel
                 newOrigin.y = 0;
             }
             origin = newOrigin;
-            /*for (int i = 0; i < CanvasElements.size(); i++)
-            {
-                if (newOrigin.x < 0)
-                {
-                    CanvasElements[i].centerPosition.x += xDelta;
-                }
-                if (newOrigin.y < 0)
-                {
-                    CanvasElements[i].centerPosition.y += yDelta;
-                }
-            }*/
             if (ImGui::IsMouseReleased(ImGuiMouseButton_Right))
             {
                 StateMachineSetState(Rest);
@@ -346,16 +335,26 @@ namespace EditorMathModel
             }
             ImGui::PopID();
         }
+        ImGuiIO& io = ImGui::GetIO();
         //ImGui::Text("hovered = %d", CanvasElementsHovered.size());
         ImGui::Text("State: %s", DEBUGstate(currentState));
         ImGui::Text("State: %d", currentState);
         ImGui::Text("Hovered index: %d", CurrentHoveredElementIndex);
+        ImGui::Separator();
+        ImGui::Text("Origin X: %f", origin.x);
+        ImGui::Text("Origin Y: %f", origin.y);
+        ImGui::Separator();
+        ImGui::Text("Mouse start X: %f", mousePositionOnClick.x);
+        ImGui::Text("Mouse start Y: %f", mousePositionOnClick.y);
+        ImGui::Text("Mouse current X: %f", io.MousePos.x);
+        ImGui::Text("Mouse current Y: %f", io.MousePos.y);
+        ImGui::Separator();
         //ImGui::Text("Selected: |%s|", searchInput);
-        /*if (CanvasElements.size() > 0)
+        if (CanvasElements.size() > 0)
         {
-            ImGui::Text("Element X center: %f", CanvasElements[0].centerPosition.x);
-            ImGui::Text("Element Y center: %f", CanvasElements[0].centerPosition.y);
-        }*/
+            ImGui::Text("Element X: %f", CanvasElements[0].centerPosition.x);
+            ImGui::Text("Element Y: %f", CanvasElements[0].centerPosition.y);
+        }
         if (ImGui::IsWindowHovered())
         {
             //currentState = ElementWindowSelection;
@@ -492,6 +491,8 @@ namespace EditorMathModel
                     y = 0;
                     mousePosition.y = origin.y + TextureLoader.GetTextureByIndex(ElementNum).imageHeight / 2;
                 }
+                mousePosition.x -= origin.x;
+                mousePosition.y -= origin.y;
                 //std::string elemName = TextureLoader.GetTextureNameByIndex(ElementNum);
                 //CanvasElements.push_back({ elemName, ElementNum, ImVec2(x, y), mousePosition });
                 CanvasElements.push_back({ ElementNum, ImVec2(x, y), mousePosition });
@@ -624,13 +625,13 @@ namespace EditorMathModel
         {
             if (start.x < io.MousePos.x)
             {
-                if (CanvasElements[i].centerPosition.x > start.x &&
-                    CanvasElements[i].centerPosition.x < io.MousePos.x)
+                if (CanvasElements[i].centerPosition.x + origin.x > start.x &&
+                    CanvasElements[i].centerPosition.x + origin.x < io.MousePos.x)
                 {
                     if (start.y < io.MousePos.y)
                     {
-                        if (CanvasElements[i].centerPosition.y > start.y &&
-                            CanvasElements[i].centerPosition.y < io.MousePos.y)
+                        if (CanvasElements[i].centerPosition.y + origin.y > start.y &&
+                            CanvasElements[i].centerPosition.y + origin.y < io.MousePos.y)
                         {
                             CanvasElements[i].isSelected = true;
                             if (CanvasElements[i].isBlockSelection)
@@ -641,8 +642,8 @@ namespace EditorMathModel
                     }
                     else
                     {
-                        if (CanvasElements[i].centerPosition.y < start.y &&
-                            CanvasElements[i].centerPosition.y > io.MousePos.y)
+                        if (CanvasElements[i].centerPosition.y + origin.y < start.y &&
+                            CanvasElements[i].centerPosition.y + origin.y > io.MousePos.y)
                         {
                             CanvasElements[i].isSelected = true;
                             if (CanvasElements[i].isBlockSelection)
@@ -655,13 +656,13 @@ namespace EditorMathModel
             }
             else
             {
-                if (CanvasElements[i].centerPosition.x < start.x &&
-                    CanvasElements[i].centerPosition.x > io.MousePos.x)
+                if (CanvasElements[i].centerPosition.x + origin.x < start.x &&
+                    CanvasElements[i].centerPosition.x + origin.x > io.MousePos.x)
                 {
                     if (start.y < io.MousePos.y)
                     {
-                        if (CanvasElements[i].centerPosition.y > start.y &&
-                            CanvasElements[i].centerPosition.y < io.MousePos.y)
+                        if (CanvasElements[i].centerPosition.y + origin.y > start.y &&
+                            CanvasElements[i].centerPosition.y + origin.y < io.MousePos.y)
                         {
                             CanvasElements[i].isSelected = true;
                             if (CanvasElements[i].isBlockSelection)
@@ -672,8 +673,8 @@ namespace EditorMathModel
                     }
                     else
                     {
-                        if (CanvasElements[i].centerPosition.y < start.y &&
-                            CanvasElements[i].centerPosition.y > io.MousePos.y)
+                        if (CanvasElements[i].centerPosition.y + origin.y < start.y &&
+                            CanvasElements[i].centerPosition.y + origin.y > io.MousePos.y)
                         {
                             CanvasElements[i].isSelected = true;
                             if (CanvasElements[i].isBlockSelection)
@@ -692,8 +693,8 @@ namespace EditorMathModel
         {
             if (start.x < io.MousePos.x)
             {
-                if (CanvasElements[i].centerPosition.x <  start.x ||
-                    CanvasElements[i].centerPosition.x > io.MousePos.x)
+                if (CanvasElements[i].centerPosition.x + origin.x <  start.x ||
+                    CanvasElements[i].centerPosition.x + origin.x > io.MousePos.x)
                 {
                     CanvasElements[i].isSelected = false;
                     if (CanvasElements[i].isBlockSelection)
@@ -704,8 +705,8 @@ namespace EditorMathModel
             }
             else
             {
-                if (CanvasElements[i].centerPosition.x > start.x ||
-                    CanvasElements[i].centerPosition.x < io.MousePos.x)
+                if (CanvasElements[i].centerPosition.x + origin.x > start.x ||
+                    CanvasElements[i].centerPosition.x + origin.x < io.MousePos.x)
                 {
                     CanvasElements[i].isSelected = false;
                     if (CanvasElements[i].isBlockSelection)
@@ -716,8 +717,8 @@ namespace EditorMathModel
             }
             if (start.y < io.MousePos.y)
             {
-                if (CanvasElements[i].centerPosition.y < start.y ||
-                    CanvasElements[i].centerPosition.y > io.MousePos.y)
+                if (CanvasElements[i].centerPosition.y + origin.y < start.y ||
+                    CanvasElements[i].centerPosition.y + origin.y > io.MousePos.y)
                 {
                     CanvasElements[i].isSelected = false;
                     if (CanvasElements[i].isBlockSelection)
@@ -728,8 +729,8 @@ namespace EditorMathModel
             }
             else
             {
-                if (CanvasElements[i].centerPosition.y > start.y ||
-                    CanvasElements[i].centerPosition.y < io.MousePos.y)
+                if (CanvasElements[i].centerPosition.y + origin.y > start.y ||
+                    CanvasElements[i].centerPosition.y + origin.y < io.MousePos.y)
                 {
                     CanvasElements[i].isSelected = false;
                     if (CanvasElements[i].isBlockSelection)
