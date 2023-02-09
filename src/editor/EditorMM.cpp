@@ -58,18 +58,24 @@ namespace EditorMathModel
 #pragma region Logic functions (declaration)
     void SearchLogic(char data[]);
 #pragma endregion
+#pragma region Helper functions for canvas (declaration)
+    void CanvasDragging(ImVec2 moveDelta);
+    void CanvasScaling(float deltaValue);
+#pragma endregion
 #pragma region Helper function for Rectangle Selection (declaration)
     void CanvasRectangleSelection(ImGuiIO& io, ImVec2 SelectionStartPosition);
     void SelectElementsInsideRectangle(ImGuiIO& io, ImVec2 start);
     void UnselectElementsInsideRectangle(ImGuiIO& io, ImVec2 start);
 #pragma endregion
 #pragma region Helper functions for Canvas Elements list (declaration)
+    void CanvasElementsSelectAll();
     void ClearCanvasSelectedElementsAll();
     void ResetCanvasSelectedElementsAll();
     void SetCanvasSelectedElementsBlockStatus(bool newValue);
     void CalculateSelectedCanvasElements();
     void CanvasElementDelete(int countOfDeleteOperation);
     void CanvasElementsDragByValue(float xDelta, float yDelta);
+    void CanvasElementsSearchClear();
 #pragma endregion
 
     // Forward declarations of variables
@@ -77,7 +83,9 @@ namespace EditorMathModel
     bool show_canvas_map_window = false;
     static ImVec2 mousePosition, origin;
     int selectedElementsCount = 0;
+    static int CurrentHoveredElementIndex = -1;
     static ImVec2 mousePositionOnClick;
+    static float canvasScaleFactor = 1.0f;
 
     // ImGui data
     const ImGuiViewport* viewport;
@@ -87,7 +95,6 @@ namespace EditorMathModel
     EditorMMTextureLoader::TextureLoader TextureLoader;
     EditorMMColorData::ColorData ColorData;
     static std::vector<CanvasElement> CanvasElements;
-    static int CurrentHoveredElementIndex = -1;
     ProgrammState currentState = Rest;
 
     void CreateDemoScenarioGUI()
@@ -165,16 +172,11 @@ namespace EditorMathModel
             {
                 RenderDragNDropElementWhileDragging();
             }*/
-            EditorMMRender::Render();
             CalculateSelectedCanvasElements();
             StateMachineLogic(io);
+            EditorMMRender::Render();
         }
         EditorMMRender::Cleanup();
-    }
-
-    void CanvasScrollingLogic()
-    {
-
     }
 
     std::string DEBUGstate(int index)
@@ -251,6 +253,16 @@ namespace EditorMathModel
         }
         if (currentState == CanvasSelection)
         {
+            CanvasScaling(io.MouseWheel);
+            /*canvasScaleFactor += io.MouseWheel * 0.1f;
+            if (canvasScaleFactor < 0.1f)
+            {
+                canvasScaleFactor = 0.1f;
+            }
+            else if (canvasScaleFactor > 2.0f)
+            {
+                canvasScaleFactor = 2.0f;
+            }*/
             if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
             {
                 mousePositionOnClick = io.MousePos;
@@ -277,7 +289,8 @@ namespace EditorMathModel
         }
         if (currentState == CanvasDrag)
         {
-            ImVec2 newOrigin = ImVec2(origin.x + io.MouseDelta.x, origin.y + io.MouseDelta.y);
+            CanvasDragging(io.MouseDelta);
+            /*ImVec2 newOrigin = ImVec2(origin.x + io.MouseDelta.x, origin.y + io.MouseDelta.y);
             if (newOrigin.x > 0)
             {
                 newOrigin.x = 0;
@@ -286,7 +299,7 @@ namespace EditorMathModel
             {
                 newOrigin.y = 0;
             }
-            origin = newOrigin;
+            origin = newOrigin;*/
             if (ImGui::IsMouseReleased(ImGuiMouseButton_Right))
             {
                 StateMachineSetState(Rest);
@@ -303,10 +316,7 @@ namespace EditorMathModel
         {
             if (io.KeyCtrl)
             {
-                for (int i = 0; i < CanvasElements.size(); i++)
-                {
-                    CanvasElements[i].isSelected = true;
-                }
+                CanvasElementsSelectAll();
             }
         }
     }
@@ -348,6 +358,9 @@ namespace EditorMathModel
         ImGui::Text("Mouse start Y: %f", mousePositionOnClick.y);
         ImGui::Text("Mouse current X: %f", io.MousePos.x);
         ImGui::Text("Mouse current Y: %f", io.MousePos.y);
+        ImGui::Separator();
+        ImGui::Text("Scale factor: %f", canvasScaleFactor);
+        ImGui::Text("Scale factor: %f", ImGui::GetIO().MouseWheel);
         ImGui::Separator();
         //ImGui::Text("Selected: |%s|", searchInput);
         if (CanvasElements.size() > 0)
@@ -461,7 +474,7 @@ namespace EditorMathModel
         // Draw grid
         draw_list->PushClipRect(canvas_p0, canvas_p1, true);
         {
-            const float GRID_STEP = 79.0f;
+            const float GRID_STEP = 79.0f * canvasScaleFactor;
             for (float x = fmodf(origin.x, GRID_STEP); x < canvas_sz.x; x += GRID_STEP)
                 draw_list->AddLine(ImVec2(canvas_p0.x + x, canvas_p0.y), ImVec2(canvas_p0.x + x, canvas_p1.y), IM_COL32(200, 200, 200, 119));
             for (float y = fmodf(origin.y, GRID_STEP); y < canvas_sz.y; y += GRID_STEP)
@@ -597,10 +610,7 @@ namespace EditorMathModel
     void SearchLogic(char data[])
     {
         std::string searchValue = data;
-        for (int i = 0; i < CanvasElements.size(); i++)
-        {
-            CanvasElements[i].isSearched = false;
-        }
+        CanvasElementsSearchClear();
         if (searchValue != "")
         {
             for (int i = 0; i < CanvasElements.size(); i++)
@@ -610,6 +620,33 @@ namespace EditorMathModel
                     CanvasElements[i].isSearched = true;
                 }
             }
+        }
+    }
+#pragma endregion
+#pragma region Helper functions for canvas (definition)
+    void CanvasDragging(ImVec2 moveDelta)
+    {
+        ImVec2 newOrigin = ImVec2(origin.x + moveDelta.x, origin.y + moveDelta.y);
+        if (newOrigin.x > 0)
+        {
+            newOrigin.x = 0;
+        }
+        if (newOrigin.y > 0)
+        {
+            newOrigin.y = 0;
+        }
+        origin = newOrigin;
+    }
+    void CanvasScaling(float deltaValue)
+    {
+        canvasScaleFactor += deltaValue * 0.1f;
+        if (canvasScaleFactor < 0.1f)
+        {
+            canvasScaleFactor = 0.1f;
+        }
+        else if (canvasScaleFactor > 2.0f)
+        {
+            canvasScaleFactor = 2.0f;
         }
     }
 #pragma endregion
@@ -743,6 +780,13 @@ namespace EditorMathModel
     }
 #pragma endregion
 #pragma region Helper functions for Canvas Elements list (definition)
+    void CanvasElementsSelectAll()
+    {
+        for (int i = 0; i < CanvasElements.size(); i++)
+        {
+            CanvasElements[i].isSelected = true;
+        }
+    }
     void ClearCanvasSelectedElementsAll()
     {
         for (int i = 0; i < CanvasElements.size(); i++)
@@ -824,6 +868,13 @@ namespace EditorMathModel
                 CanvasElements[i].centerPosition.x = CanvasElements[i].centerPosition.x + xDelta;
                 CanvasElements[i].centerPosition.y = CanvasElements[i].centerPosition.y + yDelta;
             }
+        }
+    }
+    void CanvasElementsSearchClear()
+    {
+        for (int i = 0; i < CanvasElements.size(); i++)
+        {
+            CanvasElements[i].isSearched = false;
         }
     }
 #pragma endregion
