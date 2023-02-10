@@ -265,4 +265,36 @@ namespace ScenariosEditorScenarioElement
 	{
 		MaxPin = max_pin;
 	}
+
+	template<typename Type>
+	std::vector<std::string> GetElementAttributeNames(Type Elem) {
+		std::vector<std::string> ToAdd {  u8"<Среди всех аттрибутов>", u8"<Найти все>", u8"Caption" };
+		for (ScenariosEditorScenarioElement::ElementAttribute* Attribute : Elem.GetAttributes())
+		{
+			ToAdd.push_back(Attribute->Name);
+		}
+		return ToAdd;
+	}
+
+	std::vector<std::vector<std::string>> GetAllElementsAttributeNames()
+	{
+		std::vector<std::vector<std::string>> ret;
+		ret.push_back(GetElementAttributeNames<Uzel>(Uzel()));
+		ret.push_back(GetElementAttributeNames<Start>(Start()));
+		ret.push_back(GetElementAttributeNames(Clear()));
+		ret.push_back(GetElementAttributeNames(Message()));
+		ret.push_back(GetElementAttributeNames(Sound()));
+		ret.push_back(GetElementAttributeNames(Script()));
+		ret.push_back(GetElementAttributeNames(Pilon()));
+		ret.push_back(GetElementAttributeNames(Arrow()));
+		ret.push_back(GetElementAttributeNames(Pause()));
+		ret.push_back(GetElementAttributeNames(Push()));
+		ret.push_back(GetElementAttributeNames(Select()));
+		ret.push_back(GetElementAttributeNames(Outcome()));
+		ret.push_back(GetElementAttributeNames(Answer()));
+		ret.push_back(GetElementAttributeNames(VariableValue()));
+		ret.push_back(GetElementAttributeNames(Random()));
+		ret.push_back(GetElementAttributeNames(Danger()));
+		return ret;
+	}
 }

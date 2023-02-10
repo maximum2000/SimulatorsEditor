@@ -6,54 +6,13 @@
 
 Known problems:
 
--Loading elements should clear Elems // FIXED
 -Highlighting (static struct of colors, link)
--Linking point are drawn over elements // FIXED
--Should edit imgui.cpp? https://github.com/ocornut/imgui/issues/1224 // FIXED: using multiline now
--Copy from file to file check
 -Should check space on disk
+-CTRL+TAB main menu
 
 */
 
-//xmlhandling->xml_documents
-//scenariosgui->elementoncanvas
-//
-//ScenarioElement + Attribute
-//
-//[ChildClasses]
-//Add(Virtal, for each - it's own attributes)
-//	GetAttribures(virtual, returns it's attributes)
-//
-//		[Class]
-//vector - ScenarioElements - every
-//
-//ScenariosGui
-//ElementOnCanvas
-//{
-//	*ScenarioElement
-//}
-//onparamssections - *ScenarioElement.attributes
-//
-//xml - load, save only
-//
-//
-//
-//loading:
-//1) xml
-//foreach(element)
-//{
-//	2) ScenarioElement->ScenarioElements
-//	3) ElementOnCanvas->*ScenarioElement
-//}
-//params on canvas :
-//*ScenarioElement.GetAttribures, handle them
-//saving :
-//ScenarioElements->xml
-//adding new
-//ScenariosGui->create element(ret.ScenarioElement)->ElementOnCanvas
-//deleting - virtual function
-//editing - in scenario element - have as static
-
+#include <iomanip>
 #include <tchar.h>
 #include <iostream>
 #include <vector>
@@ -70,7 +29,7 @@ Known problems:
 #include "ScenarioStorage.h"
 #include "SaveFileDialog.h"
 #include "CanvasPositioning.h"
-
+#include <sstream>
 
 using namespace ScenariosEditorElementsData;
 using namespace ScenariosEditorScenarioElement;
@@ -119,6 +78,9 @@ namespace ScenariosEditorGUI {
 	static std::vector<int> SelectedElems;
 	static std::wstring CurrentFile = L"";
 
+	static bool SearchOpen = false;
+	static bool MapOpen = false;
+
 	void PreLoopSetup();
 	void MainLoop();
 
@@ -129,6 +91,9 @@ namespace ScenariosEditorGUI {
 	void DrawElementsSection(const ImGuiViewport* viewport);
 	void DrawParamsSection(const ImGuiViewport* viewport);
 	void CanvasLogic(int hover_on, ImVec2* SelectionStartPosition, ImGuiIO& io);
+	void SearchWindow();
+	void DoSearch(int SearchType, int SearchElement, std::string SearchAttribute, std::string SearchField);
+	void MapWindow();
 
 	// Helper functions
 	void ClearElements();
@@ -139,6 +104,7 @@ namespace ScenariosEditorGUI {
 	void AddLinkGUI(int PointA, int PointB, int ElemA, int ElemB);
 	std::vector<ElementOnCanvas>::iterator DeleteElementGUI(std::vector<ElementOnCanvas>::iterator iter);
 	std::vector<LinkOnCanvas>::iterator DeleteLinkGUI(std::vector<LinkOnCanvas>::iterator iter);
+	std::vector<const char*> GetElementAttributeNames(ScenariosEditorScenarioElement::ScenarioElement* Elem);
 	void RemoveSelectedScenario(std::string GUID);
 	void DoubleSelectedScenario(std::string GUID);
 	static void HelpMarker(const char* desc);
@@ -203,6 +169,8 @@ namespace ScenariosEditorGUI {
 			DrawScenariosSection(viewport);
 			DrawElementsSection(viewport);
 			DrawParamsSection(viewport);
+			SearchWindow();
+			MapWindow();
 			ImGui::ShowDemoWindow(); // remove later
 			ScenariosEditorRender::EndFrame();
 		}
@@ -251,14 +219,18 @@ namespace ScenariosEditorGUI {
 			ImGui::EndMenu();
 
 		}
-		/* if (ImGui::BeginMenu("Edit"))
-			 {
-				 if (ImGui::MenuItem("Undo", "CTRL+Z")) {}
-				 if (ImGui::MenuItem("Cut", "CTRL+X")) {}
-				 if (ImGui::MenuItem("Copy", "CTRL+C")) {}
-				 if (ImGui::MenuItem("Paste", "CTRL+V")) {}
-				 ImGui::EndMenu();
-			 }*/
+		if (ImGui::BeginMenu(u8"Инструменты"))
+		{
+			if (ImGui::MenuItem(u8"Поиск", "CTRL+F", &SearchOpen))
+			{
+				SearchOpen != SearchOpen;
+			}
+			if (ImGui::MenuItem(u8"Карта", "CTRL+M", &MapOpen))
+			{
+				MapOpen != MapOpen;
+			}
+			ImGui::EndMenu();
+		}
 		ImGui::EndMainMenuBar();
 	}
 	// Clear existing elements
@@ -526,7 +498,7 @@ namespace ScenariosEditorGUI {
 		ImGui::SetNextWindowPos(ImVec2(viewport->WorkSize.x / 4, viewport->WorkPos.y));
 		ImGui::SetNextWindowSize(ImVec2(3 * viewport->WorkSize.x / 4, viewport->WorkSize.y));
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
-		ImGui::Begin("MainWorkspace", NULL, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus);
+		ImGui::Begin("MainWorkspace", NULL, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus);
 		ImGui::PopStyleVar();
 
 		// Canvas positioning
@@ -779,7 +751,7 @@ namespace ScenariosEditorGUI {
 	{
 		ImGui::SetNextWindowPos(viewport->WorkPos);
 		ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x / 4, (viewport->WorkSize.y / 3) - 29));
-		ImGui::Begin(u8"Сценарии", NULL, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+		ImGui::Begin(u8"Сценарии", NULL, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus);
 		if (ImGui::Button(u8"Создать сценарий"))
 		{
 			ScenarioEditorScenarioStorage::CreateNewScenario();
@@ -803,7 +775,7 @@ namespace ScenariosEditorGUI {
 				SelectedElemGUI = 0;
 			}
 		}
-		
+
 		ImGui::SameLine();
 		HelpMarker(
 			u8"Имя сценария идентично значению аттрибута \"Caption\" элемента \"Start\"\n"
@@ -893,7 +865,7 @@ namespace ScenariosEditorGUI {
 		ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x, (viewport->WorkSize.y / 3) - 2));
 		ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x / 4, viewport->WorkSize.y / 3));
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 15));
-		ImGui::Begin(u8"Элементы сценария", NULL, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+		ImGui::Begin(u8"Элементы сценария", NULL, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus);
 		ImGui::PopStyleVar();
 		ElementsMakeObjects();
 		ImGui::End();
@@ -904,7 +876,7 @@ namespace ScenariosEditorGUI {
 	{
 		ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x, (2 * viewport->WorkSize.y / 3) - 4));
 		ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x / 4, (viewport->WorkSize.y / 3) + 33));
-		ImGui::Begin(u8"Свойства", NULL, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+		ImGui::Begin(u8"Свойства", NULL, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus);
 		ParamsInitialization();
 		ImGui::End();
 	}
@@ -938,7 +910,7 @@ namespace ScenariosEditorGUI {
 		ImGui::PopStyleVar();
 	}
 
-	// Unfinished, should fill params window
+	// fill params window
 	void ParamsInitialization()
 	{
 		if (SelectedElems.size() == 1)
@@ -1003,6 +975,201 @@ namespace ScenariosEditorGUI {
 				}
 			}
 			ImGui::EndTable();
+		}
+	}
+
+	void SearchWindow()
+	{
+		if (SearchOpen)
+		{
+			static const char* LongestTextLabel = u8"Тип поиска";
+			float Spacing = ImGui::CalcTextSize(LongestTextLabel).x + ImGui::GetStyle().WindowPadding.x + ImGui::GetStyle().ItemSpacing.x;
+			ImGui::Begin(u8"Поиск");
+			static const char* SearchTypes[] = { u8"Среди всех аттрибутов", u8"По определённому элементу" };
+			static std::vector<std::vector<std::string>> AttributeNames = ScenariosEditorScenarioElement::GetAllElementsAttributeNames();
+			static int CurrentSearchType = 0; // Here we store our selection data as an index.
+			static int CurrentElement = 0;
+			static int CurrentAttribute = 0;
+			const char* TypePreview = SearchTypes[CurrentSearchType];
+			ImGui::Text(u8"Тип поиска");
+			ImGui::SameLine(Spacing);
+			if (ImGui::BeginCombo(u8"##Тип поиска", TypePreview))
+			{
+				for (int n = 0; n < IM_ARRAYSIZE(SearchTypes); n++)
+				{
+					const bool is_selected = (CurrentSearchType == n);
+					if (ImGui::Selectable(SearchTypes[n], is_selected))
+						CurrentSearchType = n;
+					if (is_selected)
+						ImGui::SetItemDefaultFocus();
+				}
+				ImGui::EndCombo();
+			}
+			if (CurrentSearchType == 1)
+			{
+				
+				static const std::vector<const char*> Elements = { "Uzel", "Start", "Clear", "Message", "Sound", "Script", "Pilon", "Arrow",
+										"Pause", "Push", "Select", "Outcome", "Answer", "Variable value", "Random", "Danger" };
+				const char* ElementPreview = Elements[CurrentElement];
+				ImGui::Text(u8"Элемент");
+				ImGui::SameLine(Spacing);
+				if (ImGui::BeginCombo(u8"##Элемент", ElementPreview))
+				{
+					for (int n = 0; n < Elements.size(); n++)
+					{
+						const bool is_selected = (CurrentElement == n);
+						if (ImGui::Selectable(Elements[n], is_selected))
+						{
+							CurrentElement = n;
+							CurrentAttribute = 0;
+						}
+						if (is_selected)
+							ImGui::SetItemDefaultFocus();
+					}
+					ImGui::EndCombo();
+				}
+				
+				
+				const char* AttributePreview = AttributeNames[CurrentElement][CurrentAttribute].c_str();
+				ImGui::Text(u8"Аттрибут");
+				ImGui::SameLine(Spacing);
+				if (ImGui::BeginCombo(u8"##Аттрибут", AttributePreview))
+				{
+					for (int n = 0; n < AttributeNames[CurrentElement].size(); n++)
+					{
+						const bool is_selected = (CurrentAttribute == n);
+						if (ImGui::Selectable(AttributeNames[CurrentElement][n].c_str(), is_selected))
+							CurrentAttribute = n;
+						if (is_selected)
+							ImGui::SetItemDefaultFocus();
+					}
+					ImGui::EndCombo();
+				}
+			}
+			
+			static std::string SearchField = "";
+			int count = 1;
+			for (int j = 0; j < SearchField.size(); j++)
+				if (SearchField[j] == '\n') count++;
+			if (CurrentSearchType != 1 || CurrentAttribute != 1)
+			{
+				ImGui::Text(u8"Найти:");
+				ImGui::SameLine(Spacing);
+				ImGui::InputTextMultiline(u8"##Найти", &SearchField, ImVec2(ImGui::CalcItemWidth(), ImGui::GetTextLineHeight() * (count + 1)));
+			}
+			DoSearch(CurrentSearchType, CurrentElement, AttributeNames[CurrentElement][CurrentAttribute], SearchField);
+			ImGui::End();
+		}
+	}
+
+	void DoSearch(int SearchType, int SearchElement, std::string SearchAttribute, std::string SearchField)
+	{
+		const ImGuiViewport* viewport = ImGui::GetMainViewport();
+		//	Draw list now won't check if elem is out of canvas (called after End())
+		if (SearchType == 0)
+		{
+			if (SearchField.size() == 0) return;
+			for (ElementOnCanvas Elem : Elems)
+			{
+				bool ShouldSelect = false;
+				if ((*Elem.ElementInStorage).caption.find(SearchField) != std::string::npos)
+				{
+					ShouldSelect = true;
+				}
+				else
+				{
+					for (ElementAttribute* Attribute : (*Elem.ElementInStorage).GetAttributes())
+					{
+						if (Attribute->ValueS.find(SearchField) != std::string::npos)
+						{
+							ShouldSelect = true;
+							break;
+						}
+						std::stringstream Float;
+						Float << std::fixed << std::setprecision(2) << Attribute->ValueF;
+						if (Float.str().find(SearchField) != std::string::npos)
+						{
+							ShouldSelect = true;
+							break;
+						}
+					}
+				}
+				if (ShouldSelect)
+				{
+					Texture UsedTexture = ElementsData::GetElementTexture(Elem.Element);
+					float x = origin.x + Elem.Pos.x - 10 > viewport->WorkSize.x / 4 ? origin.x + Elem.Pos.x - 10 : viewport->WorkSize.x / 4;
+					if (x < origin.x + Elem.Pos.x + UsedTexture.Width + 10)
+					canvas_draw_list->AddRectFilled(
+						ImVec2(x, origin.y + Elem.Pos.y - 10),
+						ImVec2(origin.x + Elem.Pos.x + UsedTexture.Width + 10, origin.y + Elem.Pos.y + UsedTexture.Height + 10),
+						IM_COL32(0, 255, 64, 50));
+				}
+			}
+		}
+		else // SearchType == 1
+		{
+			if (SearchAttribute != u8"<Найти все>" && SearchField.size() == 0) return;
+			for (ElementOnCanvas Elem : Elems)
+			{
+				if (Elem.Element != SearchElement)
+				{
+					continue;
+				}
+				bool ShouldSelect = false;
+				if (SearchAttribute == u8"<Найти все>")
+				{
+					ShouldSelect = true;
+				}
+				else if (SearchAttribute == u8"Caption" || SearchAttribute == u8"<Среди всех аттрибутов>")
+				{
+					ShouldSelect = (*Elem.ElementInStorage).caption.find(SearchField) != std::string::npos;
+				}
+				else
+				{
+					for (ElementAttribute* Attribute : (*Elem.ElementInStorage).GetAttributes())
+					{
+						if ((SearchAttribute == u8"<Среди всех аттрибутов>") || (Attribute->Name == SearchAttribute))
+						{
+							if (Attribute->GetFormat() == 0)
+							{
+								if (Attribute->ValueS.find(SearchField) != std::string::npos)
+								{
+									ShouldSelect = true;
+									break;
+								}
+							}
+							else {
+								std::stringstream Float;
+								Float << std::fixed << std::setprecision(2) << Attribute->ValueF;
+								if (Float.str().find(SearchField) != std::string::npos)
+								{
+									ShouldSelect = true;
+									break;
+								}
+							}
+						}
+					}
+				}
+				if (ShouldSelect)
+				{
+					Texture UsedTexture = ElementsData::GetElementTexture(Elem.Element);
+					float x = origin.x + Elem.Pos.x - 10 > viewport->WorkSize.x / 4 ? origin.x + Elem.Pos.x - 10 : viewport->WorkSize.x / 4;
+					if (x < origin.x + Elem.Pos.x + UsedTexture.Width + 10)
+						canvas_draw_list->AddRectFilled(
+							ImVec2(x, origin.y + Elem.Pos.y - 10),
+							ImVec2(origin.x + Elem.Pos.x + UsedTexture.Width + 10, origin.y + Elem.Pos.y + UsedTexture.Height + 10),
+							IM_COL32(0, 255, 64, 50));
+				}
+			}
+		}
+	}
+
+	void MapWindow()
+	{
+		if (MapOpen)
+		{
+			ImGui::Begin(u8"Карта");
+			ImGui::End();
 		}
 	}
 

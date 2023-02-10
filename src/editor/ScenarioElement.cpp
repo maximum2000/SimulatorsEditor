@@ -25,4 +25,5 @@ namespace ScenariosEditorScenarioElement
 		pins = std::vector<int>();
 		caption = "";
 	}
+
 }

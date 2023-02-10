@@ -20,4 +20,5 @@ namespace ScenariosEditorScenarioElement
 	int GetPinIndex(const char* name, int pin);
 	std::vector<std::shared_ptr<ScenarioElement>> GetScenarioElements();
 	std::vector<std::vector<int>> GetLinks();
+	std::vector<std::vector<std::string>> GetAllElementsAttributeNames();
 }
