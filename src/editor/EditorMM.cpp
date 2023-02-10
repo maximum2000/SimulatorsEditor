@@ -86,6 +86,7 @@ namespace EditorMathModel
     static int CurrentHoveredElementIndex = -1;
     static ImVec2 mousePositionOnClick;
     static float canvasScaleFactor = 1.0f;
+    static float topBarHeight;
 
     // ImGui data
     const ImGuiViewport* viewport;
@@ -110,7 +111,6 @@ namespace EditorMathModel
 
         viewport = ImGui::GetMainViewport();
         ImGuiIO& io = ImGui::GetIO();
-
         // Main loop
         bool done = false;
         while (!done)
@@ -198,7 +198,7 @@ namespace EditorMathModel
         }
         return "null";
     }
-
+    
 #pragma region State Machine (definition)
     void StateMachineSetState(ProgrammState newState)
     {
@@ -254,15 +254,6 @@ namespace EditorMathModel
         if (currentState == CanvasSelection)
         {
             CanvasScaling(io.MouseWheel);
-            /*canvasScaleFactor += io.MouseWheel * 0.1f;
-            if (canvasScaleFactor < 0.1f)
-            {
-                canvasScaleFactor = 0.1f;
-            }
-            else if (canvasScaleFactor > 2.0f)
-            {
-                canvasScaleFactor = 2.0f;
-            }*/
             if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
             {
                 mousePositionOnClick = io.MousePos;
@@ -354,11 +345,11 @@ namespace EditorMathModel
         ImGui::Text("Origin X: %f", origin.x);
         ImGui::Text("Origin Y: %f", origin.y);
         ImGui::Separator();
-        ImGui::Text("Mouse start X: %f", mousePositionOnClick.x);
-        ImGui::Text("Mouse start Y: %f", mousePositionOnClick.y);
-        ImGui::Text("Mouse current X: %f", io.MousePos.x);
-        ImGui::Text("Mouse current Y: %f", io.MousePos.y);
-        ImGui::Separator();
+        //ImGui::Text("Mouse start X: %f", mousePositionOnClick.x);
+        //ImGui::Text("Mouse start Y: %f", mousePositionOnClick.y);
+        //ImGui::Text("Mouse current X: %f", io.MousePos.x);
+        //ImGui::Text("Mouse current Y: %f", io.MousePos.y);
+        //ImGui::Separator();
         ImGui::Text("Scale factor: %f", canvasScaleFactor);
         ImGui::Text("Scale factor: %f", ImGui::GetIO().MouseWheel);
         ImGui::Separator();
@@ -437,6 +428,7 @@ namespace EditorMathModel
     {
         ImGuiIO& io = ImGui::GetIO();
         const float footer_height_to_reserve = ImGui::GetFrameHeightWithSpacing();
+        topBarHeight = footer_height_to_reserve - ImGui::GetStyle().ItemSpacing.y;
         // Canvas size and style
         ImGui::SetNextWindowPos(ImVec2(0, footer_height_to_reserve - ImGui::GetStyle().ItemSpacing.y));
         ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x, viewport->WorkSize.y - footer_height_to_reserve * 2));
@@ -462,23 +454,24 @@ namespace EditorMathModel
         {
             CanvasRectangleSelection(io, mousePositionOnClick);
         }
-        // Canvas scrolling
-        /*const bool IsWorkspaceActive = ImGui::IsItemActive();
-        if (IsWorkspaceActive && ImGui::IsMouseDragging(ImGuiMouseButton_Right))
-        {
-            scrolling.x += io.MouseDelta.x;
-            scrolling.y += io.MouseDelta.y;
-            if (scrolling.x > 0.0f) scrolling.x = 0.0f;
-            if (scrolling.y > 0.0f) scrolling.y = 0.0f;
-        }*/
         // Draw grid
         draw_list->PushClipRect(canvas_p0, canvas_p1, true);
         {
             const float GRID_STEP = 79.0f * canvasScaleFactor;
-            for (float x = fmodf(origin.x, GRID_STEP); x < canvas_sz.x; x += GRID_STEP)
-                draw_list->AddLine(ImVec2(canvas_p0.x + x, canvas_p0.y), ImVec2(canvas_p0.x + x, canvas_p1.y), IM_COL32(200, 200, 200, 119));
-            for (float y = fmodf(origin.y, GRID_STEP); y < canvas_sz.y; y += GRID_STEP)
-                draw_list->AddLine(ImVec2(canvas_p0.x, canvas_p0.y + y), ImVec2(canvas_p1.x, canvas_p0.y + y), IM_COL32(200, 200, 200, 119));
+            for (float x = fmodf(origin.x, GRID_STEP); x < canvas_sz.x; x += GRID_STEP) 
+            {
+                draw_list->AddLine(
+                    ImVec2(canvas_p0.x + x, canvas_p0.y),
+                    ImVec2(canvas_p0.x + x, canvas_p1.y),
+                    IM_COL32(200, 200, 200, 119));
+            }
+            for (float y = fmodf(origin.y, GRID_STEP); y < canvas_sz.y; y += GRID_STEP) 
+            {
+                draw_list->AddLine(
+                    ImVec2(canvas_p0.x, canvas_p0.y + y),
+                    ImVec2(canvas_p1.x, canvas_p0.y + y),
+                    IM_COL32(200, 200, 200, 119));
+            }
         }
         draw_list->PopClipRect();
         // canvas is drag'n'drop reciever
@@ -504,8 +497,13 @@ namespace EditorMathModel
                     y = 0;
                     mousePosition.y = origin.y + TextureLoader.GetTextureByIndex(ElementNum).imageHeight / 2;
                 }
+                else
+                {
+                    y -= topBarHeight;
+                }
                 mousePosition.x -= origin.x;
                 mousePosition.y -= origin.y;
+                mousePosition.y -= topBarHeight;
                 //std::string elemName = TextureLoader.GetTextureNameByIndex(ElementNum);
                 //CanvasElements.push_back({ elemName, ElementNum, ImVec2(x, y), mousePosition });
                 CanvasElements.push_back({ ElementNum, ImVec2(x, y), mousePosition });
@@ -550,11 +548,13 @@ namespace EditorMathModel
         {
             EditorMMTextureLoader::LoadedTexture UsedTexture = TextureLoader.GetTextureByIndex(CanvasElements[i].elementDataNumber);
             draw_list->AddImage((void*)UsedTexture.myTexture,
-                ImVec2(origin.x + CanvasElements[i].position.x, origin.y + CanvasElements[i].position.y),
-                ImVec2(origin.x + CanvasElements[i].position.x + UsedTexture.imageWidth, origin.y + CanvasElements[i].position.y + UsedTexture.imageHeight));
+                ImVec2((origin.x + CanvasElements[i].position.x) * canvasScaleFactor, 
+                    (origin.y + CanvasElements[i].position.y) * canvasScaleFactor + topBarHeight),
+                ImVec2((origin.x + CanvasElements[i].position.x) * canvasScaleFactor + UsedTexture.imageWidth * canvasScaleFactor,
+                    (origin.y + CanvasElements[i].position.y) * canvasScaleFactor + topBarHeight + UsedTexture.imageHeight * canvasScaleFactor));
             ImGui::SetCursorScreenPos(ImVec2(origin.x + CanvasElements[i].position.x, origin.y + CanvasElements[i].position.y));
             ImGui::InvisibleButton("canvas123",
-                ImVec2(UsedTexture.imageWidth, UsedTexture.imageHeight),
+                ImVec2(UsedTexture.imageWidth * canvasScaleFactor, UsedTexture.imageHeight * canvasScaleFactor),
                 ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
             ImGui::SetItemAllowOverlap();
             if ((CurrentHoveredElementIndex == -1 || CurrentHoveredElementIndex == i) && currentState < 8)
@@ -564,8 +564,10 @@ namespace EditorMathModel
                     CurrentHoveredElementIndex = i;
                     StateMachineSetState(ElementHover);
                     CanvasElementRenderRect(
-                        ImVec2(origin.x + CanvasElements[i].position.x, origin.y + CanvasElements[i].position.y),
-                        ImVec2(origin.x + CanvasElements[i].position.x + UsedTexture.imageWidth, origin.y + CanvasElements[i].position.y + UsedTexture.imageHeight),
+                        ImVec2((origin.x + CanvasElements[i].position.x) * canvasScaleFactor, 
+                            (origin.y + CanvasElements[i].position.y) * canvasScaleFactor + topBarHeight),
+                        ImVec2((origin.x + CanvasElements[i].position.x) * canvasScaleFactor + UsedTexture.imageWidth * canvasScaleFactor,
+                            (origin.y + CanvasElements[i].position.y) * canvasScaleFactor + topBarHeight + UsedTexture.imageHeight * canvasScaleFactor),
                         ColorData.CanvasElementHoverColorRect, ColorData.CanvasElementHoverColorRectFill);
                     ImGui::SetTooltip("Center X position: %f", CanvasElements[i].centerPosition.x);
                 } 
@@ -577,15 +579,19 @@ namespace EditorMathModel
             if (CanvasElements[i].isSearched && !CanvasElements[i].isSelected && CurrentHoveredElementIndex != i)
             {
                 CanvasElementRenderRect(
-                    ImVec2(origin.x + CanvasElements[i].position.x, origin.y + CanvasElements[i].position.y),
-                    ImVec2(origin.x + CanvasElements[i].position.x + UsedTexture.imageWidth, origin.y + CanvasElements[i].position.y + UsedTexture.imageHeight),
+                    ImVec2((origin.x + CanvasElements[i].position.x) * canvasScaleFactor,
+                        (origin.y + CanvasElements[i].position.y) * canvasScaleFactor + topBarHeight),
+                    ImVec2((origin.x + CanvasElements[i].position.x) * canvasScaleFactor + UsedTexture.imageWidth * canvasScaleFactor,
+                        (origin.y + CanvasElements[i].position.y) * canvasScaleFactor + topBarHeight + UsedTexture.imageHeight * canvasScaleFactor),
                     ColorData.CanvasElementSearchColorRect, ColorData.CanvasElementSearchColorRectFill);
             }
             if (CanvasElements[i].isSelected)
             {
                 CanvasElementRenderRect(
-                    ImVec2(origin.x + CanvasElements[i].position.x, origin.y + CanvasElements[i].position.y),
-                    ImVec2(origin.x + CanvasElements[i].position.x + UsedTexture.imageWidth, origin.y + CanvasElements[i].position.y + UsedTexture.imageHeight),
+                    ImVec2((origin.x + CanvasElements[i].position.x) * canvasScaleFactor,
+                        (origin.y + CanvasElements[i].position.y) * canvasScaleFactor + topBarHeight),
+                    ImVec2((origin.x + CanvasElements[i].position.x) * canvasScaleFactor + UsedTexture.imageWidth * canvasScaleFactor,
+                        (origin.y + CanvasElements[i].position.y) * canvasScaleFactor + topBarHeight + UsedTexture.imageHeight * canvasScaleFactor),
                     ColorData.CanvasElementSelectColorRect, ColorData.CanvasElementSelectColorRectFill);
             }
         }
@@ -639,7 +645,7 @@ namespace EditorMathModel
     }
     void CanvasScaling(float deltaValue)
     {
-        canvasScaleFactor += deltaValue * 0.1f;
+        canvasScaleFactor += deltaValue * -0.1f;
         if (canvasScaleFactor < 0.1f)
         {
             canvasScaleFactor = 0.1f;
