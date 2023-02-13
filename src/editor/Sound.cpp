@@ -8,7 +8,7 @@ namespace ScenariosEditorScenarioElement
 	}
 	Sound::Sound() : ScenarioElement::ScenarioElement()
 	{
-		Name = ElementAttribute(u8"Name",0);
+		Name = ElementAttribute(u8"name",0);
 	}
 	std::vector<ElementAttribute*> Sound::GetAttributes()
 	{
