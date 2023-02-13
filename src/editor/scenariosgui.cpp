@@ -6,6 +6,7 @@
 
 Known problems:
 
+-Config
 -Highlighting (static struct of colors, link)
 -Should check space on disk
 -CTRL+TAB main menu
@@ -72,6 +73,7 @@ namespace ScenariosEditorGUI {
 	static ImVec2 scrolling(0.0f, 0.0f); // current scrolling, can be put out of global later
 	static ImVec2 MousePosInCanvas, origin, MousePos;
 	static int SelectedElemGUI = -1;
+	static float CanvasZoom = 1;
 
 	static std::vector<ElementOnCanvas> Elems;
 	static std::vector<LinkOnCanvas> Links;
@@ -249,7 +251,6 @@ namespace ScenariosEditorGUI {
 		DrawCanvas(viewport, io);
 
 		int hover_on = ImGui::IsItemHovered(); // used for logic
-
 		// Add context menu
 		AddCanvasContextMenu();
 
@@ -329,8 +330,8 @@ namespace ScenariosEditorGUI {
 			auto payload = ImGui::AcceptDragDropPayload("Element");
 			if (payload != NULL) {
 				int ElementNum = *(int*)payload->Data;
-				int x = MousePosInCanvas.x - ElementsData::GetElementTexture(ElementNum).Width / 2;
-				int y = MousePosInCanvas.y - ElementsData::GetElementTexture(ElementNum).Height / 2;
+				int x = MousePosInCanvas.x - (ElementsData::GetElementTexture(ElementNum, CanvasZoom).Width / 2) / CanvasZoom;
+				int y = MousePosInCanvas.y - (ElementsData::GetElementTexture(ElementNum, CanvasZoom).Height / 2) / CanvasZoom;
 				AddElementGUI(ElementNum, ImVec2(x, y), ElementsData::GetElementType(ElementNum));
 			}
 			ImGui::EndDragDropTarget();
@@ -406,12 +407,12 @@ namespace ScenariosEditorGUI {
 			if (ImGui::MenuItem(u8"Вставить", NULL, false, CopyBuffer.size() > 0))
 			{
 				SelectedElems.clear();
-				ImVec2 min = ImVec2(-1, -1);
+				ImVec2 min = ImVec2(INT_MAX, INT_MAX);
 				int ElemsSize = Elems.size();
 				for (int i = 0; i < CopyBuffer.size(); i++)
 				{
-					if (min.x == -1 || CopyBuffer[i].Pos.x < min.x) min.x = CopyBuffer[i].Pos.x;
-					if (min.y == -1 || CopyBuffer[i].Pos.y < min.y) min.y = CopyBuffer[i].Pos.y;
+					if (min.x == INT_MAX || CopyBuffer[i].Pos.x < min.x) min.x = CopyBuffer[i].Pos.x;
+					if (min.y == INT_MAX || CopyBuffer[i].Pos.y < min.y) min.y = CopyBuffer[i].Pos.y;
 				}
 				for (int i = 0; i < CopyBuffer.size(); i++)
 				{
@@ -436,20 +437,20 @@ namespace ScenariosEditorGUI {
 		switch (Point)
 		{
 		case 0: return ImVec2(
-			origin.x + Elems[Elem].Pos.x + ElementsData::GetElementTexture(Elems[Elem].Element).Width / 2,
-			origin.y + Elems[Elem].Pos.y
+			origin.x + Elems[Elem].Pos.x * CanvasZoom + ElementsData::GetElementTexture(Elems[Elem].Element, CanvasZoom).Width / 2,
+			origin.y + Elems[Elem].Pos.y * CanvasZoom
 		); break;
 		case 1: return ImVec2(
-			origin.x + Elems[Elem].Pos.x + ElementsData::GetElementTexture(Elems[Elem].Element).Width,
-			origin.y + Elems[Elem].Pos.y + ElementsData::GetElementTexture(Elems[Elem].Element).Height / 2
+			origin.x + Elems[Elem].Pos.x * CanvasZoom + ElementsData::GetElementTexture(Elems[Elem].Element, CanvasZoom).Width,
+			origin.y + Elems[Elem].Pos.y * CanvasZoom + ElementsData::GetElementTexture(Elems[Elem].Element, CanvasZoom).Height / 2
 		); break;
 		case 2: return ImVec2(
-			origin.x + Elems[Elem].Pos.x + ElementsData::GetElementTexture(Elems[Elem].Element).Width / 2,
-			origin.y + Elems[Elem].Pos.y + ElementsData::GetElementTexture(Elems[Elem].Element).Height
+			origin.x + Elems[Elem].Pos.x * CanvasZoom + ElementsData::GetElementTexture(Elems[Elem].Element, CanvasZoom).Width / 2,
+			origin.y + Elems[Elem].Pos.y * CanvasZoom + ElementsData::GetElementTexture(Elems[Elem].Element, CanvasZoom).Height
 		); break;
 		case 3: return ImVec2(
-			origin.x + Elems[Elem].Pos.x,
-			origin.y + Elems[Elem].Pos.y + ElementsData::GetElementTexture(Elems[Elem].Element).Height / 2
+			origin.x + Elems[Elem].Pos.x * CanvasZoom,
+			origin.y + Elems[Elem].Pos.y * CanvasZoom + ElementsData::GetElementTexture(Elems[Elem].Element, CanvasZoom).Height / 2
 		); break;
 		}
 	}
@@ -498,35 +499,49 @@ namespace ScenariosEditorGUI {
 		ImGui::SetNextWindowPos(ImVec2(viewport->WorkSize.x / 4, viewport->WorkPos.y));
 		ImGui::SetNextWindowSize(ImVec2(3 * viewport->WorkSize.x / 4, viewport->WorkSize.y));
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
-		ImGui::Begin("MainWorkspace", NULL, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus);
+		ImGui::Begin("MainWorkspace", NULL, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoScrollWithMouse);
 		ImGui::PopStyleVar();
 
 		// Canvas positioning
 		ImVec2 canvas_p0 = ImGui::GetCursorScreenPos();
 		ImVec2 canvas_sz = ImGui::GetContentRegionAvail();
 		ImVec2 canvas_p1 = ImVec2(canvas_p0.x + canvas_sz.x, canvas_p0.y + canvas_sz.y);
-		origin = ImVec2(canvas_p0.x + scrolling.x, canvas_p0.y + scrolling.y);
-		MousePosInCanvas = ImVec2(io.MousePos.x - origin.x, io.MousePos.y - origin.y);
 		MousePos = io.MousePos;
 		canvas_draw_list = ImGui::GetWindowDrawList();
 		canvas_draw_list->AddRectFilled(canvas_p0, canvas_p1, IM_COL32(240, 240, 240, 0));
 		// Window itself doesn't trigger io mouse actions, invisible button does
 		ImGui::InvisibleButton("canvas", canvas_sz, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
 		ImGui::SetItemAllowOverlap();
-
+		static ImVec2 shift = { 0, 0 };
+		if (ImGui::IsItemHovered())
+		{
+			if (ImGui::GetIO().MouseWheel != 0)
+			{
+				float oldzoom = CanvasZoom;
+				CanvasZoom += ImGui::GetIO().MouseWheel * 0.05f;
+				if (CanvasZoom > 2) CanvasZoom = 2;
+				else if (CanvasZoom < 0.5) CanvasZoom = 0.5f;
+				
+				if (oldzoom != CanvasZoom)
+				{
+					shift.x -= (canvas_sz.x * CanvasZoom - canvas_sz.x * oldzoom) / 2.0f;
+					shift.y -= (canvas_sz.y * CanvasZoom - canvas_sz.y * oldzoom) / 2.0f;
+				}
+				std::cout << CanvasZoom;
+			}
+		}
+		canvas_draw_list->PopClipRect();
+		origin = ImVec2(canvas_p0.x + scrolling.x * CanvasZoom + shift.x, canvas_p0.y + scrolling.y * CanvasZoom + shift.y);
 		// Draw grid
 		canvas_draw_list->PushClipRect(canvas_p0, canvas_p1, true);
 		{
-			const float GRID_STEP = 79.0f;
-			for (float x = fmodf(scrolling.x, GRID_STEP); x < canvas_sz.x; x += GRID_STEP)
+			const float GRID_STEP = 79.0f * CanvasZoom;
+			for (float x = fmodf(origin.x, GRID_STEP); x < canvas_sz.x; x += GRID_STEP)
 				canvas_draw_list->AddLine(ImVec2(canvas_p0.x + x, canvas_p0.y), ImVec2(canvas_p0.x + x, canvas_p1.y), IM_COL32(200, 200, 200, 119));
-			for (float y = fmodf(scrolling.y, GRID_STEP); y < canvas_sz.y; y += GRID_STEP)
+			for (float y = fmodf(origin.y, GRID_STEP); y < canvas_sz.y; y += GRID_STEP)
 				canvas_draw_list->AddLine(ImVec2(canvas_p0.x, canvas_p0.y + y), ImVec2(canvas_p1.x, canvas_p0.y + y), IM_COL32(200, 200, 200, 119));
 		}
-		canvas_draw_list->PopClipRect();
-
-		origin = ImVec2(canvas_p0.x + scrolling.x, canvas_p0.y + scrolling.y);
-		MousePosInCanvas = ImVec2(io.MousePos.x - origin.x, io.MousePos.y - origin.y);
+		MousePosInCanvas = ImVec2((io.MousePos.x - origin.x) / CanvasZoom, (io.MousePos.y - origin.y) / CanvasZoom);
 		MousePos = io.MousePos;
 	}
 	// Draw elems
@@ -534,10 +549,10 @@ namespace ScenariosEditorGUI {
 	{
 		for (int i = 0; i < Elems.size(); i++)
 		{
-			Texture UsedTexture = ElementsData::GetElementTexture(Elems[i].Element);
+			Texture UsedTexture = ElementsData::GetElementTexture(Elems[i].Element, CanvasZoom);
 			canvas_draw_list->AddImage(
-				(void*)UsedTexture.Payload, ImVec2(origin.x + Elems[i].Pos.x, origin.y + Elems[i].Pos.y),
-				ImVec2(origin.x + Elems[i].Pos.x + UsedTexture.Width, origin.y + Elems[i].Pos.y + UsedTexture.Height));
+				(void*)UsedTexture.Payload, ImVec2(origin.x + Elems[i].Pos.x * CanvasZoom, origin.y + Elems[i].Pos.y * CanvasZoom),
+				ImVec2(origin.x + Elems[i].Pos.x * CanvasZoom + UsedTexture.Width, origin.y + Elems[i].Pos.y * CanvasZoom + UsedTexture.Height ));
 
 		}
 	}
@@ -547,15 +562,15 @@ namespace ScenariosEditorGUI {
 		for (int i = 0; i < SelectedElems.size(); i++)
 		{
 			int SelectedElem = SelectedElems[i];
-			Texture UsedTexture = ElementsData::GetElementTexture(Elems[SelectedElem].Element);
+			Texture UsedTexture = ElementsData::GetElementTexture(Elems[SelectedElem].Element, CanvasZoom);
 			// rectangle displaying selection
 			canvas_draw_list->AddRect(
-				ImVec2(origin.x + Elems[SelectedElem].Pos.x, origin.y + Elems[SelectedElem].Pos.y),
-				ImVec2(origin.x + Elems[SelectedElem].Pos.x + UsedTexture.Width, origin.y + Elems[SelectedElem].Pos.y + UsedTexture.Height),
+				ImVec2(origin.x + Elems[SelectedElem].Pos.x * CanvasZoom, origin.y + Elems[SelectedElem].Pos.y * CanvasZoom),
+				ImVec2(origin.x + Elems[SelectedElem].Pos.x * CanvasZoom + UsedTexture.Width, origin.y + Elems[SelectedElem].Pos.y * CanvasZoom + UsedTexture.Height),
 				IM_COL32(0, 0, 0, 255));
 			canvas_draw_list->AddRectFilled(
-				ImVec2(origin.x + Elems[SelectedElem].Pos.x, origin.y + Elems[SelectedElem].Pos.y),
-				ImVec2(origin.x + Elems[SelectedElem].Pos.x + UsedTexture.Width, origin.y + Elems[SelectedElem].Pos.y + UsedTexture.Height),
+				ImVec2(origin.x + Elems[SelectedElem].Pos.x * CanvasZoom, origin.y + Elems[SelectedElem].Pos.y * CanvasZoom),
+				ImVec2(origin.x + Elems[SelectedElem].Pos.x * CanvasZoom + UsedTexture.Width, origin.y + Elems[SelectedElem].Pos.y * CanvasZoom + UsedTexture.Height),
 				IM_COL32(255, 255, 0, 10));
 		}
 	}
@@ -571,7 +586,7 @@ namespace ScenariosEditorGUI {
 			);
 		}
 	}
-	// Draw captin
+	// Draw caption
 	void CanvasDrawCaption()
 	{
 		float font_size = 20;
@@ -580,8 +595,8 @@ namespace ScenariosEditorGUI {
 		float shift_y = 20;
 		for (ElementOnCanvas Elem : Elems)
 		{
-			if (origin.y + Elem.Pos.y > 0)
-				canvas_draw_list->AddText(ImGui::GetFont(), font_size, ImVec2(origin.x + Elem.Pos.x + shift_x, origin.y + Elem.Pos.y + shift_y), IM_COL32(0, 0, 0, 255), (Elem.ElementInStorage)->caption.c_str(), (const char*)0, wrap_size);
+			//if (origin.y + Elem.Pos.y > 0)
+				//canvas_draw_list->AddText(ImGui::GetFont(), font_size, ImVec2(origin.x + Elem.Pos.x + shift_x, origin.y + Elem.Pos.y + shift_y), IM_COL32(0, 0, 0, 255), (Elem.ElementInStorage)->caption.c_str(), (const char*)0, wrap_size);
 		}
 	}
 
@@ -620,8 +635,8 @@ namespace ScenariosEditorGUI {
 		{
 		case CanvasDragging:
 			CurrentState = CanvasDragging;
-			scrolling.x += io.MouseDelta.x;
-			scrolling.y += io.MouseDelta.y;
+			scrolling.x += io.MouseDelta.x / CanvasZoom;
+			scrolling.y += io.MouseDelta.y / CanvasZoom;
 			break;
 		case Selection:
 			canvas_draw_list->AddRect(*SelectionStartPosition, io.MousePos, IM_COL32(0, 0, 0, 255));
@@ -637,8 +652,8 @@ namespace ScenariosEditorGUI {
 		for (int i = 0; i < Elems.size(); i++)
 		{
 			// Create button and handle it io actions
-			Texture UsedTexture = ElementsData::GetElementTexture(Elems[i].Element);
-			ImGui::SetCursorScreenPos(ImVec2(origin.x + Elems[i].Pos.x, origin.y + Elems[i].Pos.y));
+			Texture UsedTexture = ElementsData::GetElementTexture(Elems[i].Element, CanvasZoom);
+			ImGui::SetCursorScreenPos(ImVec2(origin.x + Elems[i].Pos.x * CanvasZoom, origin.y + Elems[i].Pos.y * CanvasZoom));
 			ImGui::InvisibleButton("canvas123", ImVec2(UsedTexture.Width, UsedTexture.Height), ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
 			ImGui::SetItemAllowOverlap();
 			// IsMouseClicked() + IsItemHovered() usage to find which element user selected
@@ -658,10 +673,10 @@ namespace ScenariosEditorGUI {
 			// Foreach element we determine if it contains in selection
 			if (CurrentState == Selection)
 			{
-				if (Elems[i].Pos.x + origin.x + UsedTexture.Width / 2 > (MousePos.x + SelectionStartPosition->x - max(MousePos.x, SelectionStartPosition->x))
-					&& Elems[i].Pos.x + origin.x + UsedTexture.Height / 2 < (MousePos.x + SelectionStartPosition->x - min(MousePos.x, SelectionStartPosition->x))
-					&& Elems[i].Pos.y + origin.y + UsedTexture.Width / 2 > (MousePos.y + SelectionStartPosition->y - max(MousePos.y, SelectionStartPosition->y))
-					&& Elems[i].Pos.y + origin.y + UsedTexture.Height / 2 < (MousePos.y + SelectionStartPosition->y - min(MousePos.y, SelectionStartPosition->y))
+				if (Elems[i].Pos.x * CanvasZoom + origin.x + UsedTexture.Width / 2 > (MousePos.x + SelectionStartPosition->x - max(MousePos.x, SelectionStartPosition->x))
+					&& Elems[i].Pos.x * CanvasZoom + origin.x + UsedTexture.Height / 2 < (MousePos.x + SelectionStartPosition->x - min(MousePos.x, SelectionStartPosition->x))
+					&& Elems[i].Pos.y * CanvasZoom + origin.y + UsedTexture.Width / 2 > (MousePos.y + SelectionStartPosition->y - max(MousePos.y, SelectionStartPosition->y))
+					&& Elems[i].Pos.y * CanvasZoom + origin.y + UsedTexture.Height / 2 < (MousePos.y + SelectionStartPosition->y - min(MousePos.y, SelectionStartPosition->y))
 					&& std::find(SelectedElems.begin(), SelectedElems.end(), i) == SelectedElems.end()
 					)
 				{
@@ -682,8 +697,8 @@ namespace ScenariosEditorGUI {
 			// dragging wont change order
 			if (CurrentState == ElementDragging)
 			{
-				int x = Elems[SelectedElem].Pos.x + io.MouseDelta.x;
-				int y = Elems[SelectedElem].Pos.y + io.MouseDelta.y;
+				int x = Elems[SelectedElem].Pos.x + io.MouseDelta.x / CanvasZoom;
+				int y = Elems[SelectedElem].Pos.y + io.MouseDelta.y / CanvasZoom;
 				Elems[SelectedElem].Pos = ImVec2(x, y);
 				ScenariosEditorScenarioElement::UpdateCoordinates(Elems[SelectedElem].ElementInStorage, x, y);
 			}
@@ -1096,12 +1111,12 @@ namespace ScenariosEditorGUI {
 				}
 				if (ShouldSelect)
 				{
-					Texture UsedTexture = ElementsData::GetElementTexture(Elem.Element);
-					float x = origin.x + Elem.Pos.x - 10 > viewport->WorkSize.x / 4 ? origin.x + Elem.Pos.x - 10 : viewport->WorkSize.x / 4;
-					if (x < origin.x + Elem.Pos.x + UsedTexture.Width + 10)
+					Texture UsedTexture = ElementsData::GetElementTexture(Elem.Element, CanvasZoom);
+					float x = origin.x + Elem.Pos.x * CanvasZoom - 10 > viewport->WorkSize.x / 4 ? origin.x + Elem.Pos.x * CanvasZoom - 10 : viewport->WorkSize.x / 4;
+					if (x < origin.x + Elem.Pos.x * CanvasZoom + UsedTexture.Width + 10)
 					canvas_draw_list->AddRectFilled(
-						ImVec2(x, origin.y + Elem.Pos.y - 10),
-						ImVec2(origin.x + Elem.Pos.x + UsedTexture.Width + 10, origin.y + Elem.Pos.y + UsedTexture.Height + 10),
+						ImVec2(x, origin.y + Elem.Pos.y * CanvasZoom - 10),
+						ImVec2(origin.x + Elem.Pos.x * CanvasZoom + UsedTexture.Width + 10, origin.y + Elem.Pos.y * CanvasZoom + UsedTexture.Height + 10),
 						IM_COL32(0, 255, 64, 50));
 				}
 			}
@@ -1152,12 +1167,12 @@ namespace ScenariosEditorGUI {
 				}
 				if (ShouldSelect)
 				{
-					Texture UsedTexture = ElementsData::GetElementTexture(Elem.Element);
-					float x = origin.x + Elem.Pos.x - 10 > viewport->WorkSize.x / 4 ? origin.x + Elem.Pos.x - 10 : viewport->WorkSize.x / 4;
-					if (x < origin.x + Elem.Pos.x + UsedTexture.Width + 10)
+					Texture UsedTexture = ElementsData::GetElementTexture(Elem.Element, CanvasZoom);
+					float x = origin.x + Elem.Pos.x * CanvasZoom - 10 > viewport->WorkSize.x / 4 ? origin.x + Elem.Pos.x * CanvasZoom - 10 : viewport->WorkSize.x / 4;
+					if (x < origin.x + Elem.Pos.x * CanvasZoom + UsedTexture.Width + 10)
 						canvas_draw_list->AddRectFilled(
-							ImVec2(x, origin.y + Elem.Pos.y - 10),
-							ImVec2(origin.x + Elem.Pos.x + UsedTexture.Width + 10, origin.y + Elem.Pos.y + UsedTexture.Height + 10),
+							ImVec2(x, origin.y + Elem.Pos.y * CanvasZoom - 10),
+							ImVec2(origin.x + Elem.Pos.x * CanvasZoom + UsedTexture.Width + 10, origin.y + Elem.Pos.y * CanvasZoom + UsedTexture.Height + 10),
 							IM_COL32(0, 255, 64, 50));
 				}
 			}

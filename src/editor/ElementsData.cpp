@@ -96,9 +96,12 @@ namespace ScenariosEditorElementsData
 	{
 		return ElementNames[index];
 	}
-	Texture ElementsData::GetElementTexture(int index)
+	Texture ElementsData::GetElementTexture(int index, float Zoom)
 	{
-		return Textures[index];
+		Texture ret = Textures[index];
+		ret.Height *= Zoom;
+		ret.Width *= Zoom;
+		return ret;
 	}
 	int ElementsData::GetElementType(int index)
 	{
