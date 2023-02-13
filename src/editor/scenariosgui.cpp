@@ -527,7 +527,6 @@ namespace ScenariosEditorGUI {
 					shift.x -= (canvas_sz.x * CanvasZoom - canvas_sz.x * oldzoom) / 2.0f;
 					shift.y -= (canvas_sz.y * CanvasZoom - canvas_sz.y * oldzoom) / 2.0f;
 				}
-				std::cout << CanvasZoom;
 			}
 		}
 		canvas_draw_list->PopClipRect();
@@ -591,12 +590,12 @@ namespace ScenariosEditorGUI {
 	{
 		float font_size = 20;
 		float wrap_size = 400;
-		float shift_x = 200;
-		float shift_y = 20;
+		float shift_x = 200 * CanvasZoom;
+		float shift_y = 20 * CanvasZoom;
 		for (ElementOnCanvas Elem : Elems)
 		{
-			//if (origin.y + Elem.Pos.y > 0)
-				//canvas_draw_list->AddText(ImGui::GetFont(), font_size, ImVec2(origin.x + Elem.Pos.x + shift_x, origin.y + Elem.Pos.y + shift_y), IM_COL32(0, 0, 0, 255), (Elem.ElementInStorage)->caption.c_str(), (const char*)0, wrap_size);
+			if (origin.y + Elem.Pos.y * CanvasZoom > 0)
+				canvas_draw_list->AddText(ImGui::GetFont(), font_size, ImVec2(origin.x + Elem.Pos.x * CanvasZoom + shift_x, origin.y + Elem.Pos.y * CanvasZoom + shift_y), IM_COL32(0, 0, 0, 255), (Elem.ElementInStorage)->caption.c_str(), (const char*)0, wrap_size);
 		}
 	}
 
