@@ -16,6 +16,7 @@
 #include "CanvasElements.h"
 #include <ctime>
 #include "ColorData.h"
+#include <math.h>
 
 namespace EditorMathModel
 {
@@ -77,6 +78,7 @@ namespace EditorMathModel
     void CanvasElementsDragByValue(float xDelta, float yDelta);
     void CanvasElementsSearchClear();
 #pragma endregion
+    float ReverseScale(float value);
 
     // Forward declarations of variables
     bool show_elements_window = false;
@@ -356,8 +358,8 @@ namespace EditorMathModel
         //ImGui::Text("Selected: |%s|", searchInput);
         if (CanvasElements.size() > 0)
         {
-            ImGui::Text("Element X: %f", CanvasElements[0].centerPosition.x);
-            ImGui::Text("Element Y: %f", CanvasElements[0].centerPosition.y);
+            ImGui::Text("Element X: %f", (CanvasElements[0].centerPosition.x + origin.x) * canvasScaleFactor);
+            ImGui::Text("Element Y: %f", (CanvasElements[0].centerPosition.y + origin.y) * canvasScaleFactor);
         }
         if (ImGui::IsWindowHovered())
         {
@@ -457,7 +459,7 @@ namespace EditorMathModel
         // Draw grid
         draw_list->PushClipRect(canvas_p0, canvas_p1, true);
         {
-            const float GRID_STEP = 79.0f * canvasScaleFactor;
+            const float GRID_STEP = 64.0f * canvasScaleFactor;
             for (float x = fmodf(origin.x, GRID_STEP); x < canvas_sz.x; x += GRID_STEP) 
             {
                 draw_list->AddLine(
@@ -634,6 +636,7 @@ namespace EditorMathModel
 #pragma region Helper functions for canvas (definition)
     void CanvasDragging(ImVec2 moveDelta)
     {
+        //float reverseScale = ReverseScale(canvasScaleFactor);
         ImVec2 newOrigin = ImVec2(origin.x + moveDelta.x, origin.y + moveDelta.y);
         if (newOrigin.x > 0)
         {
@@ -886,4 +889,15 @@ namespace EditorMathModel
         }
     }
 #pragma endregion
+    float ReverseScale(float value)
+    {
+        return abs(value - 2) + 0.1f;
+        // 2 max
+        // 0.1 min
+        // 2 = 0.1
+        // 0.1 = 2
+        // > 1-
+        // < 1
+
+    }
 }
