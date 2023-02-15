@@ -94,7 +94,7 @@ namespace ScenariosEditorGUI {
 	void DrawParamsSection(const ImGuiViewport* viewport);
 	void CanvasLogic(int hover_on, ImVec2* SelectionStartPosition, ImGuiIO& io);
 	void SearchWindow();
-	void DoSearch(int SearchType, int SearchElement, std::string SearchAttribute, std::string SearchField);
+	std::vector<int> DoSearch(int SearchType, int SearchElement, std::string SearchAttribute, std::string SearchField);
 	void MapWindow();
 
 	// Helper functions
@@ -138,7 +138,7 @@ namespace ScenariosEditorGUI {
 
 		ImVector<ImWchar> ranges;
 		ImFontGlyphRangesBuilder builder;
-		builder.AddChar(0x2116);                               // Add a specific character
+		builder.AddChar(0x2116);                               // Some chars are loaded manually
 		builder.AddChar(0x2013);
 		builder.AddChar(0x202F);
 		builder.AddRanges(io.Fonts->GetGlyphRangesCyrillic()); // Add one of the default ranges
@@ -148,7 +148,7 @@ namespace ScenariosEditorGUI {
 		io.Fonts->Build();
 		ElementsData::Initialization();
 		ScenarioEditorScenarioStorage::ClearScenarioStorage();
-
+		SetCanvasZoomRef(&CanvasZoom);
 		SetCanvasScrollingRef(&scrolling);
 		SetDefaulScreenPos();
 	}
@@ -501,10 +501,11 @@ namespace ScenariosEditorGUI {
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
 		ImGui::Begin("MainWorkspace", NULL, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoScrollWithMouse);
 		ImGui::PopStyleVar();
-
 		// Canvas positioning
 		ImVec2 canvas_p0 = ImGui::GetCursorScreenPos();
 		ImVec2 canvas_sz = ImGui::GetContentRegionAvail();
+		static ImVec2 old_canvas_sz = canvas_sz;
+		SetSize(canvas_sz);
 		ImVec2 canvas_p1 = ImVec2(canvas_p0.x + canvas_sz.x, canvas_p0.y + canvas_sz.y);
 		MousePos = io.MousePos;
 		canvas_draw_list = ImGui::GetWindowDrawList();
@@ -521,7 +522,7 @@ namespace ScenariosEditorGUI {
 				CanvasZoom += ImGui::GetIO().MouseWheel * 0.05f;
 				if (CanvasZoom > 2) CanvasZoom = 2;
 				else if (CanvasZoom < 0.5) CanvasZoom = 0.5f;
-				
+
 				if (oldzoom != CanvasZoom)
 				{
 					shift.x -= (canvas_sz.x * CanvasZoom - canvas_sz.x * oldzoom) / 2.0f;
@@ -529,19 +530,22 @@ namespace ScenariosEditorGUI {
 				}
 			}
 		}
+		if (canvas_sz.x != old_canvas_sz.x || canvas_sz.y != old_canvas_sz.y)
+			shift = { -(canvas_sz.x * CanvasZoom - canvas_sz.x) / 2.0f, -(canvas_sz.y * CanvasZoom - canvas_sz.y) / 2.0f };
 		canvas_draw_list->PopClipRect();
 		origin = ImVec2(canvas_p0.x + scrolling.x * CanvasZoom + shift.x, canvas_p0.y + scrolling.y * CanvasZoom + shift.y);
 		// Draw grid
 		canvas_draw_list->PushClipRect(canvas_p0, canvas_p1, true);
 		{
 			const float GRID_STEP = 79.0f * CanvasZoom;
-			for (float x = fmodf(origin.x, GRID_STEP); x < canvas_sz.x; x += GRID_STEP)
+			for (float x = fmodf(scrolling.x * CanvasZoom + shift.x, GRID_STEP); x < canvas_sz.x; x += GRID_STEP)
 				canvas_draw_list->AddLine(ImVec2(canvas_p0.x + x, canvas_p0.y), ImVec2(canvas_p0.x + x, canvas_p1.y), IM_COL32(200, 200, 200, 119));
-			for (float y = fmodf(origin.y, GRID_STEP); y < canvas_sz.y; y += GRID_STEP)
+			for (float y = fmodf(scrolling.y * CanvasZoom + shift.y, GRID_STEP); y < canvas_sz.y; y += GRID_STEP)
 				canvas_draw_list->AddLine(ImVec2(canvas_p0.x, canvas_p0.y + y), ImVec2(canvas_p1.x, canvas_p0.y + y), IM_COL32(200, 200, 200, 119));
 		}
 		MousePosInCanvas = ImVec2((io.MousePos.x - origin.x) / CanvasZoom, (io.MousePos.y - origin.y) / CanvasZoom);
 		MousePos = io.MousePos;
+		old_canvas_sz = canvas_sz;
 	}
 	// Draw elems
 	void CanvasDrawElems()
@@ -551,7 +555,7 @@ namespace ScenariosEditorGUI {
 			Texture UsedTexture = ElementsData::GetElementTexture(Elems[i].Element, CanvasZoom);
 			canvas_draw_list->AddImage(
 				(void*)UsedTexture.Payload, ImVec2(origin.x + Elems[i].Pos.x * CanvasZoom, origin.y + Elems[i].Pos.y * CanvasZoom),
-				ImVec2(origin.x + Elems[i].Pos.x * CanvasZoom + UsedTexture.Width, origin.y + Elems[i].Pos.y * CanvasZoom + UsedTexture.Height ));
+				ImVec2(origin.x + Elems[i].Pos.x * CanvasZoom + UsedTexture.Width, origin.y + Elems[i].Pos.y * CanvasZoom + UsedTexture.Height));
 
 		}
 	}
@@ -998,7 +1002,7 @@ namespace ScenariosEditorGUI {
 		{
 			static const char* LongestTextLabel = u8"Тип поиска";
 			float Spacing = ImGui::CalcTextSize(LongestTextLabel).x + ImGui::GetStyle().WindowPadding.x + ImGui::GetStyle().ItemSpacing.x;
-			ImGui::Begin(u8"Поиск");
+			ImGui::Begin(u8"Поиск", &SearchOpen, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize);
 			static const char* SearchTypes[] = { u8"Среди всех аттрибутов", u8"По определённому элементу" };
 			static std::vector<std::vector<std::string>> AttributeNames = ScenariosEditorScenarioElement::GetAllElementsAttributeNames();
 			static int CurrentSearchType = 0; // Here we store our selection data as an index.
@@ -1021,7 +1025,7 @@ namespace ScenariosEditorGUI {
 			}
 			if (CurrentSearchType == 1)
 			{
-				
+
 				static const std::vector<const char*> Elements = { "Uzel", "Start", "Clear", "Message", "Sound", "Script", "Pilon", "Arrow",
 										"Pause", "Push", "Select", "Outcome", "Answer", "Variable value", "Random", "Danger" };
 				const char* ElementPreview = Elements[CurrentElement];
@@ -1042,8 +1046,8 @@ namespace ScenariosEditorGUI {
 					}
 					ImGui::EndCombo();
 				}
-				
-				
+
+
 				const char* AttributePreview = AttributeNames[CurrentElement][CurrentAttribute].c_str();
 				ImGui::Text(u8"Аттрибут");
 				ImGui::SameLine(Spacing);
@@ -1060,7 +1064,7 @@ namespace ScenariosEditorGUI {
 					ImGui::EndCombo();
 				}
 			}
-			
+
 			static std::string SearchField = "";
 			int count = 1;
 			for (int j = 0; j < SearchField.size(); j++)
@@ -1071,28 +1075,72 @@ namespace ScenariosEditorGUI {
 				ImGui::SameLine(Spacing);
 				ImGui::InputTextMultiline(u8"##Найти", &SearchField, ImVec2(ImGui::CalcItemWidth(), ImGui::GetTextLineHeight() * (count + 1)));
 			}
-			DoSearch(CurrentSearchType, CurrentElement, AttributeNames[CurrentElement][CurrentAttribute], SearchField);
+			std::vector<int> SearchResult = DoSearch(CurrentSearchType, CurrentElement, AttributeNames[CurrentElement][CurrentAttribute], SearchField);
+			ImGui::Separator();
+			if (SearchResult.size() == 0)
+				ImGui::Text(u8"Не найдено элементов");
+			else
+			{
+				int Size = SearchResult.size();
+				std::string begin, end;
+				if (Size % 10 == 1 && Size % 100 != 11)
+				{
+					begin = u8"Найден ";
+					end = u8" элемент";
+				}
+				else if (Size % 10 > 1 && Size % 10 < 5 && (Size % 100 < 10 || Size % 100 > 20))
+				{
+					begin = u8"Найдено ";
+					end = u8" элемента";
+				}
+				else
+				{
+					begin = u8"Найдено ";
+					end = u8" элементов";
+				}
+				ImGui::Text((begin + std::to_string(Size) + end).c_str());
+				static int CurrentElem = -1;
+				if (ImGui::ArrowButton("##Previous", ImGuiDir_Left))
+				{
+					if (CurrentElem <= 0) CurrentElem = Size - 1;
+					else CurrentElem--;
+					float shift_x = ElementsData::GetElementTexture(Elems[SearchResult[CurrentElem]].Element, CanvasZoom).Width / 2;
+					float shift_y = ElementsData::GetElementTexture(Elems[SearchResult[CurrentElem]].Element, CanvasZoom).Height / 2;
+					CenterView(Elems[SearchResult[CurrentElem]].Pos.x + shift_x, Elems[SearchResult[CurrentElem]].Pos.y + shift_y);
+				}
+				ImGui::SameLine();
+				if (ImGui::ArrowButton("##Next", ImGuiDir_Right))
+				{
+					if (CurrentElem + 1 > Size - 1) CurrentElem = 0;
+					else CurrentElem++;
+					float shift_x = ElementsData::GetElementTexture(Elems[SearchResult[CurrentElem]].Element, CanvasZoom).Width / 2;
+					float shift_y = ElementsData::GetElementTexture(Elems[SearchResult[CurrentElem]].Element, CanvasZoom).Height / 2;
+					CenterView(Elems[SearchResult[CurrentElem]].Pos.x + shift_x, Elems[SearchResult[CurrentElem]].Pos.y + shift_y);
+				}
+				std::cout << CurrentElem;
+			}
 			ImGui::End();
 		}
 	}
 
-	void DoSearch(int SearchType, int SearchElement, std::string SearchAttribute, std::string SearchField)
+	std::vector<int> DoSearch(int SearchType, int SearchElement, std::string SearchAttribute, std::string SearchField)
 	{
+		std::vector<int> ret;
 		const ImGuiViewport* viewport = ImGui::GetMainViewport();
 		//	Draw list now won't check if elem is out of canvas (called after End())
 		if (SearchType == 0)
 		{
-			if (SearchField.size() == 0) return;
-			for (ElementOnCanvas Elem : Elems)
+			if (SearchField.size() == 0) return ret;
+			for (int Elem = 0; Elem < Elems.size(); Elem++)
 			{
 				bool ShouldSelect = false;
-				if ((*Elem.ElementInStorage).caption.find(SearchField) != std::string::npos)
+				if ((*Elems[Elem].ElementInStorage).caption.find(SearchField) != std::string::npos)
 				{
 					ShouldSelect = true;
 				}
 				else
 				{
-					for (ElementAttribute* Attribute : (*Elem.ElementInStorage).GetAttributes())
+					for (ElementAttribute* Attribute : (*Elems[Elem].ElementInStorage).GetAttributes())
 					{
 						if (Attribute->ValueS.find(SearchField) != std::string::npos)
 						{
@@ -1110,22 +1158,23 @@ namespace ScenariosEditorGUI {
 				}
 				if (ShouldSelect)
 				{
-					Texture UsedTexture = ElementsData::GetElementTexture(Elem.Element, CanvasZoom);
-					float x = origin.x + Elem.Pos.x * CanvasZoom - 10 > viewport->WorkSize.x / 4 ? origin.x + Elem.Pos.x * CanvasZoom - 10 : viewport->WorkSize.x / 4;
-					if (x < origin.x + Elem.Pos.x * CanvasZoom + UsedTexture.Width + 10)
-					canvas_draw_list->AddRectFilled(
-						ImVec2(x, origin.y + Elem.Pos.y * CanvasZoom - 10),
-						ImVec2(origin.x + Elem.Pos.x * CanvasZoom + UsedTexture.Width + 10, origin.y + Elem.Pos.y * CanvasZoom + UsedTexture.Height + 10),
-						IM_COL32(0, 255, 64, 50));
+					ret.push_back(Elem);
+					Texture UsedTexture = ElementsData::GetElementTexture(Elems[Elem].Element, CanvasZoom);
+					float x = origin.x + Elems[Elem].Pos.x * CanvasZoom - 10 > viewport->WorkSize.x / 4 ? origin.x + Elems[Elem].Pos.x * CanvasZoom - 10 : viewport->WorkSize.x / 4;
+					if (x < origin.x + Elems[Elem].Pos.x * CanvasZoom + UsedTexture.Width + 10)
+						canvas_draw_list->AddRectFilled(
+							ImVec2(x, origin.y + Elems[Elem].Pos.y * CanvasZoom - 10),
+							ImVec2(origin.x + Elems[Elem].Pos.x * CanvasZoom + UsedTexture.Width + 10, origin.y + Elems[Elem].Pos.y * CanvasZoom + UsedTexture.Height + 10),
+							IM_COL32(0, 255, 64, 50));
 				}
 			}
 		}
 		else // SearchType == 1
 		{
-			if (SearchAttribute != u8"<Найти все>" && SearchField.size() == 0) return;
-			for (ElementOnCanvas Elem : Elems)
+			if (SearchAttribute != u8"<Найти все>" && SearchField.size() == 0) return ret;
+			for (int Elem = 0; Elem < Elems.size(); Elem++)
 			{
-				if (Elem.Element != SearchElement)
+				if (Elems[Elem].Element != SearchElement)
 				{
 					continue;
 				}
@@ -1136,11 +1185,11 @@ namespace ScenariosEditorGUI {
 				}
 				else if (SearchAttribute == u8"Caption" || SearchAttribute == u8"<Среди всех аттрибутов>")
 				{
-					ShouldSelect = (*Elem.ElementInStorage).caption.find(SearchField) != std::string::npos;
+					ShouldSelect = (*Elems[Elem].ElementInStorage).caption.find(SearchField) != std::string::npos;
 				}
 				else
 				{
-					for (ElementAttribute* Attribute : (*Elem.ElementInStorage).GetAttributes())
+					for (ElementAttribute* Attribute : (*Elems[Elem].ElementInStorage).GetAttributes())
 					{
 						if ((SearchAttribute == u8"<Среди всех аттрибутов>") || (Attribute->Name == SearchAttribute))
 						{
@@ -1166,16 +1215,18 @@ namespace ScenariosEditorGUI {
 				}
 				if (ShouldSelect)
 				{
-					Texture UsedTexture = ElementsData::GetElementTexture(Elem.Element, CanvasZoom);
-					float x = origin.x + Elem.Pos.x * CanvasZoom - 10 > viewport->WorkSize.x / 4 ? origin.x + Elem.Pos.x * CanvasZoom - 10 : viewport->WorkSize.x / 4;
-					if (x < origin.x + Elem.Pos.x * CanvasZoom + UsedTexture.Width + 10)
+					ret.push_back(Elem);
+					Texture UsedTexture = ElementsData::GetElementTexture(Elems[Elem].Element, CanvasZoom);
+					float x = origin.x + Elems[Elem].Pos.x * CanvasZoom - 10 > viewport->WorkSize.x / 4 ? origin.x + Elems[Elem].Pos.x * CanvasZoom - 10 : viewport->WorkSize.x / 4;
+					if (x < origin.x + Elems[Elem].Pos.x * CanvasZoom + UsedTexture.Width + 10)
 						canvas_draw_list->AddRectFilled(
-							ImVec2(x, origin.y + Elem.Pos.y * CanvasZoom - 10),
-							ImVec2(origin.x + Elem.Pos.x * CanvasZoom + UsedTexture.Width + 10, origin.y + Elem.Pos.y * CanvasZoom + UsedTexture.Height + 10),
+							ImVec2(x, origin.y + Elems[Elem].Pos.y * CanvasZoom - 10),
+							ImVec2(origin.x + Elems[Elem].Pos.x * CanvasZoom + UsedTexture.Width + 10, origin.y + Elems[Elem].Pos.y * CanvasZoom + UsedTexture.Height + 10),
 							IM_COL32(0, 255, 64, 50));
 				}
 			}
 		}
+		return ret;
 	}
 
 	void MapWindow()
