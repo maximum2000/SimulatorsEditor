@@ -16,21 +16,20 @@ Known problems:
 #include <iomanip>
 #include <tchar.h>
 #include <iostream>
-#include <vector>
 #include <d3d11.h>
-#include "imgui.h"
 
 #include "xmlhandling.h"
 #include "render.h"
 #include "ElementsData.h"
 #include "ScenarioElement.h"
 #include "OpenFileDialog.h"
-#include "misc/cpp/imgui_stdlib.h"
 #include "ScenarioElementsStorage.h"
 #include "ScenarioStorage.h"
 #include "SaveFileDialog.h"
 #include "CanvasPositioning.h"
 #include <sstream>
+#include "scenariosgui.h"
+
 
 using namespace ScenariosEditorElementsData;
 using namespace ScenariosEditorScenarioElement;
@@ -71,7 +70,8 @@ namespace ScenariosEditorGUI {
 	};
 
 	static ImVec2 scrolling(0.0f, 0.0f); // current scrolling, can be put out of global later
-	static ImVec2 MousePosInCanvas, origin, MousePos;
+	static ImVec2 MousePosInCanvas, origin, MousePos, canvas_sz;
+	static ImVec2 shift = { 0, 0 };
 	static int SelectedElemGUI = -1;
 	static float CanvasZoom = 1;
 
@@ -117,6 +117,7 @@ namespace ScenariosEditorGUI {
 	void CanvasDrawSelectedElems();
 	void CanvasElemsLogic(int* hover_on, ImVec2* SelectionStartPosition);
 	void CanvasSelectedElemsLogic(ImGuiIO& io);
+	void AddCanvasScrollbar(int* hover_on);
 	void ParamsInitialization();
 	ImVec2 GetLinkingPointLocation(int Elem, int Point);
 
@@ -248,6 +249,7 @@ namespace ScenariosEditorGUI {
 	// Canvas section
 	void MakeCanvas(const ImGuiViewport* viewport, ImGuiIO& io)
 	{
+
 		DrawCanvas(viewport, io);
 
 		int hover_on = ImGui::IsItemHovered(); // used for logic
@@ -259,6 +261,7 @@ namespace ScenariosEditorGUI {
 
 		static ImVec2 SelectionStartPosition; // used for logic
 
+
 		CanvasDrawCaption();
 
 		CanvasElemsLogic(&hover_on, &SelectionStartPosition);
@@ -269,8 +272,131 @@ namespace ScenariosEditorGUI {
 		CanvasDrawSelectedElems();
 		CanvasSelectedElemsLogic(io);
 		CanvasDrawElems();
+		AddCanvasScrollbar(&hover_on);
+
 		CanvasLogic(hover_on, &SelectionStartPosition, io);
+
 		ImGui::End();
+	}
+
+	void AddCanvasScrollbar(int* hover_on)
+	{
+		static const int short_side = 25;
+		static const int offset = 0;
+		static const float Space = 500;
+		static const ImVec2 inner_spacing {4, 2}; // x = from long side, y = From short side
+		ImVec2 OldPos = ImGui::GetCursorPos();
+
+		float scroll_y_max = canvas_sz.y - offset * 3 - short_side - inner_spacing.y * 2 - 1;
+		float scroll_x_max = canvas_sz.x - offset * 3 - short_side - inner_spacing.y * 2 - 1;
+
+		std::vector<ImVec2> Corners = ScenariosEditorGUI::GetCorners();
+		// 0 - Min
+		// 1 - Max
+		
+		ImVec2 ScreenTopLeft = { -scrolling.x - shift.x / CanvasZoom, -scrolling.y - shift.y / CanvasZoom };
+		if (ScreenTopLeft.y + Space < Corners[0].y) Corners[0].y = ScreenTopLeft.y + Space;
+		if (ScreenTopLeft.x + Space < Corners[0].x) Corners[0].x = ScreenTopLeft.x + Space;
+
+		ImVec2 ScreenBottomRight = { ScreenTopLeft.x + canvas_sz.x / CanvasZoom, ScreenTopLeft.y +  canvas_sz.y / CanvasZoom };
+		if (ScreenBottomRight.y - Space > Corners[1].y) Corners[1].y = ScreenBottomRight.y - Space;
+		if (ScreenBottomRight.x - Space > Corners[1].x) Corners[1].x = ScreenBottomRight.x - Space;
+		
+		float ActualRangeY = Corners[1].y - Corners[0].y + 2 * Space;
+		float ActualRangeX = Corners[1].x - Corners[0].x + 2 * Space;
+		float ViewRangeY = canvas_sz.y / (CanvasZoom);
+		float ViewRangeX = canvas_sz.x / (CanvasZoom);
+
+		float scroll_y_begin = (ScreenTopLeft.y - Corners[0].y + Space) * scroll_y_max / (Corners[1].y - Corners[0].y + 2 * Space);
+		float scroll_x_begin = (ScreenTopLeft.x - Corners[0].x + Space) * scroll_x_max / (Corners[1].x - Corners[0].x + 2 * Space);
+		float scroll_y_height = ViewRangeY * scroll_y_max / ActualRangeY;
+		float scroll_x_widht = ViewRangeX * scroll_x_max / ActualRangeX;
+
+		bool scroll_y_enable = scroll_y_height + 1 < scroll_y_max;
+		bool scroll_x_enable = scroll_x_widht + 1 < scroll_x_max;
+		static bool scrolling_y = false;
+		static bool scrolling_x = false;
+
+		if (scroll_y_enable)
+		{
+			static ImU32 scroll_color = scrolling_y ? IM_COL32(128, 128, 128, 255) : IM_COL32(192, 192, 192, 255);
+			canvas_draw_list->AddRectFilled({ ImGui::GetWindowPos().x + 1 + canvas_sz.x - offset - short_side, ImGui::GetWindowPos().y + 1 + offset },
+				{ ImGui::GetWindowPos().x + canvas_sz.x - offset , ImGui::GetWindowPos().y + 1 + canvas_sz.y - offset * 2 - short_side },
+				IM_COL32(255, 255, 255, 255));
+
+			canvas_draw_list->AddRectFilled({ ImGui::GetWindowPos().x + 1 + canvas_sz.x - offset - short_side + inner_spacing.x, ImGui::GetWindowPos().y + 1 + offset + inner_spacing.y + scroll_y_begin },
+				{ ImGui::GetWindowPos().x + canvas_sz.x - offset - inner_spacing.x , ImGui::GetWindowPos().y + 1 + offset + inner_spacing.y + scroll_y_begin + scroll_y_height },
+				scroll_color);
+			
+			ImGui::SetCursorPos({ canvas_sz.x - offset - short_side, offset });
+			
+			ImGui::InvisibleButton(u8"##scrollbar_y", { short_side , canvas_sz.y - offset*3 - short_side + 2 });
+			
+			if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+			{
+				scrolling_y = true;
+			}
+			else if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+			{
+				scrolling_y = false;
+			}
+			if (scrolling_y)
+			{
+				*hover_on = 4;
+				float MouseY = (ImGui::GetIO().MousePos.y - ImGui::GetWindowPos().y - 1 - offset - inner_spacing.y) - scroll_y_height/2;
+				scrolling.y =  min( - (shift.y / CanvasZoom + Corners[0].y - Space + (ActualRangeY * MouseY / scroll_y_max)), -(shift.y / CanvasZoom + Corners[0].y - Space));
+				scrolling.y = max(scrolling.y, -(shift.y / CanvasZoom + Corners[1].y + Space - canvas_sz.y/CanvasZoom));
+			}
+		}
+		else
+		{
+			scrolling_y = false;
+		}
+
+		if (scroll_x_enable)
+		{
+			static ImU32 scroll_color = scrolling_x ? IM_COL32(128, 128, 128, 255) : IM_COL32(192, 192, 192, 255);
+			canvas_draw_list->AddRectFilled({ ImGui::GetWindowPos().x + 1 + offset, ImGui::GetWindowPos().y + 1 + canvas_sz.y - offset - short_side },
+				{ ImGui::GetWindowPos().x + 1 + canvas_sz.x - offset * 2 - short_side, ImGui::GetWindowPos().y + canvas_sz.y - offset },
+				IM_COL32(255, 255, 255, 255));
+
+			canvas_draw_list->AddRectFilled({ ImGui::GetWindowPos().x + 1 + offset + inner_spacing.y + scroll_x_begin , ImGui::GetWindowPos().y + 1 + canvas_sz.y - offset - short_side + inner_spacing.x },
+				{ ImGui::GetWindowPos().x + offset + inner_spacing.y + scroll_x_begin + scroll_x_widht , ImGui::GetWindowPos().y + 1 + canvas_sz.y - offset - inner_spacing.x },
+				scroll_color);
+
+			ImGui::SetCursorPos({ offset, canvas_sz.y - offset - short_side });
+
+			ImGui::InvisibleButton(u8"##scrollbar_x", { canvas_sz.x - offset * 3 - short_side + 2, short_side });
+			
+			if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+			{
+				scrolling_x = true;
+			}
+			else if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+			{
+				scrolling_x = false;
+			}
+			if (scrolling_x)
+			{
+				*hover_on = 4;
+				float MouseX = (ImGui::GetIO().MousePos.x - ImGui::GetWindowPos().x - 1 - offset - inner_spacing.y) - scroll_x_widht / 2;
+				scrolling.x = min(-(shift.x / CanvasZoom + Corners[0].x - Space + (ActualRangeX * MouseX / scroll_x_max)), -(shift.x / CanvasZoom + Corners[0].x - Space));
+				scrolling.x = max(scrolling.x, -(shift.x / CanvasZoom + Corners[1].x + Space - canvas_sz.x / CanvasZoom));
+			}
+		}
+		else
+		{
+			scrolling_x = false;
+		}
+
+		if (offset == 0 && scroll_y_enable && scroll_x_enable)
+		{
+			canvas_draw_list->AddRectFilled({ ImGui::GetWindowPos().x + 1 + canvas_sz.x - short_side, ImGui::GetWindowPos().y + 1 + canvas_sz.y - short_side },
+				{ ImGui::GetWindowPos().x + 1 + canvas_sz.x,ImGui::GetWindowPos().y + 1 + canvas_sz.y },
+				IM_COL32(255, 255, 255, 255));
+		}
+
+		ImGui::SetCursorPos(OldPos);
 	}
 
 	void AddElementGUI(int Element, ImVec2 Pos, int Type, std::shared_ptr<ScenarioElement> CopyOrigin = nullptr)
@@ -503,9 +629,10 @@ namespace ScenariosEditorGUI {
 		ImGui::PopStyleVar();
 		// Canvas positioning
 		ImVec2 canvas_p0 = ImGui::GetCursorScreenPos();
-		ImVec2 canvas_sz = ImGui::GetContentRegionAvail();
+		canvas_sz = ImGui::GetContentRegionAvail();
 		static ImVec2 old_canvas_sz = canvas_sz;
 		SetSize(canvas_sz);
+
 		ImVec2 canvas_p1 = ImVec2(canvas_p0.x + canvas_sz.x, canvas_p0.y + canvas_sz.y);
 		MousePos = io.MousePos;
 		canvas_draw_list = ImGui::GetWindowDrawList();
@@ -513,7 +640,6 @@ namespace ScenariosEditorGUI {
 		// Window itself doesn't trigger io mouse actions, invisible button does
 		ImGui::InvisibleButton("canvas", canvas_sz, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
 		ImGui::SetItemAllowOverlap();
-		static ImVec2 shift = { 0, 0 };
 		if (ImGui::IsItemHovered())
 		{
 			if (ImGui::GetIO().MouseWheel != 0)
@@ -556,7 +682,6 @@ namespace ScenariosEditorGUI {
 			canvas_draw_list->AddImage(
 				(void*)UsedTexture.Payload, ImVec2(origin.x + Elems[i].Pos.x * CanvasZoom, origin.y + Elems[i].Pos.y * CanvasZoom),
 				ImVec2(origin.x + Elems[i].Pos.x * CanvasZoom + UsedTexture.Width, origin.y + Elems[i].Pos.y * CanvasZoom + UsedTexture.Height));
-
 		}
 	}
 	// Draw rectangle over selected elems
@@ -1117,7 +1242,6 @@ namespace ScenariosEditorGUI {
 					float shift_y = ElementsData::GetElementTexture(Elems[SearchResult[CurrentElem]].Element, CanvasZoom).Height / 2;
 					CenterView(Elems[SearchResult[CurrentElem]].Pos.x + shift_x, Elems[SearchResult[CurrentElem]].Pos.y + shift_y);
 				}
-				std::cout << CurrentElem;
 			}
 			ImGui::End();
 		}
@@ -1272,5 +1396,21 @@ namespace ScenariosEditorGUI {
 				return i;
 		}
 		return -1;
+	}
+	std::vector<ImVec2> GetCorners()
+	{
+		std::vector<ImVec2> ret;
+		ImVec2 Min{ FLT_MAX, FLT_MAX };
+		ImVec2 Max{ -FLT_MAX, -FLT_MAX };
+		for (ElementOnCanvas Elem : Elems)
+		{
+			if (Elem.Pos.x < Min.x) Min.x = Elem.Pos.x;
+			if (Elem.Pos.y < Min.y) Min.y = Elem.Pos.y;
+			if (Elem.Pos.x > Max.x) Max.x = Elem.Pos.x;
+			if (Elem.Pos.y > Max.y) Max.y = Elem.Pos.y;
+		}
+		ret.push_back(Min);
+		ret.push_back(Max);
+		return ret;
 	}
 }
