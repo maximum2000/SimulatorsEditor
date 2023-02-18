@@ -72,6 +72,7 @@ namespace ScenariosEditorGUI {
 	static ImVec2 scrolling(0.0f, 0.0f); // current scrolling, can be put out of global later
 	static ImVec2 MousePosInCanvas, origin, MousePos, canvas_sz;
 	static ImVec2 shift = { 0, 0 };
+	static const float Space = 500;
 	static int SelectedElemGUI = -1;
 	static float CanvasZoom = 1;
 
@@ -165,6 +166,7 @@ namespace ScenariosEditorGUI {
 				break;
 			ScenariosEditorRender::StartFrame();
 			const ImGuiViewport* viewport = ImGui::GetMainViewport();
+			ImGui::ShowDemoWindow(); // remove later
 			// Menu
 			DrawMenu();
 			// Window
@@ -174,7 +176,7 @@ namespace ScenariosEditorGUI {
 			DrawParamsSection(viewport);
 			SearchWindow();
 			MapWindow();
-			ImGui::ShowDemoWindow(); // remove later
+			
 			ScenariosEditorRender::EndFrame();
 		}
 	}
@@ -283,7 +285,6 @@ namespace ScenariosEditorGUI {
 	{
 		static const int short_side = 25;
 		static const int offset = 0;
-		static const float Space = 500;
 		static const ImVec2 inner_spacing {4, 2}; // x = from long side, y = From short side
 		ImVec2 OldPos = ImGui::GetCursorPos();
 
@@ -642,17 +643,32 @@ namespace ScenariosEditorGUI {
 		ImGui::SetItemAllowOverlap();
 		if (ImGui::IsItemHovered())
 		{
+			static const float ScrollStep = 200;
 			if (ImGui::GetIO().MouseWheel != 0)
 			{
-				float oldzoom = CanvasZoom;
-				CanvasZoom += ImGui::GetIO().MouseWheel * 0.05f;
-				if (CanvasZoom > 2) CanvasZoom = 2;
-				else if (CanvasZoom < 0.5) CanvasZoom = 0.5f;
-
-				if (oldzoom != CanvasZoom)
+				if (ImGui::GetIO().KeyCtrl)
 				{
-					shift.x -= (canvas_sz.x * CanvasZoom - canvas_sz.x * oldzoom) / 2.0f;
-					shift.y -= (canvas_sz.y * CanvasZoom - canvas_sz.y * oldzoom) / 2.0f;
+					float oldzoom = CanvasZoom;
+					CanvasZoom += ImGui::GetIO().MouseWheel * 0.05f;
+					if (CanvasZoom > 2) CanvasZoom = 2;
+					else if (CanvasZoom < 0.5) CanvasZoom = 0.5f;
+
+					if (oldzoom != CanvasZoom)
+					{
+						shift.x -= (canvas_sz.x * CanvasZoom - canvas_sz.x * oldzoom) / 2.0f;
+						shift.y -= (canvas_sz.y * CanvasZoom - canvas_sz.y * oldzoom) / 2.0f;
+					}
+				}
+				else
+				{
+					if (ImGui::GetIO().KeyShift)
+					{
+						scrolling.x += ImGui::GetIO().MouseWheel * ScrollStep / CanvasZoom;
+					}
+					else
+					{
+						scrolling.y += ImGui::GetIO().MouseWheel * ScrollStep / CanvasZoom;
+					}
 				}
 			}
 		}
@@ -1353,11 +1369,30 @@ namespace ScenariosEditorGUI {
 		return ret;
 	}
 
+	static void AspectRatio(ImGuiSizeCallbackData* data) { 
+		float aspect_ratio = *(float*)data->UserData;
+		data->DesiredSize.y = (float)(int)(data->DesiredSize.x / aspect_ratio) + ImGui::GetFontSize() + ImGui::GetStyle().FramePadding.y * 2;
+	};
+
 	void MapWindow()
 	{
 		if (MapOpen)
 		{
+			std::vector<ImVec2> Corners = GetCorners();
+			float aspect_ratio = min(Corners[1].x - Corners[0].x + Space * 2, Corners[1].y - Corners[0].y + Space * 2) / max(Corners[1].x - Corners[0].x + Space * 2, Corners[1].y - Corners[0].y + Space * 2);
+			ImGui::SetNextWindowSizeConstraints(ImVec2(0, 0), ImVec2(FLT_MAX, FLT_MAX), AspectRatio, (void*)&aspect_ratio);   // Aspect ratio
 			ImGui::Begin(u8"Карта");
+			ImDrawList* map_draw_list = ImGui::GetWindowDrawList();
+			ImVec2 map_p0 = ImGui::GetCursorScreenPos();
+			
+			float MapZoom = min(ImGui::GetWindowWidth() / (Corners[1].x - Corners[0].x + Space*2), ImGui::GetWindowHeight() / (Corners[1].y - Corners[0].y + Space * 2));
+			for (int i = 0; i < Elems.size(); i++)
+			{
+				Texture UsedTexture = ElementsData::GetElementTexture(Elems[i].Element, MapZoom);
+				map_draw_list->AddImage(
+					(void*)UsedTexture.Payload, ImVec2(map_p0.x + (Elems[i].Pos.x - Corners[0].x + Space) * MapZoom, map_p0.y + (Elems[i].Pos.y - Corners[0].y + Space) * MapZoom),
+					ImVec2(map_p0.x + (Elems[i].Pos.x - Corners[0].x + Space) * MapZoom + UsedTexture.Width, map_p0.y + (Elems[i].Pos.y - Corners[0].y + Space ) * MapZoom + UsedTexture.Height));
+			}
 			ImGui::End();
 		}
 	}
