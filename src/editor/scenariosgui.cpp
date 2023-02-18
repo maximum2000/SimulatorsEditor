@@ -121,7 +121,7 @@ namespace ScenariosEditorGUI {
 	void AddCanvasScrollbar(int* hover_on);
 	void ParamsInitialization();
 	ImVec2 GetLinkingPointLocation(int Elem, int Point);
-
+	ImVec2 GetMapLinkingPointLocation(int Elem, int Point, float Zoom, ImVec2 origin, float shift_x, float shift_y);
 
 	// Should be hooked from main
 	void ShowDemoScenarioGUI()
@@ -230,7 +230,7 @@ namespace ScenariosEditorGUI {
 			{
 				SearchOpen != SearchOpen;
 			}
-			if (ImGui::MenuItem(u8"Карта", "CTRL+M", &MapOpen))
+			if (ImGui::MenuItem(u8"Карта сценария", "CTRL+M", &MapOpen))
 			{
 				MapOpen != MapOpen;
 			}
@@ -581,6 +581,31 @@ namespace ScenariosEditorGUI {
 		); break;
 		}
 	}
+
+	ImVec2 GetMapLinkingPointLocation(int Elem, int Point, float Zoom, ImVec2 origin, float shift_x, float shift_y)
+	{
+		switch (Point)
+		{
+		case 0: return ImVec2(
+			origin.x + (Elems[Elem].Pos.x + shift_x) * Zoom + ElementsData::GetElementTexture(Elems[Elem].Element, Zoom).Width / 2,
+			origin.y + (Elems[Elem].Pos.y + shift_y) * Zoom
+		); break;
+		case 1: return ImVec2(
+			origin.x + (Elems[Elem].Pos.x + shift_x) * Zoom + ElementsData::GetElementTexture(Elems[Elem].Element, Zoom).Width,
+			origin.y + (Elems[Elem].Pos.y + shift_y) * Zoom + ElementsData::GetElementTexture(Elems[Elem].Element, Zoom).Height / 2
+		); break;
+		case 2: return ImVec2(
+			origin.x + (Elems[Elem].Pos.x + shift_x) * Zoom + ElementsData::GetElementTexture(Elems[Elem].Element, Zoom).Width / 2,
+			origin.y + (Elems[Elem].Pos.y + shift_y) * Zoom + ElementsData::GetElementTexture(Elems[Elem].Element, Zoom).Height
+		); break;
+		case 3: return ImVec2(
+			origin.x + (Elems[Elem].Pos.x + shift_x) * Zoom,
+			origin.y + (Elems[Elem].Pos.y + shift_y) * Zoom + ElementsData::GetElementTexture(Elems[Elem].Element, Zoom).Height / 2
+		); break;
+		}
+	}
+
+	
 
 	// Add buttons which represent linking points
 	void AddLinkingPoint(int Point, int* ClickedElem, int* ClickedType, int Elem)
@@ -1369,23 +1394,47 @@ namespace ScenariosEditorGUI {
 		return ret;
 	}
 
-	static void AspectRatio(ImGuiSizeCallbackData* data) { 
-		float aspect_ratio = *(float*)data->UserData;
-		data->DesiredSize.y = (float)(int)(data->DesiredSize.x / aspect_ratio) + ImGui::GetFontSize() + ImGui::GetStyle().FramePadding.y * 2;
-	};
-
 	void MapWindow()
 	{
 		if (MapOpen)
 		{
 			std::vector<ImVec2> Corners = GetCorners();
-			float aspect_ratio = min(Corners[1].x - Corners[0].x + Space * 2, Corners[1].y - Corners[0].y + Space * 2) / max(Corners[1].x - Corners[0].x + Space * 2, Corners[1].y - Corners[0].y + Space * 2);
-			ImGui::SetNextWindowSizeConstraints(ImVec2(0, 0), ImVec2(FLT_MAX, FLT_MAX), AspectRatio, (void*)&aspect_ratio);   // Aspect ratio
-			ImGui::Begin(u8"Карта");
+			static const ImVec2 MapMinSize{ 600, 400 };
+			static const ImColor RegionColor { IM_COL32(255,255,255,255) };
+			static const ImColor ViewSizeColor{ IM_COL32(150, 150, 150, 100) };
+			ImGui::SetNextWindowSizeConstraints(MapMinSize, ImVec2(FLT_MAX, FLT_MAX));   // Aspect ratio
+			ImGui::Begin(u8"Карта сценария", &MapOpen, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoScrollbar);
+			if (Elems.size() == 0)
+			{
+				ImGui::End();
+				return;
+			}
+			ImVec2 OldCursorPos = ImGui::GetCursorPos();
 			ImDrawList* map_draw_list = ImGui::GetWindowDrawList();
-			ImVec2 map_p0 = ImGui::GetCursorScreenPos();
+			float MapZoom = min(ImGui::GetWindowWidth() / (Corners[1].x - Corners[0].x + Space * 2), (ImGui::GetWindowHeight() - ImGui::GetFontSize() - ImGui::GetStyle().FramePadding.y * 2) / (Corners[1].y - Corners[0].y + Space * 2));
+			ImVec2 map_p0 = {
+				ImGui::GetWindowPos().x + (ImGui::GetWindowWidth() - (Corners[1].x - Corners[0].x + Space * 2) * MapZoom) / 2,
+				ImGui::GetWindowPos().y + (ImGui::GetWindowHeight() + ImGui::GetFontSize() + ImGui::GetStyle().FramePadding.y * 2 - (Corners[1].y - Corners[0].y + Space * 2) * MapZoom) / 2
+			};
 			
-			float MapZoom = min(ImGui::GetWindowWidth() / (Corners[1].x - Corners[0].x + Space*2), ImGui::GetWindowHeight() / (Corners[1].y - Corners[0].y + Space * 2));
+			map_draw_list->AddRectFilled(map_p0, { map_p0.x + (Corners[1].x - Corners[0].x + Space * 2) * MapZoom, map_p0.y + (Corners[1].y - Corners[0].y + Space * 2) * MapZoom }, RegionColor);
+
+			ImGui::SetCursorPos({ map_p0.x - ImGui::GetWindowPos().x, map_p0.y - ImGui::GetWindowPos().y });
+			ImGui::InvisibleButton("##setviewfield", { (Corners[1].x - Corners[0].x + Space * 2) * MapZoom,(Corners[1].y - Corners[0].y + Space * 2) * MapZoom});
+			ImGui::SetCursorPos(OldCursorPos);
+			if (ImGui::IsItemActive())
+			{
+				ImVec2 NewOriginOnMap = ImGui::GetIO().MousePos;
+				NewOriginOnMap.x -= (canvas_sz.x / CanvasZoom * MapZoom) / 2;
+				NewOriginOnMap.y -= (canvas_sz.y / CanvasZoom * MapZoom) / 2;
+				NewOriginOnMap.x = min(NewOriginOnMap.x, (map_p0.x + (Corners[1].x - Corners[0].x + Space * 2) * MapZoom - canvas_sz.x / CanvasZoom * MapZoom));
+				NewOriginOnMap.y = min(NewOriginOnMap.y, (map_p0.y + (Corners[1].y - Corners[0].y + Space * 2) * MapZoom - canvas_sz.y / CanvasZoom * MapZoom));
+				NewOriginOnMap.x = max(NewOriginOnMap.x, map_p0.x);
+				NewOriginOnMap.y = max(NewOriginOnMap.y, map_p0.y);
+				scrolling.x = -((NewOriginOnMap.x - map_p0.x) / MapZoom - Space + Corners[0].x + shift.x / CanvasZoom);
+				scrolling.y = -((NewOriginOnMap.y - map_p0.y) / MapZoom - Space + Corners[0].y + shift.y / CanvasZoom);
+			}
+
 			for (int i = 0; i < Elems.size(); i++)
 			{
 				Texture UsedTexture = ElementsData::GetElementTexture(Elems[i].Element, MapZoom);
@@ -1393,6 +1442,38 @@ namespace ScenariosEditorGUI {
 					(void*)UsedTexture.Payload, ImVec2(map_p0.x + (Elems[i].Pos.x - Corners[0].x + Space) * MapZoom, map_p0.y + (Elems[i].Pos.y - Corners[0].y + Space) * MapZoom),
 					ImVec2(map_p0.x + (Elems[i].Pos.x - Corners[0].x + Space) * MapZoom + UsedTexture.Width, map_p0.y + (Elems[i].Pos.y - Corners[0].y + Space ) * MapZoom + UsedTexture.Height));
 			}
+
+
+			for (int j = 0; j < Links.size(); j++)
+			{
+				map_draw_list->AddLine(
+					GetMapLinkingPointLocation(Links[j].Elems[0], Links[j].Points[0], MapZoom, map_p0, -Corners[0].x + Space, -Corners[0].y + Space),
+					GetMapLinkingPointLocation(Links[j].Elems[1], Links[j].Points[1], MapZoom, map_p0, -Corners[0].x + Space, -Corners[0].y + Space),
+					IM_COL32(0, 0, 0, 255), 0.1f
+				);
+			}
+
+			ImVec2 ScreenTopLeft = { 
+				max(- scrolling.x - shift.x / CanvasZoom, Corners[0].x - Space), 
+				max(- scrolling.y - shift.y / CanvasZoom, Corners[0].y - Space)};
+			ImVec2 ScreenBottomRight = { 
+				min(- scrolling.x - shift.x / CanvasZoom + canvas_sz.x / CanvasZoom, Corners[1].x + Space),
+				min(- scrolling.y - shift.y / CanvasZoom + canvas_sz.y / CanvasZoom, Corners[1].y + Space)
+			};
+
+			if (ScreenTopLeft.x < ScreenBottomRight.x && ScreenTopLeft.y < ScreenBottomRight.y)
+			{
+				map_draw_list->AddRectFilled(
+					ImVec2(map_p0.x + (ScreenTopLeft.x - Corners[0].x + Space) * MapZoom, map_p0.y + (ScreenTopLeft.y - Corners[0].y + Space) * MapZoom),
+					ImVec2(map_p0.x + (ScreenBottomRight.x - Corners[0].x + Space) * MapZoom, map_p0.y + (ScreenBottomRight.y - Corners[0].y + Space) * MapZoom),
+					ViewSizeColor);
+
+				map_draw_list->AddRect(
+					ImVec2(map_p0.x + (ScreenTopLeft.x - Corners[0].x + Space) * MapZoom, map_p0.y + (ScreenTopLeft.y - Corners[0].y + Space) * MapZoom),
+					ImVec2(map_p0.x + (ScreenBottomRight.x - Corners[0].x + Space) * MapZoom, map_p0.y + (ScreenBottomRight.y - Corners[0].y + Space) * MapZoom),
+					IM_COL32(0, 0, 0, 255));
+			}
+			
 			ImGui::End();
 		}
 	}
