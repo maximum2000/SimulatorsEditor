@@ -79,6 +79,7 @@ namespace ScenariosEditorGUI {
 	static std::vector<ElementOnCanvas> Elems;
 	static std::vector<LinkOnCanvas> Links;
 	static std::vector<int> SelectedElems;
+	static std::vector<int> SelectedLinks;
 	static std::wstring CurrentFile = L"";
 
 	static bool SearchOpen = false;
@@ -117,6 +118,8 @@ namespace ScenariosEditorGUI {
 	void CanvasDrawCaption();
 	void CanvasDrawSelectedElems();
 	void CanvasElemsLogic(int* hover_on, ImVec2* SelectionStartPosition);
+	void CanvasLinkingSelection(int* hover_on, ImVec2* SelectionStartPosition);
+	void CanvasDrawSelectedLinks();
 	void CanvasSelectedElemsLogic(ImGuiIO& io);
 	void AddCanvasScrollbar(int* hover_on);
 	void ParamsInitialization();
@@ -241,6 +244,7 @@ namespace ScenariosEditorGUI {
 	// Clear existing elements
 	void ClearElements()
 	{
+		SelectedLinks.clear();
 		SelectedElems.clear();
 		Elems.clear();
 		Links.clear();
@@ -269,7 +273,12 @@ namespace ScenariosEditorGUI {
 		CanvasElemsLogic(&hover_on, &SelectionStartPosition);
 
 		CanvasDrawLinking();
+
+		CanvasLinkingSelection(&hover_on, &SelectionStartPosition);
+		CanvasDrawSelectedLinks();
+
 		CanvasLinkingLogic();
+		
 
 		CanvasDrawSelectedElems();
 		CanvasSelectedElemsLogic(io);
@@ -279,6 +288,68 @@ namespace ScenariosEditorGUI {
 		CanvasLogic(hover_on, &SelectionStartPosition, io);
 
 		ImGui::End();
+	}
+
+	void CanvasDrawSelectedLinks()
+	{
+		for (int Link : SelectedLinks)
+		{
+			canvas_draw_list->AddLine(
+				GetLinkingPointLocation(Links[Link].Elems[0], Links[Link].Points[0]),
+				GetLinkingPointLocation(Links[Link].Elems[1], Links[Link].Points[1]),
+				IM_COL32(255, 0, 0, 255), 3
+				);
+		}
+	}
+
+	float Distance(ImVec2 v, ImVec2 w, ImVec2 p) {
+		// Return minimum distance between line segment vw and point p
+		const float l2 = powf((w.x - v.x), 2) + powf((w.y - v.y), 2);
+		if (l2 == 0.0) return sqrt(powf(p.x - v.x, 2) + powf(p.y - v.y, 2));   // v == w case
+		// Consider the line extending the segment, parameterized as v + t (w - v).
+		// We find projection of point p onto the line. 
+		// It falls where t = [(p-v) . (w-v)] / |w-v|^2
+		// We clamp t from [0,1] to handle points outside the segment vw.
+		const float t = max(0, min(1, ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2));
+		const ImVec2 projection = { (w.x - v.x) * t + v.x, (w.y - v.y) * t + v.y };  // Projection falls on the segment
+		return sqrt(powf(p.x - projection.x, 2) + powf(p.y - projection.y, 2));
+	}
+
+	void CanvasLinkingSelection(int* hover_on, ImVec2* selection_start_position)
+	{
+		if (CurrentState == Rest && (*hover_on) == 1 && (ImGui::IsMouseClicked(ImGuiMouseButton_Left) || ImGui::IsMouseClicked(ImGuiMouseButton_Right)))
+		{
+			for (int i = 0; i < Links.size(); i++)
+			{
+				ImVec2 a = GetLinkingPointLocation(Links[i].Elems[0], Links[i].Points[0]);
+				ImVec2 b = GetLinkingPointLocation(Links[i].Elems[1], Links[i].Points[1]);
+				if (Distance(a, b, MousePos) < 5)
+				{
+					std::cout << "in";
+					SelectedLinks.clear();
+					SelectedElems.clear();
+					SelectedLinks.push_back(i);
+					*hover_on = 5;
+				}
+			}
+		}
+		else if (CurrentState == Selection)
+		{
+			for (int i = 0; i < Links.size(); i++)
+			{
+				ImVec2 a = GetLinkingPointLocation(Links[i].Elems[0], Links[i].Points[0]);
+				ImVec2 b = GetLinkingPointLocation(Links[i].Elems[1], Links[i].Points[1]);
+				ImVec2 Mid { ((a.x + b.x) / 2 - origin.x ) / CanvasZoom , ((a.y + b.y) / 2 -origin.y) / CanvasZoom };
+				if (Mid.x > min(selection_start_position->x,MousePosInCanvas.x)
+					&& Mid.x < max(selection_start_position->x, MousePosInCanvas.x)
+					&& Mid.y > min(selection_start_position->y, MousePosInCanvas.y)
+					&& Mid.y < max(selection_start_position->y, MousePosInCanvas.y)
+					&& std::find(SelectedLinks.begin(), SelectedLinks.end(), i) == SelectedLinks.end())
+				{
+					SelectedLinks.push_back(i);
+				}
+			}
+		}
 	}
 
 	void AddCanvasScrollbar(int* hover_on)
@@ -476,8 +547,13 @@ namespace ScenariosEditorGUI {
 
 		if (ImGui::BeginPopup("contextworkspace"))
 		{
-			if (ImGui::MenuItem(u8"Удалить", NULL, false, SelectedElems.size() > 0))
+			if (ImGui::MenuItem(u8"Удалить", NULL, false, SelectedElems.size() > 0 || SelectedLinks.size() > 0))
 			{
+				for (int i = SelectedLinks.size() - 1; i >= 0; i--)
+				{
+					int SelectedLink = SelectedLinks[i];
+					DeleteLinkGUI(Links.begin() + SelectedLink);
+				}
 				for (int i = SelectedElems.size() - 1; i >= 0; i--)
 				{
 					int SelectedElem = SelectedElems[i];
@@ -495,6 +571,7 @@ namespace ScenariosEditorGUI {
 					DeleteElementGUI(Elems.begin() + SelectedElem);
 				}
 				SelectedElems.clear();
+				SelectedLinks.clear();
 			}
 			if (ImGui::MenuItem(u8"Копировать", NULL, false, SelectedElems.size() > 0))
 			{
@@ -507,15 +584,15 @@ namespace ScenariosEditorGUI {
 					CopyBuffer.push_back(Elems[SelectedElems[i]]);
 					Positions.push_back(SelectedElems[i]);
 				}
-				for (int k = 0; k < Links.size(); k++)
+				for (int k = 0; k < SelectedLinks.size(); k++)
 				{
-					int Elem1 = find(Positions.begin(), Positions.end(), Links[k].Elems[0]) - Positions.begin();
-					int Elem2 = find(Positions.begin(), Positions.end(), Links[k].Elems[1]) - Positions.begin();
+					int Elem1 = find(Positions.begin(), Positions.end(), Links[SelectedLinks[k]].Elems[0]) - Positions.begin();
+					int Elem2 = find(Positions.begin(), Positions.end(), Links[SelectedLinks[k]].Elems[1]) - Positions.begin();
 					if (Elem1 < Positions.size() && Elem2 < Positions.size())
-						LinksBuffer.push_back({ {Links[k].Points[0], Links[k].Points[1]},{Elem1, Elem2} });
+						LinksBuffer.push_back({ {Links[SelectedLinks[k]].Points[0], Links[SelectedLinks[k]].Points[1]},{Elem1, Elem2} });
 				}
 			}
-			if (ImGui::MenuItem(u8"Удалить связи", NULL, false, SelectedElems.size() > 0))
+			if (ImGui::MenuItem(u8"Удалить связи элементов", NULL, false, SelectedElems.size() > 0))
 			{
 				for (int i = SelectedElems.size() - 1; i >= 0; i--)
 				{
@@ -530,10 +607,12 @@ namespace ScenariosEditorGUI {
 						}
 					}
 				}
+				SelectedLinks.clear();
 			}
 			if (ImGui::MenuItem(u8"Вставить", NULL, false, CopyBuffer.size() > 0))
 			{
 				SelectedElems.clear();
+				SelectedLinks.clear();
 				ImVec2 min = ImVec2(INT_MAX, INT_MAX);
 				int ElemsSize = Elems.size();
 				for (int i = 0; i < CopyBuffer.size(); i++)
@@ -552,6 +631,7 @@ namespace ScenariosEditorGUI {
 				{
 					AddLinkGUI(LinksBuffer[k].Points[0], LinksBuffer[k].Points[1],
 						ElemsSize + LinksBuffer[k].Elems[0], ElemsSize + LinksBuffer[k].Elems[1]);
+					SelectedLinks.push_back(Links.size() - 1);
 				}
 			}
 			ImGui::EndPopup();
@@ -638,6 +718,7 @@ namespace ScenariosEditorGUI {
 		}
 		if (IsLinking)
 		{
+			SelectedLinks.clear();
 			SelectedElems.clear();
 			canvas_draw_list->AddLine(GetLinkingPointLocation(*ClickedElem, *ClickedType), MousePos, IM_COL32(0, 0, 0, 255));
 		}
@@ -789,7 +870,8 @@ namespace ScenariosEditorGUI {
 		if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && clicked_on == 1 && CurrentState == Rest)
 		{
 			CurrentState = Selection;
-			*SelectionStartPosition = io.MousePos;
+			*SelectionStartPosition = MousePosInCanvas;
+			SelectedLinks.clear();
 			SelectedElems.clear();
 		}
 		if (ImGui::IsMouseDragging(ImGuiMouseButton_Left) && clicked_on == 3 && CurrentState == Rest)
@@ -808,9 +890,10 @@ namespace ScenariosEditorGUI {
 			scrolling.y += io.MouseDelta.y / CanvasZoom;
 			break;
 		case Selection:
-			canvas_draw_list->AddRect(*SelectionStartPosition, io.MousePos, IM_COL32(0, 0, 0, 255));
-			canvas_draw_list->AddRectFilled(*SelectionStartPosition, io.MousePos, IM_COL32(0, 0, 0, 15));
+			canvas_draw_list->AddRect({ origin.x + SelectionStartPosition->x * CanvasZoom, origin.y + SelectionStartPosition->y * CanvasZoom }, io.MousePos, IM_COL32(0, 0, 0, 255));
+			canvas_draw_list->AddRectFilled({ origin.x + SelectionStartPosition->x * CanvasZoom, origin.y + SelectionStartPosition->y * CanvasZoom }, io.MousePos, IM_COL32(0, 0, 0, 15));
 			SelectedElems.clear();
+			SelectedLinks.clear();
 			break;
 		}
 	}
@@ -833,6 +916,7 @@ namespace ScenariosEditorGUI {
 					if (std::find(SelectedElems.begin(), SelectedElems.end(), i) == SelectedElems.end())
 					{
 						SelectedElems.clear();
+						SelectedLinks.clear();
 						SelectedElems.push_back(i);
 					}
 					OldElementPosition = Elems[i].Pos;
@@ -842,10 +926,10 @@ namespace ScenariosEditorGUI {
 			// Foreach element we determine if it contains in selection
 			if (CurrentState == Selection)
 			{
-				if (Elems[i].Pos.x * CanvasZoom + origin.x + UsedTexture.Width / 2 > (MousePos.x + SelectionStartPosition->x - max(MousePos.x, SelectionStartPosition->x))
-					&& Elems[i].Pos.x * CanvasZoom + origin.x + UsedTexture.Height / 2 < (MousePos.x + SelectionStartPosition->x - min(MousePos.x, SelectionStartPosition->x))
-					&& Elems[i].Pos.y * CanvasZoom + origin.y + UsedTexture.Width / 2 > (MousePos.y + SelectionStartPosition->y - max(MousePos.y, SelectionStartPosition->y))
-					&& Elems[i].Pos.y * CanvasZoom + origin.y + UsedTexture.Height / 2 < (MousePos.y + SelectionStartPosition->y - min(MousePos.y, SelectionStartPosition->y))
+				if (Elems[i].Pos.x + UsedTexture.Width / 2 / CanvasZoom >= min(MousePosInCanvas.x, SelectionStartPosition->x)
+					&& Elems[i].Pos.x + UsedTexture.Width / 2 / CanvasZoom <= max(MousePosInCanvas.x, SelectionStartPosition->x)
+					&& Elems[i].Pos.y + UsedTexture.Height / 2 / CanvasZoom>= min(MousePosInCanvas.y, SelectionStartPosition->y)
+					&& Elems[i].Pos.y + UsedTexture.Height / 2 / CanvasZoom <= max(MousePosInCanvas.y, SelectionStartPosition->y)
 					&& std::find(SelectedElems.begin(), SelectedElems.end(), i) == SelectedElems.end()
 					)
 				{
