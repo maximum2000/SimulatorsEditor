@@ -104,20 +104,24 @@ namespace ScenariosEditorScenarioElement
 
 	void RemoveScenarioElementStorageElement(std::shared_ptr<ScenarioElement> Element)
 	{
-		MaxPin = 0;
+		int Shift = 0;
+		bool found = false;
 		for (int i = 0; i < ScenarioElements.size(); i++)
 		{
 			if (Element == ScenarioElements[i])
 			{
+				found = true;
+				Shift = -((int)(*ScenarioElements[i]).pins.size());
 				ScenarioElements.erase(ScenarioElements.begin() + i);
-				return;
+				continue;
 			}
-			for (int Pin : (*ScenarioElements[i]).pins)
+			if (found)
 			{
-				if (Pin > MaxPin) MaxPin = Pin;
+				for (int i = 0; i < (*ScenarioElements[i]).pins.size(); i++)
+					(*ScenarioElements[i]).pins[i] += Shift;
 			}
 		}
-		
+		MaxPin -= Shift;
 	}
 
 	void RemoveScenarioElementStorageLink(std::vector<int> args)
@@ -172,9 +176,9 @@ namespace ScenariosEditorScenarioElement
 			int PointA = -1, PointB = -1;
 			int PinA = Link[0];
 			int PinB = Link[1];
+			int count = 2;
 			for (std::shared_ptr<ScenarioElement> Element : OptimizedVector)
 			{
-				int count = 2;
 				std::vector<int> CurrentElemPins = (*Element).pins;
 				for (int j = 0; j < CurrentElemPins.size(); j++)
 				{
@@ -190,8 +194,9 @@ namespace ScenariosEditorScenarioElement
 						ElemB = ScenariosEditorGUI::GetNumOfElement(Element);
 						PointB = GetPoint(ScenariosEditorGUI::GetNameOfElementOnCanvas(ElemB), j);
 					}
-					if (!count) break;
+					
 				}
+				if (!count) break;
 			}
 			if (ElemA != -1 && ElemB != -1)
 			{

@@ -75,6 +75,9 @@ namespace ScenariosEditorGUI {
 	static const float Space = 500;
 	static int SelectedElemGUI = -1;
 	static float CanvasZoom = 1;
+	static int ShiftSelectionBeginElem = -1;
+	static std::vector<int> CurrentSelectionElems;
+	static std::vector<int> CurrentSelectionLinks;
 
 	static std::vector<ElementOnCanvas> Elems;
 	static std::vector<LinkOnCanvas> Links;
@@ -113,7 +116,7 @@ namespace ScenariosEditorGUI {
 	void DoubleSelectedScenario(std::string GUID);
 	static void HelpMarker(const char* desc);
 	void CanvasDrawLinking();
-	void CanvasLinkingLogic();
+	void CanvasLinkingLogic(int* hover_on);
 	void CanvasDrawElems();
 	void CanvasDrawCaption();
 	void CanvasDrawSelectedElems();
@@ -179,7 +182,7 @@ namespace ScenariosEditorGUI {
 			DrawParamsSection(viewport);
 			SearchWindow();
 			MapWindow();
-			
+
 			ScenariosEditorRender::EndFrame();
 		}
 	}
@@ -249,6 +252,7 @@ namespace ScenariosEditorGUI {
 		Elems.clear();
 		Links.clear();
 		CurrentState = Rest;
+		ShiftSelectionBeginElem = -1;
 	}
 
 
@@ -277,12 +281,13 @@ namespace ScenariosEditorGUI {
 		CanvasLinkingSelection(&hover_on, &SelectionStartPosition);
 		CanvasDrawSelectedLinks();
 
-		CanvasLinkingLogic();
-		
+		CanvasLinkingLogic(&hover_on);
 
-		CanvasDrawSelectedElems();
+
+
 		CanvasSelectedElemsLogic(io);
 		CanvasDrawElems();
+		CanvasDrawSelectedElems();
 		AddCanvasScrollbar(&hover_on);
 
 		CanvasLogic(hover_on, &SelectionStartPosition, io);
@@ -298,7 +303,7 @@ namespace ScenariosEditorGUI {
 				GetLinkingPointLocation(Links[Link].Elems[0], Links[Link].Points[0]),
 				GetLinkingPointLocation(Links[Link].Elems[1], Links[Link].Points[1]),
 				IM_COL32(255, 0, 0, 255), 3
-				);
+			);
 		}
 	}
 
@@ -325,12 +330,33 @@ namespace ScenariosEditorGUI {
 				ImVec2 b = GetLinkingPointLocation(Links[i].Elems[1], Links[i].Points[1]);
 				if (Distance(a, b, MousePos) < 5)
 				{
-					std::cout << "in";
-					SelectedLinks.clear();
-					SelectedElems.clear();
-					SelectedLinks.push_back(i);
+					if (ImGui::GetIO().KeyCtrl)
+					{
+						if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+						{
+							std::vector<int>::iterator t = std::find(SelectedLinks.begin(), SelectedLinks.end(), i);
+							if (t == SelectedLinks.end())
+							{
+								SelectedLinks.push_back(i);
+							}
+							else
+							{
+								SelectedLinks.erase(t);
+							}
+						}
+					}
+					else
+					{
+						if (std::find(SelectedLinks.begin(), SelectedLinks.end(), i) == SelectedLinks.end())
+						{
+							SelectedElems.clear();
+							SelectedLinks.clear();
+							SelectedLinks.push_back(i);
+						}
+					}
 					*hover_on = 5;
 				}
+
 			}
 		}
 		else if (CurrentState == Selection)
@@ -339,14 +365,32 @@ namespace ScenariosEditorGUI {
 			{
 				ImVec2 a = GetLinkingPointLocation(Links[i].Elems[0], Links[i].Points[0]);
 				ImVec2 b = GetLinkingPointLocation(Links[i].Elems[1], Links[i].Points[1]);
-				ImVec2 Mid { ((a.x + b.x) / 2 - origin.x ) / CanvasZoom , ((a.y + b.y) / 2 -origin.y) / CanvasZoom };
-				if (Mid.x > min(selection_start_position->x,MousePosInCanvas.x)
+				ImVec2 Mid{ ((a.x + b.x) / 2 - origin.x) / CanvasZoom , ((a.y + b.y) / 2 - origin.y) / CanvasZoom };
+				if (Mid.x > min(selection_start_position->x, MousePosInCanvas.x)
 					&& Mid.x < max(selection_start_position->x, MousePosInCanvas.x)
 					&& Mid.y > min(selection_start_position->y, MousePosInCanvas.y)
 					&& Mid.y < max(selection_start_position->y, MousePosInCanvas.y)
-					&& std::find(SelectedLinks.begin(), SelectedLinks.end(), i) == SelectedLinks.end())
+					)
 				{
-					SelectedLinks.push_back(i);
+					if (!ImGui::GetIO().KeyCtrl)
+					{
+						if (std::find(SelectedLinks.begin(), SelectedLinks.end(), i) == SelectedLinks.end())
+							SelectedLinks.push_back(i);
+					}
+					else
+					{
+						std::vector<int>::iterator t = std::find(SelectedLinks.begin(), SelectedLinks.end(), i);
+						if (t == SelectedLinks.end())
+						{
+							SelectedLinks.push_back(i);
+						}
+						else
+						{
+							SelectedLinks.erase(t);
+						}
+
+					}
+					CurrentSelectionLinks.push_back(i);
 				}
 			}
 		}
@@ -356,7 +400,7 @@ namespace ScenariosEditorGUI {
 	{
 		static const int short_side = 25;
 		static const int offset = 0;
-		static const ImVec2 inner_spacing {4, 2}; // x = from long side, y = From short side
+		static const ImVec2 inner_spacing{ 4, 2 }; // x = from long side, y = From short side
 		ImVec2 OldPos = ImGui::GetCursorPos();
 
 		float scroll_y_max = canvas_sz.y - offset * 3 - short_side - inner_spacing.y * 2 - 1;
@@ -365,15 +409,15 @@ namespace ScenariosEditorGUI {
 		std::vector<ImVec2> Corners = ScenariosEditorGUI::GetCorners();
 		// 0 - Min
 		// 1 - Max
-		
+
 		ImVec2 ScreenTopLeft = { -scrolling.x - shift.x / CanvasZoom, -scrolling.y - shift.y / CanvasZoom };
 		if (ScreenTopLeft.y + Space < Corners[0].y) Corners[0].y = ScreenTopLeft.y + Space;
 		if (ScreenTopLeft.x + Space < Corners[0].x) Corners[0].x = ScreenTopLeft.x + Space;
 
-		ImVec2 ScreenBottomRight = { ScreenTopLeft.x + canvas_sz.x / CanvasZoom, ScreenTopLeft.y +  canvas_sz.y / CanvasZoom };
+		ImVec2 ScreenBottomRight = { ScreenTopLeft.x + canvas_sz.x / CanvasZoom, ScreenTopLeft.y + canvas_sz.y / CanvasZoom };
 		if (ScreenBottomRight.y - Space > Corners[1].y) Corners[1].y = ScreenBottomRight.y - Space;
 		if (ScreenBottomRight.x - Space > Corners[1].x) Corners[1].x = ScreenBottomRight.x - Space;
-		
+
 		float ActualRangeY = Corners[1].y - Corners[0].y + 2 * Space;
 		float ActualRangeX = Corners[1].x - Corners[0].x + 2 * Space;
 		float ViewRangeY = canvas_sz.y / (CanvasZoom);
@@ -399,11 +443,11 @@ namespace ScenariosEditorGUI {
 			canvas_draw_list->AddRectFilled({ ImGui::GetWindowPos().x + 1 + canvas_sz.x - offset - short_side + inner_spacing.x, ImGui::GetWindowPos().y + 1 + offset + inner_spacing.y + scroll_y_begin },
 				{ ImGui::GetWindowPos().x + canvas_sz.x - offset - inner_spacing.x , ImGui::GetWindowPos().y + 1 + offset + inner_spacing.y + scroll_y_begin + scroll_y_height },
 				scroll_color);
-			
+
 			ImGui::SetCursorPos({ canvas_sz.x - offset - short_side, offset });
-			
-			ImGui::InvisibleButton(u8"##scrollbar_y", { short_side , canvas_sz.y - offset*3 - short_side + 2 });
-			
+
+			ImGui::InvisibleButton(u8"##scrollbar_y", { short_side , canvas_sz.y - offset * 3 - short_side + 2 });
+
 			if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
 			{
 				scrolling_y = true;
@@ -415,9 +459,9 @@ namespace ScenariosEditorGUI {
 			if (scrolling_y)
 			{
 				*hover_on = 4;
-				float MouseY = (ImGui::GetIO().MousePos.y - ImGui::GetWindowPos().y - 1 - offset - inner_spacing.y) - scroll_y_height/2;
-				scrolling.y =  min( - (shift.y / CanvasZoom + Corners[0].y - Space + (ActualRangeY * MouseY / scroll_y_max)), -(shift.y / CanvasZoom + Corners[0].y - Space));
-				scrolling.y = max(scrolling.y, -(shift.y / CanvasZoom + Corners[1].y + Space - canvas_sz.y/CanvasZoom));
+				float MouseY = (ImGui::GetIO().MousePos.y - ImGui::GetWindowPos().y - 1 - offset - inner_spacing.y) - scroll_y_height / 2;
+				scrolling.y = min(-(shift.y / CanvasZoom + Corners[0].y - Space + (ActualRangeY * MouseY / scroll_y_max)), -(shift.y / CanvasZoom + Corners[0].y - Space));
+				scrolling.y = max(scrolling.y, -(shift.y / CanvasZoom + Corners[1].y + Space - canvas_sz.y / CanvasZoom));
 			}
 		}
 		else
@@ -439,7 +483,7 @@ namespace ScenariosEditorGUI {
 			ImGui::SetCursorPos({ offset, canvas_sz.y - offset - short_side });
 
 			ImGui::InvisibleButton(u8"##scrollbar_x", { canvas_sz.x - offset * 3 - short_side + 2, short_side });
-			
+
 			if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
 			{
 				scrolling_x = true;
@@ -685,18 +729,18 @@ namespace ScenariosEditorGUI {
 		}
 	}
 
-	
+
 
 	// Add buttons which represent linking points
-	void AddLinkingPoint(int Point, int* ClickedElem, int* ClickedType, int Elem)
+	void AddLinkingPoint(int* hover_on, int Point, int* ClickedElem, int* ClickedType, int Elem)
 	{
 		// out of state machine for logic purposes
 		static bool IsLinking = false;
 		canvas_draw_list->AddCircleFilled(GetLinkingPointLocation(Elem, Point), 5.0f, IM_COL32(0, 0, 0, 255));
 		ImGui::SetCursorScreenPos(ImVec2(GetLinkingPointLocation(Elem, Point).x - 5.0f, GetLinkingPointLocation(Elem, Point).y - 5.0f));
-		ImGui::InvisibleButton("LinkingPoint", ImVec2(10.0f, 10.0f), ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
+		ImGui::InvisibleButton("LinkingPoint", ImVec2(10.0f, 10.0f), ImGuiButtonFlags_MouseButtonLeft);
 		ImGui::SetItemAllowOverlap();
-		if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+		if (*hover_on == 1 && ImGui::IsItemClicked(ImGuiMouseButton_Left))
 		{
 			if (!IsLinking)
 			{
@@ -711,10 +755,6 @@ namespace ScenariosEditorGUI {
 				}
 			}
 			IsLinking = !IsLinking;
-		}
-		if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
-		{
-
 		}
 		if (IsLinking)
 		{
@@ -857,6 +897,21 @@ namespace ScenariosEditorGUI {
 	void CanvasLogic(int clicked_on, ImVec2* SelectionStartPosition, ImGuiIO& io)
 	{
 		// clicked_on: 0 - offcanvas, 1 - canvas, 2 - linking point, 3 - element
+		if (CurrentState == Selection && ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+		{
+			if (CurrentSelectionElems.size() != 0)
+			{
+				int MinimalElement = CurrentSelectionElems[0];
+				for (int i = 1; i < CurrentSelectionElems.size(); i++)
+				{
+					if (Elems[CurrentSelectionElems[i]].Pos.y < Elems[MinimalElement].Pos.y)
+						MinimalElement = CurrentSelectionElems[i];
+				}
+				ShiftSelectionBeginElem = MinimalElement;
+				CurrentSelectionElems.clear();
+			}
+			CurrentSelectionLinks.clear();
+		}
 		// Right-mouse dragging causes canvas dragging
 		if (ImGui::IsMouseDragging(ImGuiMouseButton_Right) && CurrentState == Rest)
 		{
@@ -871,8 +926,11 @@ namespace ScenariosEditorGUI {
 		{
 			CurrentState = Selection;
 			*SelectionStartPosition = MousePosInCanvas;
-			SelectedLinks.clear();
-			SelectedElems.clear();
+			if (!ImGui::GetIO().KeyShift && !ImGui::GetIO().KeyCtrl)
+			{
+				SelectedLinks.clear();
+				SelectedElems.clear();
+			}
 		}
 		if (ImGui::IsMouseDragging(ImGuiMouseButton_Left) && clicked_on == 3 && CurrentState == Rest)
 		{
@@ -892,15 +950,48 @@ namespace ScenariosEditorGUI {
 		case Selection:
 			canvas_draw_list->AddRect({ origin.x + SelectionStartPosition->x * CanvasZoom, origin.y + SelectionStartPosition->y * CanvasZoom }, io.MousePos, IM_COL32(0, 0, 0, 255));
 			canvas_draw_list->AddRectFilled({ origin.x + SelectionStartPosition->x * CanvasZoom, origin.y + SelectionStartPosition->y * CanvasZoom }, io.MousePos, IM_COL32(0, 0, 0, 15));
-			SelectedElems.clear();
-			SelectedLinks.clear();
+			if (!ImGui::GetIO().KeyShift && !ImGui::GetIO().KeyCtrl)
+			{
+				SelectedLinks.clear();
+				SelectedElems.clear();
+			}
+			else
+			{
+				for (int i = 0; i < CurrentSelectionElems.size(); i++)
+				{
+					std::vector<int>::iterator t = std::find(SelectedElems.begin(), SelectedElems.end(), CurrentSelectionElems[i]);
+					if (t != SelectedElems.end())
+					{
+						SelectedElems.erase(t);
+					}
+					else if (ImGui::GetIO().KeyCtrl)
+					{
+						SelectedElems.push_back(CurrentSelectionElems[i]);
+					}
+				}
+				for (int i = 0; i < CurrentSelectionLinks.size(); i++)
+				{
+					std::vector<int>::iterator t = std::find(SelectedLinks.begin(), SelectedLinks.end(), CurrentSelectionLinks[i]);
+					if (t != SelectedLinks.end())
+					{
+						SelectedLinks.erase(t);
+					}
+					else if (ImGui::GetIO().KeyCtrl)
+					{
+						SelectedLinks.push_back(CurrentSelectionLinks[i]);
+					}
+				}
+			}
+			CurrentSelectionElems.clear();
+			CurrentSelectionLinks.clear();
 			break;
 		}
 	}
+
 	// Handles elems-depending logic
 	void CanvasElemsLogic(int* hover_on, ImVec2* SelectionStartPosition)
 	{
-		static ImVec2 OldElementPosition;
+
 		for (int i = 0; i < Elems.size(); i++)
 		{
 			// Create button and handle it io actions
@@ -909,17 +1000,76 @@ namespace ScenariosEditorGUI {
 			ImGui::InvisibleButton("canvas123", ImVec2(UsedTexture.Width, UsedTexture.Height), ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
 			ImGui::SetItemAllowOverlap();
 			// IsMouseClicked() + IsItemHovered() usage to find which element user selected
+
 			if (CurrentState == Rest && ImGui::IsItemHovered())
 			{
 				if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) || ImGui::IsMouseClicked(ImGuiMouseButton_Right))
 				{
-					if (std::find(SelectedElems.begin(), SelectedElems.end(), i) == SelectedElems.end())
+					if (ImGui::GetIO().KeyCtrl && !ImGui::GetIO().KeyShift)
 					{
-						SelectedElems.clear();
-						SelectedLinks.clear();
-						SelectedElems.push_back(i);
+						if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+						{
+							ShiftSelectionBeginElem = i;
+							std::vector<int>::iterator t = std::find(SelectedElems.begin(), SelectedElems.end(), i);
+							if (t == SelectedElems.end())
+							{
+								SelectedElems.push_back(i);
+							}
+							else
+							{
+								SelectedElems.erase(t);
+							}
+						}
 					}
-					OldElementPosition = Elems[i].Pos;
+					else if (ImGui::GetIO().KeyShift)
+					{
+						if (!ImGui::GetIO().KeyCtrl || SelectedElems.size() > 0)
+						{
+							float min_y, max_y;
+							if (ShiftSelectionBeginElem != -1)
+							{
+								min_y = min(Elems[i].Pos.y, Elems[ShiftSelectionBeginElem].Pos.y);
+								max_y = max(Elems[i].Pos.y, Elems[ShiftSelectionBeginElem].Pos.y);
+							}
+							else
+							{
+								min_y = FLT_MIN;
+								max_y = Elems[i].Pos.y;
+							}
+							if (!ImGui::GetIO().KeyCtrl)
+							{
+								SelectedElems.clear();
+								SelectedLinks.clear();
+							}
+							for (int j = 0; j < Elems.size(); j++)
+							{
+								if (Elems[j].Pos.y <= max_y && Elems[j].Pos.y >= min_y && std::find(SelectedElems.begin(), SelectedElems.end(), j) == SelectedElems.end())
+								{
+									SelectedElems.push_back(j);
+								}
+							}
+							for (int k = 0; k < Links.size(); k++)
+							{
+								if (std::find(SelectedElems.begin(), SelectedElems.end(), Links[k].Elems[0]) != SelectedElems.end()
+									&& std::find(SelectedElems.begin(), SelectedElems.end(), Links[k].Elems[1]) != SelectedElems.end()
+									&& std::find(SelectedLinks.begin(), SelectedLinks.end(), k) == SelectedLinks.end()
+									)
+								{
+									SelectedLinks.push_back(k);
+								}
+							}
+						}
+					}
+					else
+					{
+						if (std::find(SelectedElems.begin(), SelectedElems.end(), i) == SelectedElems.end())
+						{
+							SelectedElems.clear();
+							SelectedLinks.clear();
+							SelectedElems.push_back(i);
+							ShiftSelectionBeginElem = i;
+						}
+					}
 				}
 				*hover_on = 3;
 			}
@@ -928,12 +1078,29 @@ namespace ScenariosEditorGUI {
 			{
 				if (Elems[i].Pos.x + UsedTexture.Width / 2 / CanvasZoom >= min(MousePosInCanvas.x, SelectionStartPosition->x)
 					&& Elems[i].Pos.x + UsedTexture.Width / 2 / CanvasZoom <= max(MousePosInCanvas.x, SelectionStartPosition->x)
-					&& Elems[i].Pos.y + UsedTexture.Height / 2 / CanvasZoom>= min(MousePosInCanvas.y, SelectionStartPosition->y)
-					&& Elems[i].Pos.y + UsedTexture.Height / 2 / CanvasZoom <= max(MousePosInCanvas.y, SelectionStartPosition->y)
-					&& std::find(SelectedElems.begin(), SelectedElems.end(), i) == SelectedElems.end()
+					&& Elems[i].Pos.y + UsedTexture.Height / 2 / CanvasZoom >= min(MousePosInCanvas.y, SelectionStartPosition->y)
+					&& Elems[i].Pos.y + UsedTexture.Height / 2 / CanvasZoom <= max(MousePosInCanvas.y, SelectionStartPosition->y) 
 					)
 				{
-					SelectedElems.push_back(i);
+					if (!ImGui::GetIO().KeyCtrl)
+					{
+						if (std::find(SelectedElems.begin(), SelectedElems.end(), i) == SelectedElems.end())
+						SelectedElems.push_back(i);
+					}
+					else
+					{
+						std::vector<int>::iterator t = std::find(SelectedElems.begin(), SelectedElems.end(), i);
+						if (t == SelectedElems.end())
+						{
+							SelectedElems.push_back(i);
+						}
+						else
+						{
+							SelectedElems.erase(t);
+						}
+						
+					}
+					CurrentSelectionElems.push_back(i);
 				}
 			}
 		}
@@ -958,6 +1125,10 @@ namespace ScenariosEditorGUI {
 			// when SINGLE element clicked it draws on top of the others
 			else if (CurrentState == Rest && j < 2)
 			{
+				if (ShiftSelectionBeginElem == SelectedElem)
+				{
+					ShiftSelectionBeginElem = Elems.size() - 1;
+				}
 				ToAdd = { Elems[SelectedElem].Element, Elems[SelectedElem].Pos, Elems[SelectedElem].Type, Elems[SelectedElem].ElementInStorage };
 				Elems.erase(Elems.begin() + SelectedElem);
 				Elems.push_back(ToAdd);
@@ -976,7 +1147,7 @@ namespace ScenariosEditorGUI {
 		SelectedElems.erase(new_end, SelectedElems.end());
 	}
 	//
-	void CanvasLinkingLogic()
+	void CanvasLinkingLogic(int* hover_on)
 	{
 		static int ClickedElem;
 		static int ClickedType;
@@ -984,19 +1155,19 @@ namespace ScenariosEditorGUI {
 		{
 			if (Elems[i].Type & 1)
 			{
-				AddLinkingPoint(0, &ClickedElem, &ClickedType, i);
+				AddLinkingPoint(hover_on, 0, &ClickedElem, &ClickedType, i);
 			}
 			if (Elems[i].Type & 2)
 			{
-				AddLinkingPoint(1, &ClickedElem, &ClickedType, i);
+				AddLinkingPoint(hover_on, 1, &ClickedElem, &ClickedType, i);
 			}
 			if (Elems[i].Type & 4)
 			{
-				AddLinkingPoint(2, &ClickedElem, &ClickedType, i);
+				AddLinkingPoint(hover_on, 2, &ClickedElem, &ClickedType, i);
 			}
 			if (Elems[i].Type & 8)
 			{
-				AddLinkingPoint(3, &ClickedElem, &ClickedType, i);
+				AddLinkingPoint(hover_on, 3, &ClickedElem, &ClickedType, i);
 			}
 		}
 	}
@@ -1484,7 +1655,7 @@ namespace ScenariosEditorGUI {
 		{
 			std::vector<ImVec2> Corners = GetCorners();
 			static const ImVec2 MapMinSize{ 600, 400 };
-			static const ImColor RegionColor { IM_COL32(255,255,255,255) };
+			static const ImColor RegionColor{ IM_COL32(255,255,255,255) };
 			static const ImColor ViewSizeColor{ IM_COL32(150, 150, 150, 100) };
 			ImGui::SetNextWindowSizeConstraints(MapMinSize, ImVec2(FLT_MAX, FLT_MAX));   // Aspect ratio
 			ImGui::Begin(u8"Карта сценария", &MapOpen, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoScrollbar);
@@ -1500,11 +1671,11 @@ namespace ScenariosEditorGUI {
 				ImGui::GetWindowPos().x + (ImGui::GetWindowWidth() - (Corners[1].x - Corners[0].x + Space * 2) * MapZoom) / 2,
 				ImGui::GetWindowPos().y + (ImGui::GetWindowHeight() + ImGui::GetFontSize() + ImGui::GetStyle().FramePadding.y * 2 - (Corners[1].y - Corners[0].y + Space * 2) * MapZoom) / 2
 			};
-			
+
 			map_draw_list->AddRectFilled(map_p0, { map_p0.x + (Corners[1].x - Corners[0].x + Space * 2) * MapZoom, map_p0.y + (Corners[1].y - Corners[0].y + Space * 2) * MapZoom }, RegionColor);
 
 			ImGui::SetCursorPos({ map_p0.x - ImGui::GetWindowPos().x, map_p0.y - ImGui::GetWindowPos().y });
-			ImGui::InvisibleButton("##setviewfield", { (Corners[1].x - Corners[0].x + Space * 2) * MapZoom,(Corners[1].y - Corners[0].y + Space * 2) * MapZoom});
+			ImGui::InvisibleButton("##setviewfield", { (Corners[1].x - Corners[0].x + Space * 2) * MapZoom,(Corners[1].y - Corners[0].y + Space * 2) * MapZoom });
 			ImGui::SetCursorPos(OldCursorPos);
 			if (ImGui::IsItemActive())
 			{
@@ -1524,7 +1695,7 @@ namespace ScenariosEditorGUI {
 				Texture UsedTexture = ElementsData::GetElementTexture(Elems[i].Element, MapZoom);
 				map_draw_list->AddImage(
 					(void*)UsedTexture.Payload, ImVec2(map_p0.x + (Elems[i].Pos.x - Corners[0].x + Space) * MapZoom, map_p0.y + (Elems[i].Pos.y - Corners[0].y + Space) * MapZoom),
-					ImVec2(map_p0.x + (Elems[i].Pos.x - Corners[0].x + Space) * MapZoom + UsedTexture.Width, map_p0.y + (Elems[i].Pos.y - Corners[0].y + Space ) * MapZoom + UsedTexture.Height));
+					ImVec2(map_p0.x + (Elems[i].Pos.x - Corners[0].x + Space) * MapZoom + UsedTexture.Width, map_p0.y + (Elems[i].Pos.y - Corners[0].y + Space) * MapZoom + UsedTexture.Height));
 			}
 
 
@@ -1537,12 +1708,12 @@ namespace ScenariosEditorGUI {
 				);
 			}
 
-			ImVec2 ScreenTopLeft = { 
-				max(- scrolling.x - shift.x / CanvasZoom, Corners[0].x - Space), 
-				max(- scrolling.y - shift.y / CanvasZoom, Corners[0].y - Space)};
-			ImVec2 ScreenBottomRight = { 
-				min(- scrolling.x - shift.x / CanvasZoom + canvas_sz.x / CanvasZoom, Corners[1].x + Space),
-				min(- scrolling.y - shift.y / CanvasZoom + canvas_sz.y / CanvasZoom, Corners[1].y + Space)
+			ImVec2 ScreenTopLeft = {
+				max(-scrolling.x - shift.x / CanvasZoom, Corners[0].x - Space),
+				max(-scrolling.y - shift.y / CanvasZoom, Corners[0].y - Space) };
+			ImVec2 ScreenBottomRight = {
+				min(-scrolling.x - shift.x / CanvasZoom + canvas_sz.x / CanvasZoom, Corners[1].x + Space),
+				min(-scrolling.y - shift.y / CanvasZoom + canvas_sz.y / CanvasZoom, Corners[1].y + Space)
 			};
 
 			if (ScreenTopLeft.x < ScreenBottomRight.x && ScreenTopLeft.y < ScreenBottomRight.y)
@@ -1557,7 +1728,7 @@ namespace ScenariosEditorGUI {
 					ImVec2(map_p0.x + (ScreenBottomRight.x - Corners[0].x + Space) * MapZoom, map_p0.y + (ScreenBottomRight.y - Corners[0].y + Space) * MapZoom),
 					IM_COL32(0, 0, 0, 255));
 			}
-			
+
 			ImGui::End();
 		}
 	}
