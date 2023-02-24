@@ -394,6 +394,19 @@ namespace ScenariosEditorGUI {
 				}
 			}
 		}
+		else
+		{
+			if (!ImGui::IsAnyItemActive() && ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_A, false))
+			{
+				for (int i = 0; i < Links.size(); i++)
+				{
+					if (std::find(SelectedLinks.begin(), SelectedLinks.end(), i) == SelectedLinks.end())
+					{
+						SelectedLinks.push_back(i);
+					}
+				}
+			}
+		}
 	}
 
 	void AddCanvasScrollbar(int* hover_on)
@@ -991,9 +1004,125 @@ namespace ScenariosEditorGUI {
 	// Handles elems-depending logic
 	void CanvasElemsLogic(int* hover_on, ImVec2* SelectionStartPosition)
 	{
+		if (!ImGui::IsAnyItemActive() && ImGui::GetIO().KeyShift)
+		{
+			if (ImGui::IsKeyPressed(ImGuiKey_Home, false))
+			{
+				if (!ImGui::GetIO().KeyCtrl)
+				{
+					SelectedElems.clear();
+					SelectedLinks.clear();
+				}
+				if (ShiftSelectionBeginElem == -1)
+				{
+					if (Elems.size() > 0)
+					{
+						float min_y = FLT_MAX;
+						int min_elem;
+						for (int i = 0; i < Elems.size(); i++)
+						{
+							if (Elems[i].Pos.y < min_y)
+							{
+								min_y = Elems[i].Pos.y;
+								min_elem = i;
+							}
+						}
+						if (std::find(SelectedElems.begin(), SelectedElems.end(), min_elem) == SelectedElems.end())
+						{
+							SelectedElems.push_back(min_elem);
+						}
+					}
+				}
+				else
+				{
+					for (int i = 0; i < Elems.size(); i++)
+					{
+						if (Elems[i].Pos.y <= Elems[ShiftSelectionBeginElem].Pos.y && std::find(SelectedElems.begin(), SelectedElems.end(), i) == SelectedElems.end())
+						{
+							SelectedElems.push_back(i);
+						}
+					}
+					for (int k = 0; k < Links.size(); k++)
+					{
+						std::vector<int>::iterator el1, el2;
+						if ((el1 = std::find(SelectedElems.begin(), SelectedElems.end(), Links[k].Elems[0])) != SelectedElems.end()
+							&& (el2 = std::find(SelectedElems.begin(), SelectedElems.end(), Links[k].Elems[1])) != SelectedElems.end()
+							&& std::find(SelectedLinks.begin(), SelectedLinks.end(), k) == SelectedLinks.end()
+							)
+						{
+							if (Elems[*el1].Pos.y <= Elems[ShiftSelectionBeginElem].Pos.y && Elems[*el2].Pos.y <= Elems[ShiftSelectionBeginElem].Pos.y)
+							{
+								SelectedLinks.push_back(k);
+							}
+						}
+					}
+				}
+			}
+			if (ImGui::IsKeyPressed(ImGuiKey_End, false))
+			{
+				if (!ImGui::GetIO().KeyCtrl)
+				{
+					SelectedElems.clear();
+					SelectedLinks.clear();
+				}
+				if (ShiftSelectionBeginElem == -1)
+				{
+					for (int i = 0; i < Elems.size(); i++)
+					{
+						if (std::find(SelectedElems.begin(), SelectedElems.end(), i) == SelectedElems.end())
+						{
+							SelectedElems.push_back(i);
+						}
+					}
+				}
+				else
+				{
+					for (int i = 0; i < Elems.size(); i++)
+					{
+						if (Elems[i].Pos.y >= Elems[ShiftSelectionBeginElem].Pos.y && std::find(SelectedElems.begin(), SelectedElems.end(), i) == SelectedElems.end())
+						{
+							SelectedElems.push_back(i);
+						}
+					}
+					for (int k = 0; k < Links.size(); k++)
+					{
+						std::vector<int>::iterator el1, el2;
+						if ((el1 = std::find(SelectedElems.begin(), SelectedElems.end(), Links[k].Elems[0])) != SelectedElems.end()
+							&& (el2 = std::find(SelectedElems.begin(), SelectedElems.end(), Links[k].Elems[1])) != SelectedElems.end()
+							&& std::find(SelectedLinks.begin(), SelectedLinks.end(), k) == SelectedLinks.end()
+							)
+						{
+							if (Elems[*el1].Pos.y >= Elems[ShiftSelectionBeginElem].Pos.y && Elems[*el2].Pos.y >= Elems[ShiftSelectionBeginElem].Pos.y)
+							{
+								SelectedLinks.push_back(k);
+							}
+						}
+					}
+				}
+			}
 
+			/*float min_y, max_y;
+			if (ShiftSelectionBeginElem != -1)
+			{
+				min_y = min(Elems[i].Pos.y, Elems[ShiftSelectionBeginElem].Pos.y);
+				max_y = max(Elems[i].Pos.y, Elems[ShiftSelectionBeginElem].Pos.y);
+			}
+			else
+			{
+				min_y = FLT_MIN;
+				max_y = Elems[i].Pos.y;
+			}*/
+		}
 		for (int i = 0; i < Elems.size(); i++)
 		{
+			if (!ImGui::IsAnyItemActive() && ImGui::GetIO().KeyCtrl && std::find(SelectedElems.begin(), SelectedElems.end(), i) == SelectedElems.end())
+			{
+				if (ImGui::IsKeyPressed(ImGuiKey_A, false))
+				{
+					SelectedElems.push_back(i);
+				}
+
+			}
 			// Create button and handle it io actions
 			Texture UsedTexture = ElementsData::GetElementTexture(Elems[i].Element, CanvasZoom);
 			ImGui::SetCursorScreenPos(ImVec2(origin.x + Elems[i].Pos.x * CanvasZoom, origin.y + Elems[i].Pos.y * CanvasZoom));
@@ -1033,7 +1162,7 @@ namespace ScenariosEditorGUI {
 							}
 							else
 							{
-								min_y = FLT_MIN;
+								min_y = -FLT_MAX;
 								max_y = Elems[i].Pos.y;
 							}
 							if (!ImGui::GetIO().KeyCtrl)
@@ -1050,12 +1179,16 @@ namespace ScenariosEditorGUI {
 							}
 							for (int k = 0; k < Links.size(); k++)
 							{
-								if (std::find(SelectedElems.begin(), SelectedElems.end(), Links[k].Elems[0]) != SelectedElems.end()
-									&& std::find(SelectedElems.begin(), SelectedElems.end(), Links[k].Elems[1]) != SelectedElems.end()
+								std::vector<int>::iterator el1, el2;
+								if ((el1 = std::find(SelectedElems.begin(), SelectedElems.end(), Links[k].Elems[0])) != SelectedElems.end()
+									&& (el2 = std::find(SelectedElems.begin(), SelectedElems.end(), Links[k].Elems[1])) != SelectedElems.end()
 									&& std::find(SelectedLinks.begin(), SelectedLinks.end(), k) == SelectedLinks.end()
 									)
 								{
-									SelectedLinks.push_back(k);
+									if (Elems[*el1].Pos.y <= max_y && Elems[*el1].Pos.y >= min_y && Elems[*el2].Pos.y <= max_y && Elems[*el2].Pos.y >= min_y)
+									{
+										SelectedLinks.push_back(k);
+									}
 								}
 							}
 						}
