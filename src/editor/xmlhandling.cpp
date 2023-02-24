@@ -40,10 +40,10 @@ namespace ScenariosEditorXML
 		if (Testing.load_file(path, pugi::parse_default, pugi::encoding_utf8).status != pugi::status_ok) return false;
 		else return true;
 	}
-	void ScenariosDOM::SaveTo(const wchar_t* path)
+	bool ScenariosDOM::SaveTo(const wchar_t* path)
 	{
 		LoadElementsFromStorage();
-		Model.save_file(path);
+		return Model.save_file(path);
 	}
 	void LoadElementsToStorage()
 	{

@@ -10,7 +10,7 @@ namespace ScenariosEditorXML
 	{
 	public:
 		void LoadFrom(const wchar_t* path);
-		void SaveTo(const wchar_t* path);
+		bool SaveTo(const wchar_t* path);
 		bool CheckFile(const wchar_t* path);
 	private:
 	};

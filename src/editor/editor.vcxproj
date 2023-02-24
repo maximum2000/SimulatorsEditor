@@ -110,7 +110,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);d3d11.lib</AdditionalDependencies>
+      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);d3d11.lib;Shlwapi.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -157,6 +157,7 @@
     <ClInclude Include="Pilon.h" />
     <ClInclude Include="Push.h" />
     <ClInclude Include="Random.h" />
+    <ClInclude Include="SavedSettings.h" />
     <ClInclude Include="SaveFileDialog.h" />
     <ClInclude Include="ScenarioElement.h" />
     <ClInclude Include="ScenarioElementsStorage.h" />
@@ -197,6 +198,7 @@
     <ClCompile Include="Pilon.cpp" />
     <ClCompile Include="Push.cpp" />
     <ClCompile Include="Random.cpp" />
+    <ClCompile Include="SavedSettings.cpp" />
     <ClCompile Include="SaveFileDialog.cpp" />
     <ClCompile Include="ScenarioElement.cpp" />
     <ClCompile Include="ScenarioElementsStorage.cpp" />

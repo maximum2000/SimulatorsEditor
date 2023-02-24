@@ -13,6 +13,10 @@ Known problems:
 
 */
 
+#include <locale>
+#include <codecvt>
+#include <fstream>
+#include "SavedSettings.h"
 #include <iomanip>
 #include <tchar.h>
 #include <iostream>
@@ -29,7 +33,8 @@ Known problems:
 #include "CanvasPositioning.h"
 #include <sstream>
 #include "scenariosgui.h"
-
+#include <comdef.h>
+#pragma execution_character_set("utf-8")
 
 using namespace ScenariosEditorElementsData;
 using namespace ScenariosEditorScenarioElement;
@@ -78,15 +83,18 @@ namespace ScenariosEditorGUI {
 	static int ShiftSelectionBeginElem = -1;
 	static std::vector<int> CurrentSelectionElems;
 	static std::vector<int> CurrentSelectionLinks;
-
+	static bool IsLinking = false;
 	static std::vector<ElementOnCanvas> Elems;
 	static std::vector<LinkOnCanvas> Links;
 	static std::vector<int> SelectedElems;
 	static std::vector<int> SelectedLinks;
 	static std::wstring CurrentFile = L"";
+	static std::vector<ElementOnCanvas> CopyBuffer;
+	static std::vector<LinkOnCanvas> LinksBuffer;
 
 	static bool SearchOpen = false;
 	static bool MapOpen = false;
+	static bool CheckSave = false;
 
 	void PreLoopSetup();
 	void MainLoop();
@@ -126,6 +134,19 @@ namespace ScenariosEditorGUI {
 	void CanvasSelectedElemsLogic(ImGuiIO& io);
 	void AddCanvasScrollbar(int* hover_on);
 	void ParamsInitialization();
+	void Copy();
+	void Paste();
+	void Delete();
+	void DeleteLinks();
+	void Open();
+	void New();
+	void Save();
+	void SaveAs();
+	void SaveCopyAs();
+	void SwitchSearch();
+	void SwitchMap();
+	void OpenRecent(const wchar_t* File);
+	std::string toUtf8(const std::wstring& str);
 	ImVec2 GetLinkingPointLocation(int Elem, int Point);
 	ImVec2 GetMapLinkingPointLocation(int Elem, int Point, float Zoom, ImVec2 origin, float shift_x, float shift_y);
 
@@ -155,6 +176,7 @@ namespace ScenariosEditorGUI {
 		io.Fonts->AddFontFromFileTTF(u8"C:/Users/VR/Desktop/projects/SimulatorsEditor/src/editor/LiberationSans.ttf", 22.0f, NULL, ranges.Data);
 		io.Fonts->Build();
 		ElementsData::Initialization();
+		ScenarioEditorSavedSettings::Initialization();
 		ScenarioEditorScenarioStorage::ClearScenarioStorage();
 		SetCanvasZoomRef(&CanvasZoom);
 		SetCanvasScrollingRef(&scrolling);
@@ -186,67 +208,258 @@ namespace ScenariosEditorGUI {
 			ScenariosEditorRender::EndFrame();
 		}
 	}
-
+	inline bool file_exists(std::wstring path) {
+		std::ifstream ff(path.c_str());
+		return ff.is_open();
+	}
 	// Menu
 	void DrawMenu()
 	{
 		ImGui::BeginMainMenuBar();
 		if (ImGui::BeginMenu(u8"Файл"))
 		{
+			if (ImGui::MenuItem(u8"Новый", "Ctrl+N"))
+			{
+				New();
+			}
 			if (ImGui::MenuItem(u8"Открыть", "Ctrl+O"))
 			{
-				const wchar_t* File = ScenarioEditorFileDialog::OpenFileDialog();
-				if (size_t(File) != 0)
-				{
-					if (Model.CheckFile(File))
-					{
-						ScenariosEditorScenarioElement::ClearScenarioElementStorage();
-						ClearElements();
-						Model.LoadFrom(File);
-						CurrentFile = File;
-						SelectedElemGUI = -1;
-					}
-					else MessageBoxW(NULL, L"При попытке открыть файл возникла ошибка", L"Ошибка", MB_OK);
-				}
+				Open();
 			}
-			//if (ImGui::MenuItem(u8"Недавние файлы..."))
-			//{
-			//    //
-			//    ImGui::EndMenu();
-			//}
+			std::vector<std::string> RecentFiles = ScenarioEditorSavedSettings::GetRecentFiles();
+			if (ImGui::BeginMenu(u8"Недавние файлы...", RecentFiles.size() > 0))
+			{
+				for (std::string File : RecentFiles)
+				{
+					std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+					std::wstring wsTmp = converter.from_bytes(File.c_str());
+					if (ImGui::MenuItem(File.c_str(), (const char*)0, false, file_exists(wsTmp)))
+					{
+						OpenRecent(wsTmp.c_str());
+					}
+				}
+			   ImGui::EndMenu();
+			}
 			if (ImGui::MenuItem(u8"Сохранить", "Ctrl+S", false, CurrentFile != L""))
 			{
-				Model.SaveTo(CurrentFile.c_str());
+				Save();
 			}
-			if (ImGui::MenuItem(u8"Сохранить как..."))
+			if (ImGui::MenuItem(u8"Сохранить как...", "Ctrl+Alt+S"))
 			{
-				const wchar_t* File = ScenarioEditorFileDialog::SaveFileDialog();
-				if (size_t(File) != 0)
-				{
-					Model.SaveTo(File);
-					CurrentFile = File;
-				}
+				SaveAs();
+			}
+			if (ImGui::MenuItem(u8"Сохранить копию как...", "Ctrl+Shift+S"))
+			{
+				SaveCopyAs();
 			}
 			ImGui::EndMenu();
 
 		}
 		if (ImGui::BeginMenu(u8"Инструменты"))
 		{
-			if (ImGui::MenuItem(u8"Поиск", "CTRL+F", &SearchOpen))
+			if (ImGui::MenuItem(u8"Поиск", "Ctrl+F", SearchOpen))
 			{
-				SearchOpen != SearchOpen;
+				SwitchSearch();
 			}
-			if (ImGui::MenuItem(u8"Карта сценария", "CTRL+M", &MapOpen))
+			if (ImGui::MenuItem(u8"Карта сценария", "Ctrl+M", MapOpen))
 			{
-				MapOpen != MapOpen;
+				SwitchMap();
 			}
 			ImGui::EndMenu();
 		}
 		ImGui::EndMainMenuBar();
 	}
+
+	void New()
+	{
+		if (CheckSave)
+		{
+			switch (MessageBox(NULL, L"Сохранить изменения?", L"Несохранённые изменения",
+				MB_YESNOCANCEL | MB_DEFBUTTON3))
+			{
+			case IDCANCEL:
+			{
+				return;
+			}
+			case IDYES:
+			{
+				if (CurrentFile != L"")
+				{
+					Save();
+				}
+				else
+				{
+					SaveAs();
+					if (CurrentFile == L"")
+						return;
+				}
+				break;
+			}
+			case IDNO:
+				break;
+			}
+		}
+		ClearElements();
+		ClearScenarioElementStorage();
+		ScenarioEditorScenarioStorage::ClearScenarioStorage();
+		SetCanvasZoomRef(&CanvasZoom);
+		SetCanvasScrollingRef(&scrolling);
+		SetDefaulScreenPos();
+		ImGui::GetIO().ClearInputKeys();
+		ScenarioEditorScenarioStorage::SetActualScenario(0);
+		ScenariosEditorScenarioElement::LoadElements();
+		CurrentFile = L"";
+	}
+	
+	void Open()
+	{
+		if (CheckSave)
+		{
+			switch (MessageBox(NULL, L"Сохранить изменения?", L"Несохранённые изменения",
+				MB_YESNOCANCEL | MB_DEFBUTTON3))
+			{
+			case IDCANCEL:
+			{
+				return;
+			}
+			case IDYES:
+			{
+				if (CurrentFile != L"")
+				{
+					Save();
+				}
+				else
+				{
+					SaveAs();
+					if (CurrentFile == L"")
+						return;
+				}
+				break;
+			}
+			case IDNO:
+				break;
+			}
+		}
+		const wchar_t* File = ScenarioEditorFileDialog::OpenFileDialog();
+		if (size_t(File) != 0)
+		{
+			if (Model.CheckFile(File))
+			{
+				ScenariosEditorScenarioElement::ClearScenarioElementStorage();
+				ClearElements();
+				Model.LoadFrom(File);
+				CurrentFile = File;
+				SelectedElemGUI = -1;
+				CheckSave = false;
+				ScenarioEditorSavedSettings::AddToRecentFiles(File);
+				ScenarioEditorScenarioStorage::SetActualScenario(0);
+				ScenariosEditorScenarioElement::LoadElements();
+			}
+			else MessageBoxW(NULL, L"При попытке открыть файл возникла ошибка", L"Ошибка", MB_OK);
+		}
+	}
+	void OpenRecent(const wchar_t* File)
+	{
+		if (CheckSave)
+		{
+			switch (MessageBox(NULL, L"Сохранить изменения?", L"Несохранённые изменения",
+				MB_YESNOCANCEL | MB_DEFBUTTON3))
+			{
+			case IDCANCEL:
+			{
+				return;
+			}
+			case IDYES:
+			{
+				if (CurrentFile != L"")
+				{
+					Save();
+				}
+				else
+				{
+					SaveAs();
+					if (CurrentFile == L"")
+						return;
+				}
+				break;
+			}
+			case IDNO:
+				break;
+			}
+		}
+		if (Model.CheckFile(File))
+		{
+			ScenariosEditorScenarioElement::ClearScenarioElementStorage();
+			ClearElements();
+			Model.LoadFrom(File);
+			CurrentFile = File;
+			SelectedElemGUI = -1;
+			CheckSave = false;
+			ScenarioEditorSavedSettings::AddToRecentFiles(File);
+			ScenarioEditorScenarioStorage::SetActualScenario(0);
+			ScenariosEditorScenarioElement::LoadElements();
+		}
+		else MessageBoxW(NULL, L"При попытке открыть файл возникла ошибка", L"Ошибка", MB_OK);
+	}
+	void Save()
+	{
+		if (CurrentFile != L"")
+		{
+			if (!Model.SaveTo(CurrentFile.c_str()))
+			{
+				MessageBoxW(NULL, L"При попытке сохранить файл возникла ошибка", L"Ошибка", MB_OK);
+			}
+			else CheckSave = false;
+		}
+		
+	}
+
+	void SaveAs()
+	{
+		const wchar_t* File = ScenarioEditorFileDialog::SaveFileDialog();
+		if (size_t(File) != 0)
+		{
+			if (!Model.SaveTo(File))
+			{
+				MessageBoxW(NULL, L"При попытке сохранить файл возникла ошибка", L"Ошибка", MB_OK);
+			}
+			else
+			{
+				CurrentFile = File;
+				CheckSave = false;
+				ScenarioEditorSavedSettings::AddToRecentFiles(File);
+			}
+		}
+		
+	}
+
+	void SaveCopyAs()
+	{
+		const wchar_t* File = ScenarioEditorFileDialog::SaveFileDialog();
+		if (size_t(File) != 0)
+		{
+			if (!Model.SaveTo(File))
+			{
+				MessageBoxW(NULL, L"При попытке сохранить файл возникла ошибка", L"Ошибка", MB_OK);
+			}
+		}
+	}
+
+	void SwitchSearch()
+	{
+		SearchOpen = !SearchOpen;
+	}
+
+	void SwitchMap()
+	{
+		MapOpen = !MapOpen;
+	}
+	
+
 	// Clear existing elements
 	void ClearElements()
 	{
+		IsLinking = false;
 		SelectedLinks.clear();
 		SelectedElems.clear();
 		Elems.clear();
@@ -546,6 +759,7 @@ namespace ScenariosEditorGUI {
 			:
 			Elems.push_back({ Element, Pos, ElementsData::GetElementType(Element),
 				ScenariosEditorScenarioElement::AddScenarioElementStorageElement(ScenariosEditorElementsData::ElementsData::GetElementName(Element), Pos.x, Pos.y, 0.00f, pin_count, CopyOrigin) });
+		CheckSave = true;
 	}
 
 	void AddLinkGUI(int PointA, int PointB, int ElemA, int ElemB)
@@ -558,16 +772,19 @@ namespace ScenariosEditorGUI {
 		ToAdd.push_back((*Elems[ElemB].ElementInStorage).pins[index]);
 		ScenariosEditorScenarioElement::AddScenarioElementStorageLink(ToAdd);
 		Links.push_back({ {PointA, PointB},{ElemA, ElemB} });
+		CheckSave = true;
 	}
 
 	std::vector<ElementOnCanvas>::iterator DeleteElementGUI(std::vector<ElementOnCanvas>::iterator iter)
 	{
+		CheckSave = true;
 		ScenariosEditorScenarioElement::RemoveScenarioElementStorageElement((*iter).ElementInStorage);
 		return Elems.erase(iter);
 	}
 
 	std::vector<LinkOnCanvas>::iterator DeleteLinkGUI(std::vector<LinkOnCanvas>::iterator iter)
 	{
+		CheckSave = true;
 		std::vector<int> ToRem;
 		int index = ScenariosEditorScenarioElement::GetPinIndex((*Elems[(*iter).Elems[0]].ElementInStorage).getElementName().c_str(), (*iter).Points[0]);
 		ToRem.push_back((*Elems[(*iter).Elems[0]].ElementInStorage).pins[index]);
@@ -592,106 +809,132 @@ namespace ScenariosEditorGUI {
 			ImGui::EndDragDropTarget();
 		}
 	}
-
+	
 	// Context menu used for canvas
 	void AddCanvasContextMenu() // TODO: split function
 	{
-		static std::vector<ElementOnCanvas> CopyBuffer;
 		ImVec2 drag_delta = ImGui::GetMouseDragDelta(ImGuiMouseButton_Right);
-		static std::vector<LinkOnCanvas> LinksBuffer;
-		if (drag_delta.x == 0.0f && drag_delta.y == 0.0f && CurrentState == Rest)
+		if (drag_delta.x <= 1.0f && drag_delta.y <= 1.0f)
 			ImGui::OpenPopupOnItemClick("contextworkspace", ImGuiPopupFlags_MouseButtonRight);
-
 		if (ImGui::BeginPopup("contextworkspace"))
 		{
-			if (ImGui::MenuItem(u8"Удалить", NULL, false, SelectedElems.size() > 0 || SelectedLinks.size() > 0))
+			if (ImGui::MenuItem(u8"Копировать", u8"Ctrl+C", false, SelectedElems.size() > 0))
 			{
-				for (int i = SelectedLinks.size() - 1; i >= 0; i--)
-				{
-					int SelectedLink = SelectedLinks[i];
-					DeleteLinkGUI(Links.begin() + SelectedLink);
-				}
-				for (int i = SelectedElems.size() - 1; i >= 0; i--)
-				{
-					int SelectedElem = SelectedElems[i];
-					std::vector<LinkOnCanvas>::iterator k = Links.begin();
-					while (k != Links.end())
-					{
-						if ((*k).Elems[0] == SelectedElem || (*k).Elems[1] == SelectedElem) k = DeleteLinkGUI(k);
-						else
-						{
-							if ((*k).Elems[0] > SelectedElem) (*k).Elems[0]--;
-							if ((*k).Elems[1] > SelectedElem) (*k).Elems[1]--;
-							++k;
-						}
-					}
-					DeleteElementGUI(Elems.begin() + SelectedElem);
-				}
-				SelectedElems.clear();
-				SelectedLinks.clear();
+				Copy();
 			}
-			if (ImGui::MenuItem(u8"Копировать", NULL, false, SelectedElems.size() > 0))
+			if (ImGui::MenuItem(u8"Вставить", u8"Ctrl+V", false, CopyBuffer.size() > 0))
 			{
-				CopyBuffer.clear();
-				LinksBuffer.clear();
-				std::vector<int> Positions;
-				for (int i = 0; i < SelectedElems.size(); i++)
-				{
-					if (ScenariosEditorElementsData::ElementsData::GetElementName(Elems[SelectedElems[i]].Element) == "Start") continue;
-					CopyBuffer.push_back(Elems[SelectedElems[i]]);
-					Positions.push_back(SelectedElems[i]);
-				}
-				for (int k = 0; k < SelectedLinks.size(); k++)
-				{
-					int Elem1 = find(Positions.begin(), Positions.end(), Links[SelectedLinks[k]].Elems[0]) - Positions.begin();
-					int Elem2 = find(Positions.begin(), Positions.end(), Links[SelectedLinks[k]].Elems[1]) - Positions.begin();
-					if (Elem1 < Positions.size() && Elem2 < Positions.size())
-						LinksBuffer.push_back({ {Links[SelectedLinks[k]].Points[0], Links[SelectedLinks[k]].Points[1]},{Elem1, Elem2} });
-				}
+				Paste();
 			}
-			if (ImGui::MenuItem(u8"Удалить связи элементов", NULL, false, SelectedElems.size() > 0))
+			if (ImGui::MenuItem(u8"Удалить", u8"Ctrl+Delete", false, SelectedElems.size() > 0 || SelectedLinks.size() > 0))
 			{
-				for (int i = SelectedElems.size() - 1; i >= 0; i--)
-				{
-					std::vector<LinkOnCanvas>::iterator k = Links.begin();
-					while (k != Links.end())
-					{
-						int SelectedElem = SelectedElems[i];
-						if ((*k).Elems[0] == SelectedElem || (*k).Elems[1] == SelectedElem) k = DeleteLinkGUI(k);
-						else
-						{
-							++k;
-						}
-					}
-				}
-				SelectedLinks.clear();
+				Delete();
 			}
-			if (ImGui::MenuItem(u8"Вставить", NULL, false, CopyBuffer.size() > 0))
+			if (ImGui::MenuItem(u8"Удалить связи элементов", u8"Ctrl+Shift+Delete", false, SelectedElems.size() > 0))
 			{
-				SelectedElems.clear();
-				SelectedLinks.clear();
-				ImVec2 min = ImVec2(INT_MAX, INT_MAX);
-				int ElemsSize = Elems.size();
-				for (int i = 0; i < CopyBuffer.size(); i++)
-				{
-					if (min.x == INT_MAX || CopyBuffer[i].Pos.x < min.x) min.x = CopyBuffer[i].Pos.x;
-					if (min.y == INT_MAX || CopyBuffer[i].Pos.y < min.y) min.y = CopyBuffer[i].Pos.y;
-				}
-				for (int i = 0; i < CopyBuffer.size(); i++)
-				{
-					AddElementGUI(CopyBuffer[i].Element,
-						ImVec2(CopyBuffer[i].Pos.x - min.x + MousePosInCanvas.x, CopyBuffer[i].Pos.y - min.y + MousePosInCanvas.y),
-						CopyBuffer[i].Type, CopyBuffer[i].ElementInStorage);
-					SelectedElems.push_back(Elems.size() - 1);
-				}
-				for (int k = 0; k < LinksBuffer.size(); k++)
-				{
-					AddLinkGUI(LinksBuffer[k].Points[0], LinksBuffer[k].Points[1],
-						ElemsSize + LinksBuffer[k].Elems[0], ElemsSize + LinksBuffer[k].Elems[1]);
-					SelectedLinks.push_back(Links.size() - 1);
-				}
+				DeleteLinks();
 			}
 			ImGui::EndPopup();
+		}
+	}
+
+	void Copy()
+	{
+		if (SelectedElems.size() > 0)
+		{
+			CopyBuffer.clear();
+			LinksBuffer.clear();
+			std::vector<int> Positions;
+			for (int i = 0; i < SelectedElems.size(); i++)
+			{
+				if (ScenariosEditorElementsData::ElementsData::GetElementName(Elems[SelectedElems[i]].Element) == "Start") continue;
+				CopyBuffer.push_back(Elems[SelectedElems[i]]);
+				Positions.push_back(SelectedElems[i]);
+			}
+			for (int k = 0; k < SelectedLinks.size(); k++)
+			{
+				int Elem1 = find(Positions.begin(), Positions.end(), Links[SelectedLinks[k]].Elems[0]) - Positions.begin();
+				int Elem2 = find(Positions.begin(), Positions.end(), Links[SelectedLinks[k]].Elems[1]) - Positions.begin();
+				if (Elem1 < Positions.size() && Elem2 < Positions.size())
+					LinksBuffer.push_back({ {Links[SelectedLinks[k]].Points[0], Links[SelectedLinks[k]].Points[1]},{Elem1, Elem2} });
+			}
+		}
+	}
+	void Paste()
+	{
+		if (CopyBuffer.size() > 0)
+		{
+			SelectedElems.clear();
+			SelectedLinks.clear();
+			ImVec2 min = ImVec2(INT_MAX, INT_MAX);
+			int ElemsSize = Elems.size();
+			for (int i = 0; i < CopyBuffer.size(); i++)
+			{
+				if (min.x == INT_MAX || CopyBuffer[i].Pos.x < min.x) min.x = CopyBuffer[i].Pos.x;
+				if (min.y == INT_MAX || CopyBuffer[i].Pos.y < min.y) min.y = CopyBuffer[i].Pos.y;
+			}
+			for (int i = 0; i < CopyBuffer.size(); i++)
+			{
+				AddElementGUI(CopyBuffer[i].Element,
+					ImVec2(CopyBuffer[i].Pos.x - min.x + MousePosInCanvas.x, CopyBuffer[i].Pos.y - min.y + MousePosInCanvas.y),
+					CopyBuffer[i].Type, CopyBuffer[i].ElementInStorage);
+				SelectedElems.push_back(Elems.size() - 1);
+			}
+			for (int k = 0; k < LinksBuffer.size(); k++)
+			{
+				AddLinkGUI(LinksBuffer[k].Points[0], LinksBuffer[k].Points[1],
+					ElemsSize + LinksBuffer[k].Elems[0], ElemsSize + LinksBuffer[k].Elems[1]);
+				SelectedLinks.push_back(Links.size() - 1);
+			}
+		}
+	}
+	void Delete()
+	{
+		if (SelectedElems.size() > 0 || SelectedLinks.size() > 0)
+		{
+			for (int i = SelectedLinks.size() - 1; i >= 0; i--)
+			{
+				int SelectedLink = SelectedLinks[i];
+				DeleteLinkGUI(Links.begin() + SelectedLink);
+			}
+			for (int i = SelectedElems.size() - 1; i >= 0; i--)
+			{
+				int SelectedElem = SelectedElems[i];
+				std::vector<LinkOnCanvas>::iterator k = Links.begin();
+				while (k != Links.end())
+				{
+					if ((*k).Elems[0] == SelectedElem || (*k).Elems[1] == SelectedElem) k = DeleteLinkGUI(k);
+					else
+					{
+						if ((*k).Elems[0] > SelectedElem) (*k).Elems[0]--;
+						if ((*k).Elems[1] > SelectedElem) (*k).Elems[1]--;
+						++k;
+					}
+				}
+				DeleteElementGUI(Elems.begin() + SelectedElem);
+			}
+			SelectedElems.clear();
+			SelectedLinks.clear();
+		}
+	}
+	void DeleteLinks()
+	{
+		if (SelectedElems.size() > 0)
+		{
+			for (int i = SelectedElems.size() - 1; i >= 0; i--)
+			{
+				std::vector<LinkOnCanvas>::iterator k = Links.begin();
+				while (k != Links.end())
+				{
+					int SelectedElem = SelectedElems[i];
+					if ((*k).Elems[0] == SelectedElem || (*k).Elems[1] == SelectedElem) k = DeleteLinkGUI(k);
+					else
+					{
+						++k;
+					}
+				}
+			}
+			SelectedLinks.clear();
 		}
 	}
 
@@ -748,7 +991,7 @@ namespace ScenariosEditorGUI {
 	void AddLinkingPoint(int* hover_on, int Point, int* ClickedElem, int* ClickedType, int Elem)
 	{
 		// out of state machine for logic purposes
-		static bool IsLinking = false;
+
 		canvas_draw_list->AddCircleFilled(GetLinkingPointLocation(Elem, Point), 5.0f, IM_COL32(0, 0, 0, 255));
 		ImGui::SetCursorScreenPos(ImVec2(GetLinkingPointLocation(Elem, Point).x - 5.0f, GetLinkingPointLocation(Elem, Point).y - 5.0f));
 		ImGui::InvisibleButton("LinkingPoint", ImVec2(10.0f, 10.0f), ImGuiButtonFlags_MouseButtonLeft);
@@ -769,11 +1012,17 @@ namespace ScenariosEditorGUI {
 			}
 			IsLinking = !IsLinking;
 		}
+		
 		if (IsLinking)
 		{
 			SelectedLinks.clear();
 			SelectedElems.clear();
 			canvas_draw_list->AddLine(GetLinkingPointLocation(*ClickedElem, *ClickedType), MousePos, IM_COL32(0, 0, 0, 255));
+			if (ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+			{
+				IsLinking = false;
+				ImGui::GetIO().ClearInputKeys();
+			}
 		}
 	}
 
@@ -910,6 +1159,69 @@ namespace ScenariosEditorGUI {
 	void CanvasLogic(int clicked_on, ImVec2* SelectionStartPosition, ImGuiIO& io)
 	{
 		// clicked_on: 0 - offcanvas, 1 - canvas, 2 - linking point, 3 - element
+		bool ShorcutsChecked = false;
+		if (!ImGui::IsAnyItemActive() && !ShorcutsChecked)
+		{
+			ShorcutsChecked = true;
+			if (ImGui::GetIO().KeyCtrl)
+			{
+				if (ImGui::IsKeyPressed(ImGuiKey_N, false))
+				{
+					New();
+					ImGui::GetIO().ClearInputKeys();
+				}
+				if (ImGui::IsKeyPressed(ImGuiKey_C, false))
+				{
+					Copy();
+				}
+				if (ImGui::IsKeyPressed(ImGuiKey_V, false) && clicked_on > 0)
+				{
+					Paste();
+				}
+				if (ImGui::IsKeyPressed(ImGuiKey_Delete, false))
+				{
+					if (ImGui::GetIO().KeyShift)
+					{
+						DeleteLinks();
+					}
+					else
+					{
+						Delete();
+					}
+				}
+				if (ImGui::IsKeyPressed(ImGuiKey_O))
+				{
+					Open();
+					ImGui::GetIO().ClearInputKeys();
+				}
+				if (ImGui::IsKeyPressed(ImGuiKey_S, false))
+				{
+					if (ImGui::GetIO().KeyAlt)
+					{
+						SaveAs();
+						ImGui::GetIO().ClearInputKeys();
+					}
+					else if (ImGui::GetIO().KeyShift)
+					{
+						SaveCopyAs();
+						ImGui::GetIO().ClearInputKeys();
+					}
+					else
+					{
+						Save();
+						ImGui::GetIO().ClearInputKeys();
+					}
+				}
+				if (ImGui::IsKeyPressed(ImGuiKey_M, false))
+				{
+					SwitchMap();
+				}
+				if (ImGui::IsKeyPressed(ImGuiKey_F, false))
+				{
+					SwitchSearch();
+				}
+			}
+		}
 		if (CurrentState == Selection && ImGui::IsMouseReleased(ImGuiMouseButton_Left))
 		{
 			if (CurrentSelectionElems.size() != 0)
@@ -926,7 +1238,7 @@ namespace ScenariosEditorGUI {
 			CurrentSelectionLinks.clear();
 		}
 		// Right-mouse dragging causes canvas dragging
-		if (ImGui::IsMouseDragging(ImGuiMouseButton_Right) && CurrentState == Rest)
+		if (ImGui::IsMouseClicked(ImGuiMouseButton_Right) && CurrentState == Rest && clicked_on == 1)
 		{
 			CurrentState = CanvasDragging;
 		}
@@ -1132,6 +1444,19 @@ namespace ScenariosEditorGUI {
 
 			if (CurrentState == Rest && ImGui::IsItemHovered())
 			{
+				if (std::find(SelectedElems.begin(), SelectedElems.end(), i) == SelectedElems.end())
+				{
+					Texture UsedTexture = ElementsData::GetElementTexture(Elems[i].Element, CanvasZoom);
+					// rectangle displaying selection
+					canvas_draw_list->AddRect(
+						ImVec2(origin.x + Elems[i].Pos.x * CanvasZoom, origin.y + Elems[i].Pos.y * CanvasZoom),
+						ImVec2(origin.x + Elems[i].Pos.x * CanvasZoom + UsedTexture.Width, origin.y + Elems[i].Pos.y * CanvasZoom + UsedTexture.Height),
+						IM_COL32(0, 0, 0, 128));
+					canvas_draw_list->AddRectFilled(
+						ImVec2(origin.x + Elems[i].Pos.x * CanvasZoom, origin.y + Elems[i].Pos.y * CanvasZoom),
+						ImVec2(origin.x + Elems[i].Pos.x * CanvasZoom + UsedTexture.Width, origin.y + Elems[i].Pos.y * CanvasZoom + UsedTexture.Height),
+						IM_COL32(0, 0, 128, 40));
+				}
 				if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) || ImGui::IsMouseClicked(ImGuiMouseButton_Right))
 				{
 					if (ImGui::GetIO().KeyCtrl && !ImGui::GetIO().KeyShift)
@@ -1254,6 +1579,7 @@ namespace ScenariosEditorGUI {
 				int y = Elems[SelectedElem].Pos.y + io.MouseDelta.y / CanvasZoom;
 				Elems[SelectedElem].Pos = ImVec2(x, y);
 				ScenariosEditorScenarioElement::UpdateCoordinates(Elems[SelectedElem].ElementInStorage, x, y);
+				CheckSave = true;
 			}
 			// when SINGLE element clicked it draws on top of the others
 			else if (CurrentState == Rest && j < 2)
@@ -1317,7 +1643,17 @@ namespace ScenariosEditorGUI {
 			ImGui::EndTooltip();
 		}
 	}
-
+	std::string toUtf8(const std::wstring& str)
+	{
+		std::string ret;
+		int len = WideCharToMultiByte(CP_UTF8, 0, str.c_str(), str.length(), NULL, 0, NULL, NULL);
+		if (len > 0)
+		{
+			ret.resize(len);
+			WideCharToMultiByte(CP_UTF8, 0, str.c_str(), str.length(), &ret[0], len, NULL, NULL);
+		}
+		return ret;
+	}
 	// scenarios section
 	void DrawScenariosSection(const ImGuiViewport* viewport)
 	{
@@ -1327,6 +1663,7 @@ namespace ScenariosEditorGUI {
 		if (ImGui::Button(u8"Создать сценарий"))
 		{
 			ScenarioEditorScenarioStorage::CreateNewScenario();
+			CheckSave = true;
 		}
 		ImGui::SameLine();
 		std::vector<std::string> Scenarios = ScenarioEditorScenarioStorage::GetScenarioNames();
@@ -1337,7 +1674,7 @@ namespace ScenariosEditorGUI {
 				DoubleSelectedScenario(ScenarioEditorScenarioStorage::GetActualGUID());
 				Scenarios = ScenarioEditorScenarioStorage::GetScenarioNames();
 				SelectedElemGUI = Scenarios.size() - 1;
-
+				CheckSave = true;
 			}
 			ImGui::SameLine();
 			if (ImGui::Button(u8"Удалить выбранный"))
@@ -1345,6 +1682,7 @@ namespace ScenariosEditorGUI {
 				RemoveSelectedScenario(ScenarioEditorScenarioStorage::GetActualGUID());
 				Scenarios = ScenarioEditorScenarioStorage::GetScenarioNames();
 				SelectedElemGUI = 0;
+				CheckSave = true;
 			}
 		}
 
@@ -1394,7 +1732,9 @@ namespace ScenariosEditorGUI {
 		if (CurrentFile == L"")
 			ImGui::Text(u8"Файл не выбран");
 		else
-			ImGui::Text((u8"Выбранный файл: " + std::string(CurrentFile.begin(), CurrentFile.end())).c_str());
+		{
+			ImGui::Text((std::string(u8"Выбранный файл: ") + toUtf8(CurrentFile)).c_str());
+		}
 		ImGui::End();
 	}
 
@@ -1502,7 +1842,8 @@ namespace ScenariosEditorGUI {
 				int count = 1;
 				for (int j = 0; j < (Elems[SelectedElems[0]].ElementInStorage)->caption.size(); j++)
 					if ((Elems[SelectedElems[0]].ElementInStorage)->caption[j] == '\n') count++;
-				ImGui::InputTextMultiline("##Caption", &(Elems[SelectedElems[0]].ElementInStorage)->caption, ImVec2(-FLT_MIN, ImGui::GetTextLineHeight() * (count + 1)));
+				if (ImGui::InputTextMultiline("##Caption", &(Elems[SelectedElems[0]].ElementInStorage)->caption, ImVec2(-FLT_MIN, ImGui::GetTextLineHeight() * (count + 1))))
+					CheckSave = true;
 				if (ScenariosEditorElementsData::ElementsData::GetElementName(Elems[SelectedElems[0]].Element) == "Start")
 					ScenarioEditorScenarioStorage::SetActualScenarioName((Elems[SelectedElems[0]].ElementInStorage)->caption);
 				ImGui::PopItemWidth();
@@ -1523,19 +1864,27 @@ namespace ScenariosEditorGUI {
 					case 0:
 						for (int j = 0; j < (Attributes[i])->ValueS.size(); j++)
 							if ((Attributes[i])->ValueS[j] == '\n') count++;
-						ImGui::InputTextMultiline(label.c_str(), &(Attributes[i])->ValueS, ImVec2(-FLT_MIN, ImGui::GetTextLineHeight() * (count + 1)));
-						//ImGui::InputText(label.c_str(), &(Attributes[i])->ValueS);
+						if (ImGui::InputTextMultiline(label.c_str(), &(Attributes[i])->ValueS, ImVec2(-FLT_MIN, ImGui::GetTextLineHeight() * (count + 1))))
+						{
+							CheckSave = true;
+						}
 						break;
 					case 1:
 					{
 						int State = (Attributes[i])->ValueF;
 						const char* items[] = { "False", "True" };
-						ImGui::Combo(label.c_str(), &State, items, IM_ARRAYSIZE(items));
+						if (ImGui::Combo(label.c_str(), &State, items, IM_ARRAYSIZE(items)))
+						{
+							CheckSave = true;
+						}
 						(Attributes[i])->ValueF = State;
+						break;
 					}
-					break;
 					case 2:
-						ImGui::InputFloat(label.c_str(), &(Attributes[i])->ValueF, 0.01f, 1.0f, "%.2f");
+						if (ImGui::InputFloat(label.c_str(), &(Attributes[i])->ValueF, 0.01f, 1.0f, "%.2f"))
+						{
+							CheckSave = true;
+						}
 						break;
 					}
 					ImGui::PopItemWidth();
