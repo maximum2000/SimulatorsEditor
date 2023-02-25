@@ -13,6 +13,7 @@ Known problems:
 
 */
 
+#include <algorithm>
 #include <locale>
 #include <codecvt>
 #include <fstream>
@@ -98,6 +99,7 @@ namespace ScenariosEditorGUI {
 
 	void PreLoopSetup();
 	void MainLoop();
+	void CopyBufferAction(std::string Operation, float Drag_Shift_x = NULL, float Drag_Shift_y = NULL);
 
 	void DrawMenu();
 	void MakeCanvas(const ImGuiViewport* viewport, ImGuiIO& io);
@@ -145,6 +147,7 @@ namespace ScenariosEditorGUI {
 	void SaveCopyAs();
 	void SwitchSearch();
 	void SwitchMap();
+	void Cut();
 	void OpenRecent(const wchar_t* File);
 	std::string toUtf8(const std::wstring& str);
 	ImVec2 GetLinkingPointLocation(int Elem, int Point);
@@ -238,7 +241,7 @@ namespace ScenariosEditorGUI {
 						OpenRecent(wsTmp.c_str());
 					}
 				}
-			   ImGui::EndMenu();
+				ImGui::EndMenu();
 			}
 			if (ImGui::MenuItem(u8"Сохранить", "Ctrl+S", false, CurrentFile != L""))
 			{
@@ -310,7 +313,7 @@ namespace ScenariosEditorGUI {
 		ScenariosEditorScenarioElement::LoadElements();
 		CurrentFile = L"";
 	}
-	
+
 	void Open()
 	{
 		if (CheckSave)
@@ -411,7 +414,7 @@ namespace ScenariosEditorGUI {
 			}
 			else CheckSave = false;
 		}
-		
+
 	}
 
 	void SaveAs()
@@ -430,7 +433,7 @@ namespace ScenariosEditorGUI {
 				ScenarioEditorSavedSettings::AddToRecentFiles(File);
 			}
 		}
-		
+
 	}
 
 	void SaveCopyAs()
@@ -454,7 +457,7 @@ namespace ScenariosEditorGUI {
 	{
 		MapOpen = !MapOpen;
 	}
-	
+
 
 	// Clear existing elements
 	void ClearElements()
@@ -466,6 +469,7 @@ namespace ScenariosEditorGUI {
 		Links.clear();
 		CurrentState = Rest;
 		ShiftSelectionBeginElem = -1;
+		CopyBufferAction("Clear");
 	}
 
 
@@ -765,7 +769,6 @@ namespace ScenariosEditorGUI {
 	void AddLinkGUI(int PointA, int PointB, int ElemA, int ElemB)
 	{
 		std::vector<int> ToAdd;
-
 		int index = ScenariosEditorScenarioElement::GetPinIndex((*Elems[ElemA].ElementInStorage).getElementName().c_str(), PointA);
 		ToAdd.push_back((*Elems[ElemA].ElementInStorage).pins[index]);
 		index = ScenariosEditorScenarioElement::GetPinIndex((*Elems[ElemB].ElementInStorage).getElementName().c_str(), PointB);
@@ -805,11 +808,12 @@ namespace ScenariosEditorGUI {
 				int x = MousePosInCanvas.x - (ElementsData::GetElementTexture(ElementNum, CanvasZoom).Width / 2) / CanvasZoom;
 				int y = MousePosInCanvas.y - (ElementsData::GetElementTexture(ElementNum, CanvasZoom).Height / 2) / CanvasZoom;
 				AddElementGUI(ElementNum, ImVec2(x, y), ElementsData::GetElementType(ElementNum));
+				CopyBufferAction("Elem_Add");
 			}
 			ImGui::EndDragDropTarget();
 		}
 	}
-	
+
 	// Context menu used for canvas
 	void AddCanvasContextMenu() // TODO: split function
 	{
@@ -821,6 +825,10 @@ namespace ScenariosEditorGUI {
 			if (ImGui::MenuItem(u8"Копировать", u8"Ctrl+C", false, SelectedElems.size() > 0))
 			{
 				Copy();
+			}
+			if (ImGui::MenuItem(u8"Вырезать", u8"Ctrl+X", false, SelectedElems.size() > 0))
+			{
+				Cut();
 			}
 			if (ImGui::MenuItem(u8"Вставить", u8"Ctrl+V", false, CopyBuffer.size() > 0))
 			{
@@ -836,6 +844,12 @@ namespace ScenariosEditorGUI {
 			}
 			ImGui::EndPopup();
 		}
+	}
+
+	void Cut()
+	{
+		Copy();
+		Delete();
 	}
 
 	void Copy()
@@ -886,19 +900,23 @@ namespace ScenariosEditorGUI {
 					ElemsSize + LinksBuffer[k].Elems[0], ElemsSize + LinksBuffer[k].Elems[1]);
 				SelectedLinks.push_back(Links.size() - 1);
 			}
+			CopyBufferAction("Elem_Group_Add");
 		}
 	}
 	void Delete()
 	{
 		if (SelectedElems.size() > 0 || SelectedLinks.size() > 0)
 		{
+			CopyBufferAction("Elem_Group_Delete");
 			for (int i = SelectedLinks.size() - 1; i >= 0; i--)
 			{
+				std::sort(SelectedLinks.begin(), SelectedLinks.end());
 				int SelectedLink = SelectedLinks[i];
 				DeleteLinkGUI(Links.begin() + SelectedLink);
 			}
 			for (int i = SelectedElems.size() - 1; i >= 0; i--)
 			{
+				std::sort(SelectedElems.begin(), SelectedElems.end());
 				int SelectedElem = SelectedElems[i];
 				std::vector<LinkOnCanvas>::iterator k = Links.begin();
 				while (k != Links.end())
@@ -1008,11 +1026,12 @@ namespace ScenariosEditorGUI {
 				if (*ClickedType != Point || *ClickedElem != Elem)
 				{
 					AddLinkGUI(*ClickedType, Point, *ClickedElem, Elem);
+					CopyBufferAction("Link_Add");
 				}
 			}
 			IsLinking = !IsLinking;
 		}
-		
+
 		if (IsLinking)
 		{
 			SelectedLinks.clear();
@@ -1165,6 +1184,18 @@ namespace ScenariosEditorGUI {
 			ShorcutsChecked = true;
 			if (ImGui::GetIO().KeyCtrl)
 			{
+				if (ImGui::IsKeyPressed(ImGuiKey_X, false))
+				{
+					Cut();
+				}
+				if (ImGui::IsKeyPressed(ImGuiKey_Y, false))
+				{
+					CopyBufferAction("Redo");
+				}
+				if (ImGui::IsKeyPressed(ImGuiKey_Z, false))
+				{
+					CopyBufferAction("Undo");
+				}
 				if (ImGui::IsKeyPressed(ImGuiKey_N, false))
 				{
 					New();
@@ -1257,12 +1288,25 @@ namespace ScenariosEditorGUI {
 				SelectedElems.clear();
 			}
 		}
+		static float Drag_Shift_x = 0;
+		static float Drag_Shift_y = 0;
+		if (CurrentState == ElementDragging)
+		{
+			Drag_Shift_x += io.MouseDelta.x / CanvasZoom;
+			Drag_Shift_y += io.MouseDelta.y / CanvasZoom;
+		}
 		if (ImGui::IsMouseDragging(ImGuiMouseButton_Left) && clicked_on == 3 && CurrentState == Rest)
 		{
 			CurrentState = ElementDragging;
 		}
 		if (ImGui::IsMouseReleased(ImGuiMouseButton_Left) && clicked_on != 2)
 		{
+			if (CurrentState == ElementDragging)
+			{
+				CopyBufferAction("Elem_Group_Move", Drag_Shift_x, Drag_Shift_y);
+				Drag_Shift_x = 0;
+				Drag_Shift_y = 0;
+			}
 			CurrentState = Rest;
 		}
 		switch (CurrentState)
@@ -1537,13 +1581,13 @@ namespace ScenariosEditorGUI {
 				if (Elems[i].Pos.x + UsedTexture.Width / 2 / CanvasZoom >= min(MousePosInCanvas.x, SelectionStartPosition->x)
 					&& Elems[i].Pos.x + UsedTexture.Width / 2 / CanvasZoom <= max(MousePosInCanvas.x, SelectionStartPosition->x)
 					&& Elems[i].Pos.y + UsedTexture.Height / 2 / CanvasZoom >= min(MousePosInCanvas.y, SelectionStartPosition->y)
-					&& Elems[i].Pos.y + UsedTexture.Height / 2 / CanvasZoom <= max(MousePosInCanvas.y, SelectionStartPosition->y) 
+					&& Elems[i].Pos.y + UsedTexture.Height / 2 / CanvasZoom <= max(MousePosInCanvas.y, SelectionStartPosition->y)
 					)
 				{
 					if (!ImGui::GetIO().KeyCtrl)
 					{
 						if (std::find(SelectedElems.begin(), SelectedElems.end(), i) == SelectedElems.end())
-						SelectedElems.push_back(i);
+							SelectedElems.push_back(i);
 					}
 					else
 					{
@@ -1556,7 +1600,7 @@ namespace ScenariosEditorGUI {
 						{
 							SelectedElems.erase(t);
 						}
-						
+
 					}
 					CurrentSelectionElems.push_back(i);
 				}
@@ -1569,17 +1613,24 @@ namespace ScenariosEditorGUI {
 		ElementOnCanvas ToAdd;
 		// dragging, clicking on elements realization
 		int j = SelectedElems.size();
+		static bool TriggerDrag = false;
+
 		for (int i = 0; i < j; i++)
 		{
 			int SelectedElem = SelectedElems[i];
 			// dragging wont change order
 			if (CurrentState == ElementDragging)
 			{
+				TriggerDrag = true;
 				int x = Elems[SelectedElem].Pos.x + io.MouseDelta.x / CanvasZoom;
 				int y = Elems[SelectedElem].Pos.y + io.MouseDelta.y / CanvasZoom;
 				Elems[SelectedElem].Pos = ImVec2(x, y);
 				ScenariosEditorScenarioElement::UpdateCoordinates(Elems[SelectedElem].ElementInStorage, x, y);
 				CheckSave = true;
+			}
+			else if (TriggerDrag)
+			{
+				TriggerDrag = false;
 			}
 			// when SINGLE element clicked it draws on top of the others
 			else if (CurrentState == Rest && j < 2)
@@ -1589,6 +1640,7 @@ namespace ScenariosEditorGUI {
 					ShiftSelectionBeginElem = Elems.size() - 1;
 				}
 				ToAdd = { Elems[SelectedElem].Element, Elems[SelectedElem].Pos, Elems[SelectedElem].Type, Elems[SelectedElem].ElementInStorage };
+				CopyBufferAction("Update");
 				Elems.erase(Elems.begin() + SelectedElem);
 				Elems.push_back(ToAdd);
 				SelectedElems[i] = -1;
@@ -2212,6 +2264,432 @@ namespace ScenariosEditorGUI {
 			}
 
 			ImGui::End();
+		}
+	}
+
+	void CopyBufferAction(std::string Operation, float drag_shift_x, float drag_shift_y)
+	{
+
+		bool IsFilling = false;
+		struct ElementMemory
+		{
+			int Action;
+			ElementOnCanvas Elem;
+			int ElementNum;
+			ImVec2 OldPos;
+		};
+		struct LinkMemory
+		{
+			int Action;
+			LinkOnCanvas Link;
+			std::shared_ptr<ScenarioElement> ElemA;
+			std::shared_ptr<ScenarioElement> ElemB;
+		};
+		static std::vector<ElementMemory> RememberedElems;
+		static std::vector<LinkMemory> RememberedLinks;
+		static std::vector<std::string> Operations;
+		static int CurrentlyAt = -1;
+		if (Operation == "Elem_Add")
+		{
+			RememberedElems.push_back({ -1, Elems[Elems.size() - 1], (int)Elems.size() - 1 });
+			IsFilling = true;
+		}
+		else if (Operation == "Elem_Group_Add")
+		{
+			IsFilling = true;
+			for (int i = 0; i < SelectedElems.size(); i++)
+			{
+				RememberedElems.push_back({ -1, Elems[SelectedElems[i]], SelectedElems[i] });
+			}
+			for (int i = 0; i < SelectedLinks.size(); i++)
+			{
+				RememberedLinks.push_back({ -1, Links[SelectedLinks[i]],
+					Elems[Links[SelectedLinks[i]].Elems[0]].ElementInStorage,
+					Elems[Links[SelectedLinks[i]].Elems[1]].ElementInStorage });
+			}
+		}
+		else if (Operation == "Elem_Group_Delete")
+		{
+			IsFilling = true;
+			for (int i = 0; i < SelectedElems.size(); i++)
+			{
+				RememberedElems.push_back({ -1, Elems[SelectedElems[i]], SelectedElems[i] });
+			}
+			for (int i = 0; i < SelectedLinks.size(); i++)
+			{
+				RememberedLinks.push_back({ -1, Links[SelectedLinks[i]],
+					Elems[Links[SelectedLinks[i]].Elems[0]].ElementInStorage,
+					Elems[Links[SelectedLinks[i]].Elems[1]].ElementInStorage });
+			}
+			for (int i = 0; i < Links.size(); i++)
+			{
+				if (
+					(
+						std::find(SelectedElems.begin(), SelectedElems.end(), Links[i].Elems[0]) != SelectedElems.end() ||
+						std::find(SelectedElems.begin(), SelectedElems.end(), Links[i].Elems[1]) != SelectedElems.end()
+						) && std::find(SelectedLinks.begin(), SelectedLinks.end(), i) == SelectedLinks.end()
+					)
+					RememberedLinks.push_back({ -1, Links[i],
+					Elems[Links[i].Elems[0]].ElementInStorage,
+					Elems[Links[i].Elems[1]].ElementInStorage });
+			}
+		}
+		else if (Operation == "Link_Add")
+		{
+			RememberedLinks.push_back({ -1, Links[Links.size() - 1],
+					Elems[Links[Links.size() - 1].Elems[0]].ElementInStorage,
+					Elems[Links[Links.size() - 1].Elems[1]].ElementInStorage });
+			IsFilling = true;
+		}
+		else if (Operation == "Elem_Group_Move")
+		{
+			IsFilling = true;
+			for (int i = 0; i < SelectedElems.size(); i++)
+			{
+				RememberedElems.push_back({ -1, Elems[SelectedElems[i]], SelectedElems[i], { Elems[SelectedElems[i]].Pos.x - drag_shift_x, Elems[SelectedElems[i]].Pos.y - drag_shift_y} });
+			}
+			std::cout << drag_shift_x;
+		}
+		if (IsFilling)
+		{
+			std::vector<ElementMemory>::iterator k = RememberedElems.begin();
+			while (k != RememberedElems.end())
+			{
+				k->Action++;
+				if (k->Action > 9)
+				{
+					k = RememberedElems.erase(k);
+				}
+				else
+				{
+					++k;
+				}
+			}
+			std::vector<LinkMemory>::iterator j = RememberedLinks.begin();
+			while (j != RememberedLinks.end())
+			{
+				j->Action++;
+				if (j->Action > 9)
+				{
+					j = RememberedLinks.erase(j);
+				}
+				else
+				{
+					++j;
+				}
+			}
+			Operations.insert(Operations.begin(), Operation);
+			if (Operations.size() > 10)
+			{
+				Operations.erase(Operations.end() - 1);
+			}
+			/*std::cout << "Before:\n";
+			std::cout << "At = " << CurrentlyAt << "\n";
+			for (int j = 0; j < RememberedElems.size(); j++)
+			{
+				std::cout << "Memory Element: Action = " << RememberedElems[j].Action << " Element: " << RememberedElems[j].Elem.Element << "\n";
+			}*/
+			for (int i = 0; i <= CurrentlyAt; i++)
+			{
+				for (int j = 0; j < RememberedLinks.size(); j++)
+				{
+					if (RememberedLinks[j].Action == 0) continue;
+					if (RememberedLinks[j].Action - 1 == i)
+					{
+						RememberedLinks.erase(RememberedLinks.begin() + j--);
+					}
+					else RememberedLinks[j].Action--;
+				}
+				for (int j = 0; j < RememberedElems.size(); j++)
+				{
+					if (RememberedElems[j].Action == 0) continue;
+					if (RememberedElems[j].Action - 1 == i)
+					{
+						RememberedElems.erase(RememberedElems.begin() + j--);
+					}
+					else RememberedElems[j].Action--;
+				}
+				Operations.erase(Operations.begin() + 1);
+			}
+			CurrentlyAt = -1;
+			/*std::cout << "After:\n";
+			std::cout << "At = " << CurrentlyAt << "\n";
+			for (int j = 0; j < RememberedElems.size(); j++)
+			{
+				std::cout << "Memory Element: Action = " << RememberedElems[j].Action << " Element: "<< RememberedElems[j].Elem.Element << "\n";
+			}*/
+		}
+		if (Operation == "Clear")
+		{
+			RememberedElems.clear();
+			RememberedLinks.clear();
+			Operations.clear();
+			CurrentlyAt = -1;
+		}
+		else if (Operation == "Undo")
+		{
+			SelectedElems.clear();
+			SelectedLinks.clear();
+			if (CurrentlyAt == 9 || CurrentlyAt + 1 == Operations.size()) return;
+			CurrentlyAt++;
+			if (Operations[CurrentlyAt] == "Elem_Add")
+			{
+				for (int i = 0; i < RememberedElems.size(); i++)
+				{
+					if (RememberedElems[i].Action == CurrentlyAt)
+					{
+						DeleteElementGUI(Elems.begin() + GetNumOfElement(RememberedElems[i].Elem.ElementInStorage));
+						break;
+					}
+				}
+			}
+			if (Operations[CurrentlyAt] == "Elem_Group_Add")
+			{
+				for (int i = 0; i < RememberedLinks.size(); i++)
+				{
+					if (RememberedLinks[i].Action == CurrentlyAt)
+					{
+						for (int j = 0; j < Links.size(); j++)
+						{
+							if ((Elems[Links[j].Elems[0]].ElementInStorage == RememberedLinks[i].ElemA || Elems[Links[j].Elems[0]].ElementInStorage == RememberedLinks[i].ElemB)
+								&& (Elems[Links[j].Elems[1]].ElementInStorage == RememberedLinks[i].ElemA || Elems[Links[j].Elems[1]].ElementInStorage == RememberedLinks[i].ElemB)
+								)
+							{
+								DeleteLinkGUI(Links.begin() + j);
+							}
+						}
+					}
+				}
+				for (int i = 0; i < RememberedElems.size(); i++)
+				{
+					if (RememberedElems[i].Action == CurrentlyAt)
+					{
+						for (int j = 0; j < Links.size(); j++)
+						{
+							if (Links[j].Elems[0] > GetNumOfElement(RememberedElems[i].Elem.ElementInStorage))
+							{
+								Links[j].Elems[0]--;
+							}
+							if (Links[j].Elems[1] > GetNumOfElement(RememberedElems[i].Elem.ElementInStorage))
+							{
+								Links[j].Elems[1]--;
+							}
+						}
+						DeleteElementGUI(Elems.begin() + GetNumOfElement(RememberedElems[i].Elem.ElementInStorage));
+					}
+				}
+			}
+			if (Operations[CurrentlyAt] == "Elem_Group_Delete")
+			{
+				std::vector<std::vector<std::shared_ptr<ScenarioElement>>> ToChange;
+				for (int i = 0; i < RememberedElems.size(); i++)
+				{
+					if (RememberedElems[i].Action == CurrentlyAt)
+					{
+						AddElementGUI(RememberedElems[i].Elem.Element, RememberedElems[i].Elem.Pos, RememberedElems[i].Elem.Type, RememberedElems[i].Elem.ElementInStorage);
+						std::vector<std::shared_ptr<ScenarioElement>> OldToNew{ RememberedElems[i].Elem.ElementInStorage, Elems[Elems.size() - 1].ElementInStorage };
+						ToChange.push_back(OldToNew);
+					}
+				}
+				for (int i = 0; i < RememberedElems.size(); i++)
+				{
+					for (int j = 0; j < ToChange.size(); j++)
+					{
+						if (RememberedElems[i].Elem.ElementInStorage == ToChange[j][0])
+							RememberedElems[i].Elem.ElementInStorage = ToChange[j][1];
+					}
+				}
+				for (int i = 0; i < RememberedLinks.size(); i++)
+				{
+					for (int j = 0; j < ToChange.size(); j++)
+					{
+						if (RememberedLinks[i].ElemA == ToChange[j][0])
+							RememberedLinks[i].ElemA = ToChange[j][1];
+						if (RememberedLinks[i].ElemB == ToChange[j][0])
+							RememberedLinks[i].ElemB = ToChange[j][1];
+					}
+				}
+				for (int i = 0; i < RememberedLinks.size(); i++)
+				{
+					if (RememberedLinks[i].Action == CurrentlyAt)
+					{
+						int First = GetNumOfElement(RememberedLinks[i].ElemA);
+						int Second = GetNumOfElement(RememberedLinks[i].ElemB);
+						AddLinkGUI(RememberedLinks[i].Link.Points[0], RememberedLinks[i].Link.Points[1], First, Second);
+					}
+				}
+			}
+			if (Operations[CurrentlyAt] == "Link_Add")
+			{
+				for (int i = 0; i < RememberedLinks.size(); i++)
+				{
+					if (RememberedLinks[i].Action == CurrentlyAt)
+					{
+						for (int j = 0; j < Links.size(); j++)
+						{
+							if ((Elems[Links[j].Elems[0]].ElementInStorage == RememberedLinks[i].ElemA || Elems[Links[j].Elems[0]].ElementInStorage == RememberedLinks[i].ElemB)
+								&& (Elems[Links[j].Elems[1]].ElementInStorage == RememberedLinks[i].ElemA || Elems[Links[j].Elems[1]].ElementInStorage == RememberedLinks[i].ElemB)
+								)
+								DeleteLinkGUI(Links.begin() + j);
+						}
+					}
+				}
+			}
+			if (Operations[CurrentlyAt] == "Elem_Group_Move")
+			{
+				for (int i = 0; i < RememberedElems.size(); i++)
+				{
+					if (RememberedElems[i].Action == CurrentlyAt)
+					{
+						Elems[GetNumOfElement(RememberedElems[i].Elem.ElementInStorage)].Pos = RememberedElems[i].OldPos;
+						ScenariosEditorScenarioElement::UpdateCoordinates(
+							RememberedElems[i].Elem.ElementInStorage,
+							RememberedElems[i].OldPos.x,
+							RememberedElems[i].OldPos.y
+						);
+					}
+				}
+			}
+			CheckSave = true;
+		}
+		else if (Operation == "Redo")
+		{
+			SelectedElems.clear();
+			SelectedLinks.clear();
+			if (CurrentlyAt < 0) return;
+			if (Operations[CurrentlyAt] == "Elem_Add")
+			{
+				for (int i = 0; i < RememberedElems.size(); i++)
+				{
+					if (RememberedElems[i].Action == CurrentlyAt)
+					{
+						AddElementGUI(RememberedElems[i].Elem.Element, RememberedElems[i].Elem.Pos, RememberedElems[i].Elem.Type, RememberedElems[i].Elem.ElementInStorage);
+						std::vector<std::shared_ptr<ScenarioElement>> ToChange = { RememberedElems[i].Elem.ElementInStorage, Elems[Elems.size() - 1].ElementInStorage };
+						RememberedElems[i].Elem.ElementInStorage = Elems[Elems.size() - 1].ElementInStorage;
+						for (int i = 0; i < RememberedElems.size(); i++)
+						{
+							if (RememberedElems[i].Elem.ElementInStorage == ToChange[0])
+								RememberedElems[i].Elem.ElementInStorage = ToChange[1];
+						}
+						for (int i = 0; i < RememberedLinks.size(); i++)
+						{
+							for (int j = 0; j < ToChange.size(); j++)
+							{
+								if (RememberedLinks[i].ElemA == ToChange[0])
+									RememberedLinks[i].ElemA = ToChange[1];
+								if (RememberedLinks[i].ElemB == ToChange[0])
+									RememberedLinks[i].ElemB = ToChange[1];
+							}
+						}
+						break;
+					}
+				}
+			}
+			if (Operations[CurrentlyAt] == "Elem_Group_Add")
+			{
+				std::vector<std::vector<std::shared_ptr<ScenarioElement>>> ToChange;
+				for (int i = 0; i < RememberedElems.size(); i++)
+				{
+					if (RememberedElems[i].Action == CurrentlyAt)
+					{
+						AddElementGUI(RememberedElems[i].Elem.Element, RememberedElems[i].Elem.Pos, RememberedElems[i].Elem.Type, RememberedElems[i].Elem.ElementInStorage);
+						std::vector<std::shared_ptr<ScenarioElement>> OldToNew{ RememberedElems[i].Elem.ElementInStorage, Elems[Elems.size() - 1].ElementInStorage };
+						ToChange.push_back(OldToNew);
+					}
+				}
+				for (int i = 0; i < RememberedElems.size(); i++)
+				{
+					for (int j = 0; j < ToChange.size(); j++)
+					{
+						if (RememberedElems[i].Elem.ElementInStorage == ToChange[j][0])
+							RememberedElems[i].Elem.ElementInStorage = ToChange[j][1];
+					}
+				}
+				for (int i = 0; i < RememberedLinks.size(); i++)
+				{
+					for (int j = 0; j < ToChange.size(); j++)
+					{
+						if (RememberedLinks[i].ElemA == ToChange[j][0])
+							RememberedLinks[i].ElemA = ToChange[j][1];
+						if (RememberedLinks[i].ElemB == ToChange[j][0])
+							RememberedLinks[i].ElemB = ToChange[j][1];
+					}
+				}
+				for (int i = 0; i < RememberedLinks.size(); i++)
+				{
+					if (RememberedLinks[i].Action == CurrentlyAt)
+					{
+						int First = GetNumOfElement(RememberedLinks[i].ElemA);
+						int Second = GetNumOfElement(RememberedLinks[i].ElemB);
+						AddLinkGUI(RememberedLinks[i].Link.Points[0], RememberedLinks[i].Link.Points[1], First, Second);
+					}
+				}
+			}
+			if (Operations[CurrentlyAt] == "Elem_Group_Delete")
+			{
+				for (int i = 0; i < RememberedLinks.size(); i++)
+				{
+					if (RememberedLinks[i].Action == CurrentlyAt)
+					{
+						for (int j = 0; j < Links.size(); j++)
+						{
+							if ((Elems[Links[j].Elems[0]].ElementInStorage == RememberedLinks[i].ElemA || Elems[Links[j].Elems[0]].ElementInStorage == RememberedLinks[i].ElemB)
+								&& (Elems[Links[j].Elems[1]].ElementInStorage == RememberedLinks[i].ElemA || Elems[Links[j].Elems[1]].ElementInStorage == RememberedLinks[i].ElemB)
+								)
+								DeleteLinkGUI(Links.begin() + j);
+						}
+					}
+				}
+				for (int i = 0; i < RememberedElems.size(); i++)
+				{
+					if (RememberedElems[i].Action == CurrentlyAt)
+					{
+						for (int j = 0; j < Links.size(); j++)
+						{
+							if (Links[j].Elems[0] > GetNumOfElement(RememberedElems[i].Elem.ElementInStorage))
+							{
+								Links[j].Elems[0]--;
+							}
+							if (Links[j].Elems[1] > GetNumOfElement(RememberedElems[i].Elem.ElementInStorage))
+							{
+								Links[j].Elems[1]--;
+							}
+						}
+						DeleteElementGUI(Elems.begin() + GetNumOfElement(RememberedElems[i].Elem.ElementInStorage));
+					}
+				}
+
+			}
+			if (Operations[CurrentlyAt] == "Link_Add")
+			{
+				for (int i = 0; i < RememberedLinks.size(); i++)
+				{
+					if (RememberedLinks[i].Action == CurrentlyAt)
+					{
+						int First = GetNumOfElement(RememberedLinks[i].ElemA);
+						int Second = GetNumOfElement(RememberedLinks[i].ElemB);
+						AddLinkGUI(RememberedLinks[i].Link.Points[0], RememberedLinks[i].Link.Points[1], First, Second);
+						break;
+					}
+				}
+			}
+			if (Operations[CurrentlyAt] == "Elem_Group_Move")
+			{
+				for (int i = 0; i < RememberedElems.size(); i++)
+				{
+					if (RememberedElems[i].Action == CurrentlyAt)
+					{
+						Elems[GetNumOfElement(RememberedElems[i].Elem.ElementInStorage)].Pos = RememberedElems[i].Elem.Pos;
+						ScenariosEditorScenarioElement::UpdateCoordinates(
+							RememberedElems[i].Elem.ElementInStorage,
+							RememberedElems[i].Elem.Pos.x,
+							RememberedElems[i].Elem.Pos.y
+						);
+					}
+				}
+			}
+			CurrentlyAt--;
+			CheckSave = true;
 		}
 	}
 

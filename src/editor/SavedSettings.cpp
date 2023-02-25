@@ -43,7 +43,7 @@ namespace ScenarioEditorSavedSettings
 			Model.append_child("RecentFiles");
 		for (pugi::xml_node File : Model.child("RecentFiles").children())
 		{
-			if (std::string(File.text().as_string()) == PathUTF) return;
+			if (std::string(File.text().as_string()) == PathUTF) File.parent().remove_child(File);
 		}
 		int n = Model.child("RecentFiles").select_nodes("File").size();
 		if (n == 0)
