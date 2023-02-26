@@ -55,7 +55,7 @@ namespace ScenariosEditorScenarioElement
 		for (int i = 0; i < pin_count; i++)
 			(*ScenarioElements[ScenarioElements.size() - 1]).pins.push_back(++MaxPin);
 		return ScenarioElements[ScenarioElements.size() - 1];
-	
+
 	}
 	// Copy element
 	std::shared_ptr<ScenariosEditorScenarioElement::ScenarioElement> AddScenarioElementStorageElement(std::string ElementName, float x, float y, float alfa, int pin_count, std::shared_ptr<ScenarioElement> CopyOrigin)
@@ -106,22 +106,25 @@ namespace ScenariosEditorScenarioElement
 	{
 		int Shift = 0;
 		bool found = false;
+		int MinPin;
 		for (int i = 0; i < ScenarioElements.size(); i++)
 		{
 			if (Element == ScenarioElements[i])
 			{
 				found = true;
+				MinPin = (*ScenarioElements[i]).pins[0];
 				Shift = -((int)(*ScenarioElements[i]).pins.size());
 				ScenarioElements.erase(ScenarioElements.begin() + i);
-				continue;
-			}
-			if (found)
-			{
-				for (int i = 0; i < (*ScenarioElements[i]).pins.size(); i++)
-					(*ScenarioElements[i]).pins[i] += Shift;
+				break;
 			}
 		}
-		MaxPin -= Shift;
+		if (found)
+			for (int i = 0; i < ScenarioElements.size(); i++)
+			{
+				for (int j = 0; j < (*ScenarioElements[i]).pins.size(); j++)
+					if ((*ScenarioElements[i]).pins[j] > MinPin) (*ScenarioElements[i]).pins[j] += Shift;
+			}
+		MaxPin += Shift;
 	}
 
 	void RemoveScenarioElementStorageLink(std::vector<int> args)
@@ -143,6 +146,7 @@ namespace ScenariosEditorScenarioElement
 	{
 		ScenarioElements.clear();
 		Links.clear();
+		MaxPin = 0;
 	}
 
 	void LoadElements()
@@ -168,7 +172,7 @@ namespace ScenariosEditorScenarioElement
 		}
 		if (OptimizedVector.size() != 0)
 			ScenariosEditorCanvasPositioning::SetCurrentScenarioCenter(sum_x / OptimizedVector.size(), sum_y / OptimizedVector.size());
-		else 
+		else
 			ScenariosEditorCanvasPositioning::SetCurrentScenarioCenter(0, 0);
 		for (std::vector<int> Link : Links)
 		{
@@ -194,7 +198,7 @@ namespace ScenariosEditorScenarioElement
 						ElemB = ScenariosEditorGUI::GetNumOfElement(Element);
 						PointB = GetPoint(ScenariosEditorGUI::GetNameOfElementOnCanvas(ElemB), j);
 					}
-					
+
 				}
 				if (!count) break;
 			}
@@ -273,7 +277,7 @@ namespace ScenariosEditorScenarioElement
 
 	template<typename Type>
 	std::vector<std::string> GetElementAttributeNames(Type Elem) {
-		std::vector<std::string> ToAdd {  u8"<Среди всех аттрибутов>", u8"<Найти все>", u8"Caption" };
+		std::vector<std::string> ToAdd{ u8"<Среди всех аттрибутов>", u8"<Найти все>", u8"Caption" };
 		for (ScenariosEditorScenarioElement::ElementAttribute* Attribute : Elem.GetAttributes())
 		{
 			ToAdd.push_back(Attribute->Name);
