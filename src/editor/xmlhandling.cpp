@@ -57,8 +57,8 @@ namespace ScenariosEditorXML
 		pugi::xml_node LinksParentNode = Model.child("root").child("scenarions2").child("scenarion_links");
 		for (pugi::xml_node Link : LinksParentNode.children())
 		{
-			int PinA = std::stof(std::string(Link.child("pinA").child_value()));
-			int PinB = std::stof(std::string(Link.child("pinB").child_value()));
+			int PinA = Link.child("pinA").text().as_int();
+			int PinB = Link.child("pinB").text().as_int();
 			std::vector<int> ToAdd;
 			ToAdd.push_back(PinA);
 			ToAdd.push_back(PinB);
@@ -144,7 +144,7 @@ namespace ScenariosEditorXML
 				return;
 			}
 			const char * charguid = Scenario.child("startGUID").child_value();
-			unsigned char ucharguid[50];
+			unsigned char ucharguid[50]{};
 			int Current = 0;
 			while (charguid[Current] != '\0')
 			{
@@ -153,12 +153,15 @@ namespace ScenariosEditorXML
 			}
 			ucharguid[Current] = '\0';
 			UUID ToAdd;
-			UuidFromStringA(ucharguid, &ToAdd);
-			std::string ScenarioName = Scenario.child("Name").child_value();
-			ScenarioEditorScenarioStorage::AddScenarioStorageElement(
-				ScenarioName,
-				ToAdd
-			);
+			RPC_STATUS Check{};
+			if ((Check = UuidFromStringA(ucharguid, &ToAdd)) == RPC_S_OK)
+			{
+				std::string ScenarioName = Scenario.child("Name").child_value();
+				ScenarioEditorScenarioStorage::AddScenarioStorageElement(
+					ScenarioName,
+					ToAdd
+				);
+			}
 		}
 	}
 	std::vector<std::string> GetArguments(pugi::xml_node Element)

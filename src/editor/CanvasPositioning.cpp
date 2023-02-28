@@ -41,7 +41,7 @@ namespace ScenariosEditorCanvasPositioning
 	{
 		CurrentSize = Size;
 	}
-	void CenterView(int x, int y)
+	void CenterView(float x, float y)
 	{
 		*CanvasScrollingRef = ImVec2(-x + CurrentSize.x/2, -y + CurrentSize.y/2);
 	}

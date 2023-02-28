@@ -11,11 +11,11 @@ namespace ScenariosEditorScenarioElement
 		ElementAttribute(std::string Name, int Format);
 		ElementAttribute() {}
 		std::string Name, ValueS;
-		float ValueF;
+		float ValueF = 0;
 		int GetFormat();
 	protected:
 		
-		int Format;
+		int Format = -1;
 		/*
 		Format:
 		0 - string

@@ -6,10 +6,6 @@
 
 namespace ScenariosEditorScenarioElement
 {
-	template<class Type>
-	std::string GetName(Type a) {
-		return (Type)a.Name;
-	}
 	class ScenarioElement
 	{
 	public:

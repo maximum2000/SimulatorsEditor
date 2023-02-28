@@ -63,9 +63,9 @@ namespace ScenariosEditorGUI {
 	// Helper data
 	struct ElementOnCanvas
 	{
-		int Element;
+		int Element = -1;
 		ImVec2 Pos;
-		int Type;
+		int Type = -1;
 		std::shared_ptr<ScenarioElement> ElementInStorage;
 	};
 
@@ -489,20 +489,20 @@ namespace ScenariosEditorGUI {
 		static ImVec2 SelectionStartPosition; // used for logic
 
 
-		CanvasDrawCaption();
+		
 
 		CanvasElemsLogic(&hover_on, &SelectionStartPosition);
 
-		CanvasDrawLinking();
+		
 
 		CanvasLinkingSelection(&hover_on, &SelectionStartPosition);
-		CanvasDrawSelectedLinks();
+		CanvasSelectedElemsLogic(io);
 
 		CanvasLinkingLogic(&hover_on);
 
-
-
-		CanvasSelectedElemsLogic(io);
+		CanvasDrawCaption();
+		CanvasDrawLinking();
+		CanvasDrawSelectedLinks();
 		CanvasDrawElems();
 		CanvasDrawSelectedElems();
 		AddCanvasScrollbar(&hover_on);
@@ -545,7 +545,7 @@ namespace ScenariosEditorGUI {
 			{
 				ImVec2 a = GetLinkingPointLocation(Links[i].Elems[0], Links[i].Points[0]);
 				ImVec2 b = GetLinkingPointLocation(Links[i].Elems[1], Links[i].Points[1]);
-				if (Distance(a, b, MousePos) < 5)
+				if (Distance(a, b, MousePos) < 3)
 				{
 					if (ImGui::GetIO().KeyCtrl)
 					{
@@ -808,13 +808,13 @@ namespace ScenariosEditorGUI {
 			auto payload = ImGui::AcceptDragDropPayload("Element");
 			if (payload != NULL) {
 				int ElementNum = *(int*)payload->Data;
-				int x = MousePosInCanvas.x - (ElementsData::GetElementTexture(ElementNum, CanvasZoom).Width / 2) / CanvasZoom;
-				int y = MousePosInCanvas.y - (ElementsData::GetElementTexture(ElementNum, CanvasZoom).Height / 2) / CanvasZoom;
+				float x = MousePosInCanvas.x - (ElementsData::GetElementTexture(ElementNum, CanvasZoom).Width / 2.0f) / CanvasZoom;
+				float y = MousePosInCanvas.y - (ElementsData::GetElementTexture(ElementNum, CanvasZoom).Height / 2.0f) / CanvasZoom;
 				if (AddElementGUI(ElementNum, ImVec2(x, y), ElementsData::GetElementType(ElementNum)))
 				{
 					CopyBufferAction("Elem_Add");
 					SelectedElems.clear();
-					SelectedElems.push_back(Elems.size() - 1);
+					SelectedElems.push_back((int)Elems.size() - 1);
 				}
 			}
 			ImGui::EndDragDropTarget();
@@ -884,8 +884,8 @@ namespace ScenariosEditorGUI {
 			}
 			for (int k = 0; k < SelectedLinks.size(); k++)
 			{
-				int Elem1 = find(Positions.begin(), Positions.end(), Links[SelectedLinks[k]].Elems[0]) - Positions.begin();
-				int Elem2 = find(Positions.begin(), Positions.end(), Links[SelectedLinks[k]].Elems[1]) - Positions.begin();
+				int Elem1 = (int)(find(Positions.begin(), Positions.end(), Links[SelectedLinks[k]].Elems[0]) - Positions.begin());
+				int Elem2 = (int)(find(Positions.begin(), Positions.end(), Links[SelectedLinks[k]].Elems[1]) - Positions.begin());
 				if (Elem1 < Positions.size() && Elem2 < Positions.size())
 					LinksBuffer.push_back({ {Links[SelectedLinks[k]].Points[0], Links[SelectedLinks[k]].Points[1]},{Elem1, Elem2} });
 			}
@@ -897,13 +897,13 @@ namespace ScenariosEditorGUI {
 		{
 			SelectedElems.clear();
 			SelectedLinks.clear();
-			ImVec2 min = ImVec2(INT_MAX, INT_MAX);
-			int ElemsSize = Elems.size();
+			ImVec2 min = ImVec2(FLT_MAX, FLT_MAX);
+			int ElemsSize = (int)Elems.size();
 			std::map<int,int> ToChange;
 			for (int i = 0; i < CopyBuffer.size(); i++)
 			{
-				if (min.x == INT_MAX || CopyBuffer[i].Pos.x < min.x) min.x = CopyBuffer[i].Pos.x;
-				if (min.y == INT_MAX || CopyBuffer[i].Pos.y < min.y) min.y = CopyBuffer[i].Pos.y;
+				if (CopyBuffer[i].Pos.x < min.x) min.x = CopyBuffer[i].Pos.x;
+				if (CopyBuffer[i].Pos.y < min.y) min.y = CopyBuffer[i].Pos.y;
 			}
 			for (int i = 0; i < CopyBuffer.size(); i++)
 			{
@@ -912,7 +912,7 @@ namespace ScenariosEditorGUI {
 					CopyBuffer[i].Type, CopyBuffer[i].ElementInStorage);
 				if (Added)
 				{
-					SelectedElems.push_back(Elems.size() - 1);
+					SelectedElems.push_back((int)Elems.size() - 1);
 					ToChange[i] = GetNumOfElement(Added);
 				}
 			}
@@ -922,7 +922,7 @@ namespace ScenariosEditorGUI {
 				{
 					AddLinkGUI(LinksBuffer[k].Points[0], LinksBuffer[k].Points[1],
 						ToChange[LinksBuffer[k].Elems[0]], ToChange[LinksBuffer[k].Elems[1]]);
-					SelectedLinks.push_back(Links.size() - 1);
+					SelectedLinks.push_back((int)Links.size() - 1);
 				}
 			}
 			CopyBufferAction("Elem_Group_Add");
@@ -933,13 +933,13 @@ namespace ScenariosEditorGUI {
 		if (SelectedElems.size() > 0 || SelectedLinks.size() > 0)
 		{
 			CopyBufferAction("Elem_Group_Delete");
-			for (int i = SelectedLinks.size() - 1; i >= 0; i--)
+			for (int i = (int)SelectedLinks.size() - 1; i >= 0; i--)
 			{
 				std::sort(SelectedLinks.begin(), SelectedLinks.end());
 				int SelectedLink = SelectedLinks[i];
 				DeleteLinkGUI(Links.begin() + SelectedLink);
 			}
-			for (int i = SelectedElems.size() - 1; i >= 0; i--)
+			for (int i = (int)SelectedElems.size() - 1; i >= 0; i--)
 			{
 				std::sort(SelectedElems.begin(), SelectedElems.end());
 				int SelectedElem = SelectedElems[i];
@@ -965,7 +965,7 @@ namespace ScenariosEditorGUI {
 		if (SelectedElems.size() > 0)
 		{
 			CopyBufferAction("Elems_Remove_Links");
-			for (int i = SelectedElems.size() - 1; i >= 0; i--)
+			for (int i = (int)SelectedElems.size() - 1; i >= 0; i--)
 			{
 				std::vector<LinkOnCanvas>::iterator k = Links.begin();
 				while (k != Links.end())
@@ -988,22 +988,23 @@ namespace ScenariosEditorGUI {
 		switch (Point)
 		{
 		case 0: return ImVec2(
-			origin.x + Elems[Elem].Pos.x * CanvasZoom + ElementsData::GetElementTexture(Elems[Elem].Element, CanvasZoom).Width / 2,
+			origin.x + Elems[Elem].Pos.x * CanvasZoom + ElementsData::GetElementTexture(Elems[Elem].Element, CanvasZoom).Width / 2.0f,
 			origin.y + Elems[Elem].Pos.y * CanvasZoom
 		); break;
 		case 1: return ImVec2(
 			origin.x + Elems[Elem].Pos.x * CanvasZoom + ElementsData::GetElementTexture(Elems[Elem].Element, CanvasZoom).Width,
-			origin.y + Elems[Elem].Pos.y * CanvasZoom + ElementsData::GetElementTexture(Elems[Elem].Element, CanvasZoom).Height / 2
+			origin.y + Elems[Elem].Pos.y * CanvasZoom + ElementsData::GetElementTexture(Elems[Elem].Element, CanvasZoom).Height / 2.0f
 		); break;
 		case 2: return ImVec2(
-			origin.x + Elems[Elem].Pos.x * CanvasZoom + ElementsData::GetElementTexture(Elems[Elem].Element, CanvasZoom).Width / 2,
+			origin.x + Elems[Elem].Pos.x * CanvasZoom + ElementsData::GetElementTexture(Elems[Elem].Element, CanvasZoom).Width / 2.0f,
 			origin.y + Elems[Elem].Pos.y * CanvasZoom + ElementsData::GetElementTexture(Elems[Elem].Element, CanvasZoom).Height
 		); break;
 		case 3: return ImVec2(
 			origin.x + Elems[Elem].Pos.x * CanvasZoom,
-			origin.y + Elems[Elem].Pos.y * CanvasZoom + ElementsData::GetElementTexture(Elems[Elem].Element, CanvasZoom).Height / 2
+			origin.y + Elems[Elem].Pos.y * CanvasZoom + ElementsData::GetElementTexture(Elems[Elem].Element, CanvasZoom).Height / 2.0f
 		); break;
 		}
+		throw;
 	}
 
 	ImVec2 GetMapLinkingPointLocation(int Elem, int Point, float Zoom, ImVec2 origin, float shift_x, float shift_y)
@@ -1011,22 +1012,23 @@ namespace ScenariosEditorGUI {
 		switch (Point)
 		{
 		case 0: return ImVec2(
-			origin.x + (Elems[Elem].Pos.x + shift_x) * Zoom + ElementsData::GetElementTexture(Elems[Elem].Element, Zoom).Width / 2,
+			origin.x + (Elems[Elem].Pos.x + shift_x) * Zoom + ElementsData::GetElementTexture(Elems[Elem].Element, Zoom).Width / 2.0f,
 			origin.y + (Elems[Elem].Pos.y + shift_y) * Zoom
 		); break;
 		case 1: return ImVec2(
 			origin.x + (Elems[Elem].Pos.x + shift_x) * Zoom + ElementsData::GetElementTexture(Elems[Elem].Element, Zoom).Width,
-			origin.y + (Elems[Elem].Pos.y + shift_y) * Zoom + ElementsData::GetElementTexture(Elems[Elem].Element, Zoom).Height / 2
+			origin.y + (Elems[Elem].Pos.y + shift_y) * Zoom + ElementsData::GetElementTexture(Elems[Elem].Element, Zoom).Height / 2.0f
 		); break;
 		case 2: return ImVec2(
-			origin.x + (Elems[Elem].Pos.x + shift_x) * Zoom + ElementsData::GetElementTexture(Elems[Elem].Element, Zoom).Width / 2,
+			origin.x + (Elems[Elem].Pos.x + shift_x) * Zoom + ElementsData::GetElementTexture(Elems[Elem].Element, Zoom).Width / 2.0f,
 			origin.y + (Elems[Elem].Pos.y + shift_y) * Zoom + ElementsData::GetElementTexture(Elems[Elem].Element, Zoom).Height
 		); break;
 		case 3: return ImVec2(
 			origin.x + (Elems[Elem].Pos.x + shift_x) * Zoom,
-			origin.y + (Elems[Elem].Pos.y + shift_y) * Zoom + ElementsData::GetElementTexture(Elems[Elem].Element, Zoom).Height / 2
+			origin.y + (Elems[Elem].Pos.y + shift_y) * Zoom + ElementsData::GetElementTexture(Elems[Elem].Element, Zoom).Height / 2.0f
 		); break;
 		}
+		throw;
 	}
 
 
@@ -1511,7 +1513,7 @@ namespace ScenariosEditorGUI {
 			// Create button and handle it io actions
 			Texture UsedTexture = ElementsData::GetElementTexture(Elems[i].Element, CanvasZoom);
 			ImGui::SetCursorScreenPos(ImVec2(origin.x + Elems[i].Pos.x * CanvasZoom, origin.y + Elems[i].Pos.y * CanvasZoom));
-			ImGui::InvisibleButton("canvas123", ImVec2(UsedTexture.Width, UsedTexture.Height), ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
+			ImGui::InvisibleButton("canvas123", ImVec2((float)UsedTexture.Width, (float)UsedTexture.Height), ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
 			ImGui::SetItemAllowOverlap();
 			// IsMouseClicked() + IsItemHovered() usage to find which element user selected
 
@@ -1607,10 +1609,10 @@ namespace ScenariosEditorGUI {
 			// Foreach element we determine if it contains in selection
 			if (CurrentState == Selection)
 			{
-				if (Elems[i].Pos.x + UsedTexture.Width / 2 / CanvasZoom >= min(MousePosInCanvas.x, SelectionStartPosition->x)
-					&& Elems[i].Pos.x + UsedTexture.Width / 2 / CanvasZoom <= max(MousePosInCanvas.x, SelectionStartPosition->x)
-					&& Elems[i].Pos.y + UsedTexture.Height / 2 / CanvasZoom >= min(MousePosInCanvas.y, SelectionStartPosition->y)
-					&& Elems[i].Pos.y + UsedTexture.Height / 2 / CanvasZoom <= max(MousePosInCanvas.y, SelectionStartPosition->y)
+				if (Elems[i].Pos.x + UsedTexture.Width / 2.0f / CanvasZoom >= min(MousePosInCanvas.x, SelectionStartPosition->x)
+					&& Elems[i].Pos.x + UsedTexture.Width / 2.0f / CanvasZoom <= max(MousePosInCanvas.x, SelectionStartPosition->x)
+					&& Elems[i].Pos.y + UsedTexture.Height / 2.0f / CanvasZoom >= min(MousePosInCanvas.y, SelectionStartPosition->y)
+					&& Elems[i].Pos.y + UsedTexture.Height / 2.0f / CanvasZoom <= max(MousePosInCanvas.y, SelectionStartPosition->y)
 					)
 				{
 					if (!ImGui::GetIO().KeyCtrl)
@@ -1641,7 +1643,7 @@ namespace ScenariosEditorGUI {
 	{
 		ElementOnCanvas ToAdd;
 		// dragging, clicking on elements realization
-		int j = SelectedElems.size();
+		int j = (int)SelectedElems.size();
 		static bool TriggerDrag = false;
 
 		for (int i = 0; i < j; i++)
@@ -1651,8 +1653,8 @@ namespace ScenariosEditorGUI {
 			if (CurrentState == ElementDragging)
 			{
 				TriggerDrag = true;
-				int x = Elems[SelectedElem].Pos.x + io.MouseDelta.x / CanvasZoom;
-				int y = Elems[SelectedElem].Pos.y + io.MouseDelta.y / CanvasZoom;
+				float x = Elems[SelectedElem].Pos.x + io.MouseDelta.x / CanvasZoom;
+				float y = Elems[SelectedElem].Pos.y + io.MouseDelta.y / CanvasZoom;
 				Elems[SelectedElem].Pos = ImVec2(x, y);
 				ScenariosEditorScenarioElement::UpdateCoordinates(Elems[SelectedElem].ElementInStorage, x, y);
 				CheckSave = true;
@@ -1666,19 +1668,19 @@ namespace ScenariosEditorGUI {
 			{
 				if (ShiftSelectionBeginElem == SelectedElem)
 				{
-					ShiftSelectionBeginElem = Elems.size() - 1;
+					ShiftSelectionBeginElem = (int)Elems.size() - 1;
 				}
 				ToAdd = { Elems[SelectedElem].Element, Elems[SelectedElem].Pos, Elems[SelectedElem].Type, Elems[SelectedElem].ElementInStorage };
 				CopyBufferAction("Update");
 				Elems.erase(Elems.begin() + SelectedElem);
 				Elems.push_back(ToAdd);
 				SelectedElems[i] = -1;
-				SelectedElems.push_back(Elems.size() - 1 - i);
+				SelectedElems.push_back((int)Elems.size() - 1 - i);
 				for (int k = 0; k < Links.size(); k++)
 				{
-					if (Links[k].Elems[0] == SelectedElem) Links[k].Elems[0] = Elems.size() - 1;
+					if (Links[k].Elems[0] == SelectedElem) Links[k].Elems[0] = (int)Elems.size() - 1;
 					else if (Links[k].Elems[0] > SelectedElem) Links[k].Elems[0]--;
-					if (Links[k].Elems[1] == SelectedElem) Links[k].Elems[1] = Elems.size() - 1;
+					if (Links[k].Elems[1] == SelectedElem) Links[k].Elems[1] = (int)Elems.size() - 1;
 					else if (Links[k].Elems[1] > SelectedElem) Links[k].Elems[1]--;
 				}
 			}
@@ -1727,11 +1729,11 @@ namespace ScenariosEditorGUI {
 	std::string toUtf8(const std::wstring& str)
 	{
 		std::string ret;
-		int len = WideCharToMultiByte(CP_UTF8, 0, str.c_str(), str.length(), NULL, 0, NULL, NULL);
+		int len = WideCharToMultiByte(CP_UTF8, 0, str.c_str(), (int)str.length(), NULL, 0, NULL, NULL);
 		if (len > 0)
 		{
 			ret.resize(len);
-			WideCharToMultiByte(CP_UTF8, 0, str.c_str(), str.length(), &ret[0], len, NULL, NULL);
+			WideCharToMultiByte(CP_UTF8, 0, str.c_str(), (int)str.length(), &ret[0], len, NULL, NULL);
 		}
 		return ret;
 	}
@@ -1754,7 +1756,7 @@ namespace ScenariosEditorGUI {
 			{
 				DoubleSelectedScenario(ScenarioEditorScenarioStorage::GetActualGUID());
 				Scenarios = ScenarioEditorScenarioStorage::GetScenarioNames();
-				SelectedElemGUI = Scenarios.size() - 1;
+				SelectedElemGUI = (int)Scenarios.size() - 1;
 				CheckSave = true;
 			}
 			ImGui::SameLine();
@@ -1836,7 +1838,7 @@ namespace ScenariosEditorGUI {
 		std::vector<ElementOnCanvas> PreviousElems = Elems;
 		std::vector<LinkOnCanvas> PreviousLinks = Links;
 		ScenarioEditorScenarioStorage::DoubleScenario(GUID);
-		ScenarioEditorScenarioStorage::SetActualScenario(ScenarioEditorScenarioStorage::GetScenarios().size() - 1);
+		ScenarioEditorScenarioStorage::SetActualScenario((int)ScenarioEditorScenarioStorage::GetScenarios().size() - 1);
 		ScenariosEditorScenarioElement::LoadElements();
 		std::vector<ElementOnCanvas>::iterator k = PreviousElems.begin();
 		while (k != PreviousElems.end())
@@ -1889,13 +1891,13 @@ namespace ScenariosEditorGUI {
 				ImGui::SetCursorPos(ImVec2(ImGui::GetCursorPos().x + ImGui::GetStyle().ItemSpacing.x, ImGui::GetCursorPos().y)); // space between rows
 			}
 			ImGui::PushID(i); // BeginDragDropSource() works correctly with elements with different id;
-			ImGui::ImageButton("Element", (void*)Tex.Payload, ImVec2(Tex.Width, Tex.Height));
+			ImGui::ImageButton("Element", (void*)Tex.Payload, ImVec2((float)Tex.Width, (float)Tex.Height));
 			// drag'n'drop source
 			if (ImGui::BeginDragDropSource())
 			{
 				ImGui::SetDragDropPayload("Element", &i, sizeof(int), ImGuiCond_Once);
 				//ImGui::Text(ElementNames[i]);
-				ImGui::ImageButton("Element", (void*)Tex.Payload, ImVec2(Tex.Width, Tex.Height));
+				ImGui::ImageButton("Element", (void*)Tex.Payload, ImVec2((float)Tex.Width, (float)Tex.Height));
 				ImGui::EndDragDropSource();
 			}
 			ImGui::PopID();
@@ -1952,13 +1954,13 @@ namespace ScenariosEditorGUI {
 						break;
 					case 1:
 					{
-						int State = (Attributes[i])->ValueF;
+						int State = (int)(Attributes[i])->ValueF;
 						const char* items[] = { "False", "True" };
 						if (ImGui::Combo(label.c_str(), &State, items, IM_ARRAYSIZE(items)))
 						{
 							CheckSave = true;
 						}
-						(Attributes[i])->ValueF = State;
+						(Attributes[i])->ValueF = (float)State;
 						break;
 					}
 					case 2:
@@ -2065,7 +2067,7 @@ namespace ScenariosEditorGUI {
 				ImGui::Text(u8"Не найдено элементов");
 			else
 			{
-				int Size = SearchResult.size();
+				int Size = (int)SearchResult.size();
 				std::string begin, end;
 				if (Size % 10 == 1 && Size % 100 != 11)
 				{
@@ -2088,8 +2090,8 @@ namespace ScenariosEditorGUI {
 				{
 					if (CurrentElem <= 0) CurrentElem = Size - 1;
 					else CurrentElem--;
-					float shift_x = ElementsData::GetElementTexture(Elems[SearchResult[CurrentElem]].Element, CanvasZoom).Width / 2;
-					float shift_y = ElementsData::GetElementTexture(Elems[SearchResult[CurrentElem]].Element, CanvasZoom).Height / 2;
+					float shift_x = ElementsData::GetElementTexture(Elems[SearchResult[CurrentElem]].Element, CanvasZoom).Width / 2.0f;
+					float shift_y = ElementsData::GetElementTexture(Elems[SearchResult[CurrentElem]].Element, CanvasZoom).Height / 2.0f;
 					CenterView(Elems[SearchResult[CurrentElem]].Pos.x + shift_x, Elems[SearchResult[CurrentElem]].Pos.y + shift_y);
 				}
 				ImGui::SameLine();
@@ -2097,8 +2099,8 @@ namespace ScenariosEditorGUI {
 				{
 					if (CurrentElem + 1 > Size - 1) CurrentElem = 0;
 					else CurrentElem++;
-					float shift_x = ElementsData::GetElementTexture(Elems[SearchResult[CurrentElem]].Element, CanvasZoom).Width / 2;
-					float shift_y = ElementsData::GetElementTexture(Elems[SearchResult[CurrentElem]].Element, CanvasZoom).Height / 2;
+					float shift_x = ElementsData::GetElementTexture(Elems[SearchResult[CurrentElem]].Element, CanvasZoom).Width / 2.0f;
+					float shift_y = ElementsData::GetElementTexture(Elems[SearchResult[CurrentElem]].Element, CanvasZoom).Height / 2.0f;
 					CenterView(Elems[SearchResult[CurrentElem]].Pos.x + shift_x, Elems[SearchResult[CurrentElem]].Pos.y + shift_y);
 				}
 			}
@@ -2475,7 +2477,7 @@ namespace ScenariosEditorGUI {
 		{
 			SelectedElems.clear();
 			SelectedLinks.clear();
-			if (CurrentlyAt == 9 || CurrentlyAt + 1 == Operations.size()) return 0;
+			if (CurrentlyAt == 9 || CurrentlyAt + 1 == (int)Operations.size()) return 0;
 			CurrentlyAt++;
 			if (Operations[CurrentlyAt] == "Elem_Add")
 			{
@@ -2779,6 +2781,7 @@ namespace ScenariosEditorGUI {
 			CurrentlyAt--;
 			CheckSave = true;
 		}
+		return false;
 	}
 
 	// .h file helper functions realisation

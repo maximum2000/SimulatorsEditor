@@ -68,7 +68,7 @@ namespace ScenariosEditorElementsData
 		for (int i = 0; i < ElementNames.size(); i++)
 		{
 			bool ret = false;
-			Texture Temp;
+			Texture Temp{};
 			while (!ret)
 			{
 				if (ret = ScenariosEditorRender::LoadTextureFromFile((std::string(u8"C:/Users/VR/Desktop/projects/SimulatorsEditor/src/editor/img/") + std::string(ElementNames[i]) + u8".png").c_str(), &Temp.Payload, &Temp.Width, &Temp.Height))
