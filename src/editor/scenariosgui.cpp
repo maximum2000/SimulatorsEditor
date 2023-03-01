@@ -2,13 +2,7 @@
 // ImGui-based UI functions
 //
 
-#include <algorithm>
-#include <codecvt>
-#include <fstream>
 #include "SavedSettings.h"
-#include <iomanip>
-#include <d3d11.h>
-#include <map>
 #include "xmlhandling.h"
 #include "render.h"
 #include "ElementsData.h"
@@ -17,8 +11,15 @@
 #include "ScenarioStorage.h"
 #include "SaveFileDialog.h"
 #include "CanvasPositioning.h"
-#include <sstream>
 #include "scenariosgui.h"
+
+#include <algorithm>
+#include <codecvt>
+#include <fstream>
+#include <iomanip>
+#include <d3d11.h>
+#include <map>
+#include <sstream>
 #include "misc/cpp/imgui_stdlib.h"
 #pragma execution_character_set("utf-8")
 
@@ -28,6 +29,8 @@ using namespace ScenariosEditorCanvasPositioning;
 
 namespace ScenariosEditorGUI {
 
+#pragma region Definitions
+
 	// State machine
 	enum CanvasState
 	{
@@ -36,14 +39,13 @@ namespace ScenariosEditorGUI {
 		ElementDragging,
 		CanvasDragging
 	};
-
 	static CanvasState CurrentState = Rest;
 
 	// XML Data
 	static ScenariosEditorXML::ScenariosDOM Model;
 
 	// ImGui data
-	ImDrawList* canvas_draw_list; // can be put out of global later
+	ImDrawList* canvas_draw_list;
 
 	// Helper data
 	struct ElementOnCanvas
@@ -60,7 +62,7 @@ namespace ScenariosEditorGUI {
 		int Elems[2];
 	};
 
-	static ImVec2 scrolling(0.0f, 0.0f); // current scrolling, can be put out of global later
+	static ImVec2 scrolling(0.0f, 0.0f);
 	static ImVec2 MousePosInCanvas, origin, MousePos, canvas_sz;
 	static ImVec2 shift = { 0, 0 };
 	static const float Space = 500;
@@ -97,12 +99,11 @@ namespace ScenariosEditorGUI {
 	std::vector<int> DoSearch(int SearchType, int SearchElement, std::string SearchAttribute, std::string SearchField);
 	void MapWindow();
 
-	// Helper functions
 	void ClearElements();
 	void ElementsMakeObjects();
 	void AddCanvasContextMenu();
 	void AddDragAndDropReciever();
-	std::shared_ptr<ScenarioElement> AddElementGUI(int Element, ImVec2 Pos, int Type, std::shared_ptr<ScenarioElement> CopyOrigin);
+	std::shared_ptr<ScenarioElement> AddElementGUI(int Element, ImVec2 Pos, int Type, std::shared_ptr<ScenarioElement> CopyOrigin = nullptr);
 	void AddLinkGUI(int PointA, int PointB, int ElemA, int ElemB);
 	std::vector<ElementOnCanvas>::iterator DeleteElementGUI(std::vector<ElementOnCanvas>::iterator iter);
 	std::vector<LinkOnCanvas>::iterator DeleteLinkGUI(std::vector<LinkOnCanvas>::iterator iter);
@@ -134,18 +135,140 @@ namespace ScenariosEditorGUI {
 	void SwitchMap();
 	void Cut();
 	void OpenRecent(const wchar_t* File);
+	std::vector<ImVec2> GetCorners();
 	std::string toUtf8(const std::wstring& str);
 	ImVec2 GetLinkingPointLocation(int Elem, int Point);
 	ImVec2 GetMapLinkingPointLocation(int Elem, int Point, float Zoom, ImVec2 origin, float shift_x, float shift_y);
 
-	// Should be hooked from main
-	void ShowDemoScenarioGUI()
-	{
-		ScenariosEditorRender::InitializeWindowAndImGUIContext();
-		PreLoopSetup();
-		MainLoop();
-		ScenariosEditorRender::EraseWindowAndImGuiContext();
+#pragma endregion Local variables, struct and function definitions
+
+#pragma region Helper
+
+	// Check if file exists
+	inline bool file_exists(std::wstring path) {
+		std::ifstream ff(path.c_str());
+		return ff.is_open();
 	}
+
+	// Returns index of element in "Elems" vector, also used in scenariogui.cpp
+	int GetNumOfElement(std::shared_ptr<ScenariosEditorScenarioElement::ScenarioElement> Elem)
+	{
+		for (int i = 0; i < Elems.size(); i++)
+		{
+			if (Elems[i].ElementInStorage == Elem)
+				return i;
+		}
+		return -1;
+	}
+
+	// Give linking points coordinates depending on elem's type and texture
+	ImVec2 GetLinkingPointLocation(int Elem, int Point)
+	{
+		switch (Point)
+		{
+		case 0: return ImVec2(
+			origin.x + Elems[Elem].Pos.x * CanvasZoom + ElementsData::GetElementTexture(Elems[Elem].Element, CanvasZoom).Width / 2.0f,
+			origin.y + Elems[Elem].Pos.y * CanvasZoom
+		); break;
+		case 1: return ImVec2(
+			origin.x + Elems[Elem].Pos.x * CanvasZoom + ElementsData::GetElementTexture(Elems[Elem].Element, CanvasZoom).Width,
+			origin.y + Elems[Elem].Pos.y * CanvasZoom + ElementsData::GetElementTexture(Elems[Elem].Element, CanvasZoom).Height / 2.0f
+		); break;
+		case 2: return ImVec2(
+			origin.x + Elems[Elem].Pos.x * CanvasZoom + ElementsData::GetElementTexture(Elems[Elem].Element, CanvasZoom).Width / 2.0f,
+			origin.y + Elems[Elem].Pos.y * CanvasZoom + ElementsData::GetElementTexture(Elems[Elem].Element, CanvasZoom).Height
+		); break;
+		case 3: return ImVec2(
+			origin.x + Elems[Elem].Pos.x * CanvasZoom,
+			origin.y + Elems[Elem].Pos.y * CanvasZoom + ElementsData::GetElementTexture(Elems[Elem].Element, CanvasZoom).Height / 2.0f
+		); break;
+		}
+		throw;
+	}
+
+	// Same, with overriding Zoom, origin, shift_x, shift_y
+	ImVec2 GetMapLinkingPointLocation(int Elem, int Point, float Zoom, ImVec2 origin, float shift_x, float shift_y)
+	{
+		switch (Point)
+		{
+		case 0: return ImVec2(
+			origin.x + (Elems[Elem].Pos.x + shift_x) * Zoom + ElementsData::GetElementTexture(Elems[Elem].Element, Zoom).Width / 2.0f,
+			origin.y + (Elems[Elem].Pos.y + shift_y) * Zoom
+		); break;
+		case 1: return ImVec2(
+			origin.x + (Elems[Elem].Pos.x + shift_x) * Zoom + ElementsData::GetElementTexture(Elems[Elem].Element, Zoom).Width,
+			origin.y + (Elems[Elem].Pos.y + shift_y) * Zoom + ElementsData::GetElementTexture(Elems[Elem].Element, Zoom).Height / 2.0f
+		); break;
+		case 2: return ImVec2(
+			origin.x + (Elems[Elem].Pos.x + shift_x) * Zoom + ElementsData::GetElementTexture(Elems[Elem].Element, Zoom).Width / 2.0f,
+			origin.y + (Elems[Elem].Pos.y + shift_y) * Zoom + ElementsData::GetElementTexture(Elems[Elem].Element, Zoom).Height
+		); break;
+		case 3: return ImVec2(
+			origin.x + (Elems[Elem].Pos.x + shift_x) * Zoom,
+			origin.y + (Elems[Elem].Pos.y + shift_y) * Zoom + ElementsData::GetElementTexture(Elems[Elem].Element, Zoom).Height / 2.0f
+		); break;
+		}
+		throw;
+	}
+
+	// Returns corners of existing elements, used for map creation, scrolling,
+	std::vector<ImVec2> GetCorners()
+	{
+		std::vector<ImVec2> ret;
+		ImVec2 Min{ FLT_MAX, FLT_MAX };
+		ImVec2 Max{ -FLT_MAX, -FLT_MAX };
+		for (ElementOnCanvas Elem : Elems)
+		{
+			if (Elem.Pos.x < Min.x) Min.x = Elem.Pos.x;
+			if (Elem.Pos.y < Min.y) Min.y = Elem.Pos.y;
+			if (Elem.Pos.x > Max.x) Max.x = Elem.Pos.x;
+			if (Elem.Pos.y > Max.y) Max.y = Elem.Pos.y;
+		}
+		ret.push_back(Min);
+		ret.push_back(Max);
+		return ret;
+	}
+
+	float Distance(ImVec2 v, ImVec2 w, ImVec2 p) {
+		// Return minimum distance between line segment vw and point p
+		const float l2 = powf((w.x - v.x), 2) + powf((w.y - v.y), 2);
+		if (l2 == 0.0) return sqrt(powf(p.x - v.x, 2) + powf(p.y - v.y, 2));   // v == w case
+		// Consider the line extending the segment, parameterized as v + t (w - v).
+		// We find projection of point p onto the line. 
+		// It falls where t = [(p-v) . (w-v)] / |w-v|^2
+		// We clamp t from [0,1] to handle points outside the segment vw.
+		const float t = max(0, min(1, ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2));
+		const ImVec2 projection = { (w.x - v.x) * t + v.x, (w.y - v.y) * t + v.y };  // Projection falls on the segment
+		return sqrt(powf(p.x - projection.x, 2) + powf(p.y - projection.y, 2));
+	}
+
+	std::string toUtf8(const std::wstring& str)
+	{
+		std::string ret;
+		int len = WideCharToMultiByte(CP_UTF8, 0, str.c_str(), (int)str.length(), NULL, 0, NULL, NULL);
+		if (len > 0)
+		{
+			ret.resize(len);
+			WideCharToMultiByte(CP_UTF8, 0, str.c_str(), (int)str.length(), &ret[0], len, NULL, NULL);
+		}
+		return ret;
+	}
+
+	static void HelpMarker(const char* desc)
+	{
+		ImGui::TextDisabled("(?)");
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+		{
+			ImGui::BeginTooltip();
+			ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+			ImGui::TextUnformatted(desc);
+			ImGui::PopTextWrapPos();
+			ImGui::EndTooltip();
+		}
+	}
+#pragma endregion Functions that are used for subsidiary calculations
+
+#pragma region Window startup
 
 	// Contains instructions should be executed before main loop
 	void PreLoopSetup()
@@ -196,11 +319,70 @@ namespace ScenariosEditorGUI {
 			ScenariosEditorRender::EndFrame();
 		}
 	}
-	inline bool file_exists(std::wstring path) {
-		std::ifstream ff(path.c_str());
-		return ff.is_open();
+
+#pragma endregion Functions initializing main loop
+	
+#pragma region GUI-to-Storage
+
+	std::shared_ptr<ScenarioElement> AddElementGUI(int Element, ImVec2 Pos, int Type, std::shared_ptr<ScenarioElement> CopyOrigin)
+	{
+		std::shared_ptr<ScenarioElement> NewElem;
+		if (ScenariosEditorElementsData::ElementsData::GetElementName(Element) == u8"Start")
+		{
+			for (ElementOnCanvas Elem : Elems)
+				if (ScenariosEditorElementsData::ElementsData::GetElementName(Elem.Element) == u8"Start") return NULL;
+			// Only one "Start" element should be allowed
+		}
+		unsigned int type = ElementsData::GetElementType(Element);
+		int pin_count;
+		for (pin_count = 0; type > 0; type >>= 1)
+			if (type & 1) pin_count++;
+		CopyOrigin == nullptr ?
+			Elems.push_back({ Element, Pos, ElementsData::GetElementType(Element),
+				NewElem = ScenariosEditorScenarioElement::AddScenarioElementStorageElement(ScenariosEditorElementsData::ElementsData::GetElementName(Element), Pos.x, Pos.y, 0.00f, pin_count) })
+			:
+			Elems.push_back({ Element, Pos, ElementsData::GetElementType(Element),
+				NewElem = ScenariosEditorScenarioElement::AddScenarioElementStorageElement(ScenariosEditorElementsData::ElementsData::GetElementName(Element), Pos.x, Pos.y, 0.00f, pin_count, CopyOrigin) });
+
+		CheckSave = true;
+		return NewElem;
 	}
-	// Menu
+
+	void AddLinkGUI(int PointA, int PointB, int ElemA, int ElemB)
+	{
+		std::vector<int> ToAdd;
+		int index = ScenariosEditorScenarioElement::GetPinIndex((*Elems[ElemA].ElementInStorage).getElementName().c_str(), PointA);
+		ToAdd.push_back((*Elems[ElemA].ElementInStorage).pins[index]);
+		index = ScenariosEditorScenarioElement::GetPinIndex((*Elems[ElemB].ElementInStorage).getElementName().c_str(), PointB);
+		ToAdd.push_back((*Elems[ElemB].ElementInStorage).pins[index]);
+		ScenariosEditorScenarioElement::AddScenarioElementStorageLink(ToAdd);
+		Links.push_back({ {PointA, PointB},{ElemA, ElemB} });
+		CheckSave = true;
+	}
+
+	std::vector<ElementOnCanvas>::iterator DeleteElementGUI(std::vector<ElementOnCanvas>::iterator iter)
+	{
+		CheckSave = true;
+		ScenariosEditorScenarioElement::RemoveScenarioElementStorageElement((*iter).ElementInStorage);
+		return Elems.erase(iter);
+	}
+
+	std::vector<LinkOnCanvas>::iterator DeleteLinkGUI(std::vector<LinkOnCanvas>::iterator iter)
+	{
+		CheckSave = true;
+		std::vector<int> ToRem;
+		int index = ScenariosEditorScenarioElement::GetPinIndex((*Elems[(*iter).Elems[0]].ElementInStorage).getElementName().c_str(), (*iter).Points[0]);
+		ToRem.push_back((*Elems[(*iter).Elems[0]].ElementInStorage).pins[index]);
+		index = ScenariosEditorScenarioElement::GetPinIndex((*Elems[(*iter).Elems[1]].ElementInStorage).getElementName().c_str(), (*iter).Points[1]);
+		ToRem.push_back((*Elems[(*iter).Elems[1]].ElementInStorage).pins[index]);
+		ScenariosEditorScenarioElement::RemoveScenarioElementStorageLink(ToRem);
+		return Links.erase(iter);
+	}
+
+#pragma endregion GUI-storage interaction functions
+
+#pragma region Menu and File
+
 	void DrawMenu()
 	{
 		ImGui::BeginMainMenuBar();
@@ -346,6 +528,7 @@ namespace ScenariosEditorGUI {
 			else MessageBoxW(NULL, L"При попытке открыть файл возникла ошибка", L"Ошибка", MB_OK);
 		}
 	}
+
 	void OpenRecent(const wchar_t* File)
 	{
 		if (CheckSave)
@@ -389,6 +572,7 @@ namespace ScenariosEditorGUI {
 		}
 		else MessageBoxW(NULL, L"При попытке открыть файл возникла ошибка", L"Ошибка", MB_OK);
 	}
+
 	void Save()
 	{
 		if (CurrentFile != L"")
@@ -433,31 +617,9 @@ namespace ScenariosEditorGUI {
 		}
 	}
 
-	void SwitchSearch()
-	{
-		SearchOpen = !SearchOpen;
-	}
+#pragma endregion Menu and file interaction functions
 
-	void SwitchMap()
-	{
-		MapOpen = !MapOpen;
-	}
-
-
-	// Clear existing elements
-	void ClearElements()
-	{
-		IsLinking = false;
-		SelectedLinks.clear();
-		SelectedElems.clear();
-		Elems.clear();
-		Links.clear();
-		CurrentState = Rest;
-		ShiftSelectionBeginElem = -1;
-		CopyBufferAction("Clear");
-	}
-
-
+#pragma region Canvas
 	// Canvas section
 	void MakeCanvas(const ImGuiViewport* viewport, ImGuiIO& io)
 	{
@@ -474,11 +636,11 @@ namespace ScenariosEditorGUI {
 		static ImVec2 SelectionStartPosition; // used for logic
 
 
-		
+
 
 		CanvasElemsLogic(&hover_on, &SelectionStartPosition);
 
-		
+
 
 		CanvasLinkingSelection(&hover_on, &SelectionStartPosition);
 		CanvasSelectedElemsLogic(io);
@@ -507,19 +669,6 @@ namespace ScenariosEditorGUI {
 				IM_COL32(255, 0, 0, 255), 3
 			);
 		}
-	}
-
-	float Distance(ImVec2 v, ImVec2 w, ImVec2 p) {
-		// Return minimum distance between line segment vw and point p
-		const float l2 = powf((w.x - v.x), 2) + powf((w.y - v.y), 2);
-		if (l2 == 0.0) return sqrt(powf(p.x - v.x, 2) + powf(p.y - v.y, 2));   // v == w case
-		// Consider the line extending the segment, parameterized as v + t (w - v).
-		// We find projection of point p onto the line. 
-		// It falls where t = [(p-v) . (w-v)] / |w-v|^2
-		// We clamp t from [0,1] to handle points outside the segment vw.
-		const float t = max(0, min(1, ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2));
-		const ImVec2 projection = { (w.x - v.x) * t + v.x, (w.y - v.y) * t + v.y };  // Projection falls on the segment
-		return sqrt(powf(p.x - projection.x, 2) + powf(p.y - projection.y, 2));
 	}
 
 	void CanvasLinkingSelection(int* hover_on, ImVec2* selection_start_position)
@@ -729,60 +878,17 @@ namespace ScenariosEditorGUI {
 
 		ImGui::SetCursorPos(OldPos);
 	}
-
-	std::shared_ptr<ScenarioElement> AddElementGUI(int Element, ImVec2 Pos, int Type, std::shared_ptr<ScenarioElement> CopyOrigin = nullptr)
+	// Clear existing elements
+	void ClearElements()
 	{
-		std::shared_ptr<ScenarioElement> NewElem;
-		if (ScenariosEditorElementsData::ElementsData::GetElementName(Element) == u8"Start")
-		{
-			for (ElementOnCanvas Elem : Elems)
-				if (ScenariosEditorElementsData::ElementsData::GetElementName(Elem.Element) == u8"Start") return NULL;
-			// Only one "Start" element should be allowed
-		}
-		unsigned int type = ElementsData::GetElementType(Element);
-		int pin_count;
-		for (pin_count = 0; type > 0; type >>= 1)
-			if (type & 1) pin_count++;
-		CopyOrigin == nullptr ?
-			Elems.push_back({ Element, Pos, ElementsData::GetElementType(Element),
-				NewElem = ScenariosEditorScenarioElement::AddScenarioElementStorageElement(ScenariosEditorElementsData::ElementsData::GetElementName(Element), Pos.x, Pos.y, 0.00f, pin_count) })
-			:
-			Elems.push_back({ Element, Pos, ElementsData::GetElementType(Element),
-				NewElem = ScenariosEditorScenarioElement::AddScenarioElementStorageElement(ScenariosEditorElementsData::ElementsData::GetElementName(Element), Pos.x, Pos.y, 0.00f, pin_count, CopyOrigin) });
-
-		CheckSave = true;
-		return NewElem;
-	}
-
-	void AddLinkGUI(int PointA, int PointB, int ElemA, int ElemB)
-	{
-		std::vector<int> ToAdd;
-		int index = ScenariosEditorScenarioElement::GetPinIndex((*Elems[ElemA].ElementInStorage).getElementName().c_str(), PointA);
-		ToAdd.push_back((*Elems[ElemA].ElementInStorage).pins[index]);
-		index = ScenariosEditorScenarioElement::GetPinIndex((*Elems[ElemB].ElementInStorage).getElementName().c_str(), PointB);
-		ToAdd.push_back((*Elems[ElemB].ElementInStorage).pins[index]);
-		ScenariosEditorScenarioElement::AddScenarioElementStorageLink(ToAdd);
-		Links.push_back({ {PointA, PointB},{ElemA, ElemB} });
-		CheckSave = true;
-	}
-
-	std::vector<ElementOnCanvas>::iterator DeleteElementGUI(std::vector<ElementOnCanvas>::iterator iter)
-	{
-		CheckSave = true;
-		ScenariosEditorScenarioElement::RemoveScenarioElementStorageElement((*iter).ElementInStorage);
-		return Elems.erase(iter);
-	}
-
-	std::vector<LinkOnCanvas>::iterator DeleteLinkGUI(std::vector<LinkOnCanvas>::iterator iter)
-	{
-		CheckSave = true;
-		std::vector<int> ToRem;
-		int index = ScenariosEditorScenarioElement::GetPinIndex((*Elems[(*iter).Elems[0]].ElementInStorage).getElementName().c_str(), (*iter).Points[0]);
-		ToRem.push_back((*Elems[(*iter).Elems[0]].ElementInStorage).pins[index]);
-		index = ScenariosEditorScenarioElement::GetPinIndex((*Elems[(*iter).Elems[1]].ElementInStorage).getElementName().c_str(), (*iter).Points[1]);
-		ToRem.push_back((*Elems[(*iter).Elems[1]].ElementInStorage).pins[index]);
-		ScenariosEditorScenarioElement::RemoveScenarioElementStorageLink(ToRem);
-		return Links.erase(iter);
+		IsLinking = false;
+		SelectedLinks.clear();
+		SelectedElems.clear();
+		Elems.clear();
+		Links.clear();
+		CurrentState = Rest;
+		ShiftSelectionBeginElem = -1;
+		CopyBufferAction("Clear");
 	}
 
 	void AddDragAndDropReciever()
@@ -848,175 +954,6 @@ namespace ScenariosEditorGUI {
 			}
 		}
 	}
-
-	void Cut()
-	{
-		Copy();
-		Delete();
-	}
-
-	void Copy()
-	{
-		if (SelectedElems.size() > 0)
-		{
-			CopyBuffer.clear();
-			LinksBuffer.clear();
-			std::vector<int> Positions;
-			for (int i = 0; i < SelectedElems.size(); i++)
-			{
-				CopyBuffer.push_back(Elems[SelectedElems[i]]);
-				Positions.push_back(SelectedElems[i]);
-			}
-			for (int k = 0; k < SelectedLinks.size(); k++)
-			{
-				int Elem1 = (int)(find(Positions.begin(), Positions.end(), Links[SelectedLinks[k]].Elems[0]) - Positions.begin());
-				int Elem2 = (int)(find(Positions.begin(), Positions.end(), Links[SelectedLinks[k]].Elems[1]) - Positions.begin());
-				if (Elem1 < Positions.size() && Elem2 < Positions.size())
-					LinksBuffer.push_back({ {Links[SelectedLinks[k]].Points[0], Links[SelectedLinks[k]].Points[1]},{Elem1, Elem2} });
-			}
-		}
-	}
-	void Paste()
-	{
-		if (CopyBuffer.size() > 0)
-		{
-			SelectedElems.clear();
-			SelectedLinks.clear();
-			ImVec2 min = ImVec2(FLT_MAX, FLT_MAX);
-			int ElemsSize = (int)Elems.size();
-			std::map<int,int> ToChange;
-			for (int i = 0; i < CopyBuffer.size(); i++)
-			{
-				if (CopyBuffer[i].Pos.x < min.x) min.x = CopyBuffer[i].Pos.x;
-				if (CopyBuffer[i].Pos.y < min.y) min.y = CopyBuffer[i].Pos.y;
-			}
-			for (int i = 0; i < CopyBuffer.size(); i++)
-			{
-				std::shared_ptr<ScenarioElement> Added = AddElementGUI(CopyBuffer[i].Element,
-					ImVec2(CopyBuffer[i].Pos.x - min.x + MousePosInCanvas.x, CopyBuffer[i].Pos.y - min.y + MousePosInCanvas.y),
-					CopyBuffer[i].Type, CopyBuffer[i].ElementInStorage);
-				if (Added)
-				{
-					SelectedElems.push_back((int)Elems.size() - 1);
-					ToChange[i] = GetNumOfElement(Added);
-				}
-			}
-			for (int k = 0; k < LinksBuffer.size(); k++)
-			{
-				if (ToChange.find(LinksBuffer[k].Elems[0]) != ToChange.end() && ToChange.find(LinksBuffer[k].Elems[1]) != ToChange.end())
-				{
-					AddLinkGUI(LinksBuffer[k].Points[0], LinksBuffer[k].Points[1],
-						ToChange[LinksBuffer[k].Elems[0]], ToChange[LinksBuffer[k].Elems[1]]);
-					SelectedLinks.push_back((int)Links.size() - 1);
-				}
-			}
-			CopyBufferAction("Elem_Group_Add");
-		}
-	}
-	void Delete()
-	{
-		if (SelectedElems.size() > 0 || SelectedLinks.size() > 0)
-		{
-			CopyBufferAction("Elem_Group_Delete");
-			for (int i = (int)SelectedLinks.size() - 1; i >= 0; i--)
-			{
-				std::sort(SelectedLinks.begin(), SelectedLinks.end());
-				int SelectedLink = SelectedLinks[i];
-				DeleteLinkGUI(Links.begin() + SelectedLink);
-			}
-			for (int i = (int)SelectedElems.size() - 1; i >= 0; i--)
-			{
-				std::sort(SelectedElems.begin(), SelectedElems.end());
-				int SelectedElem = SelectedElems[i];
-				std::vector<LinkOnCanvas>::iterator k = Links.begin();
-				while (k != Links.end())
-				{
-					if ((*k).Elems[0] == SelectedElem || (*k).Elems[1] == SelectedElem) k = DeleteLinkGUI(k);
-					else
-					{
-						if ((*k).Elems[0] > SelectedElem) (*k).Elems[0]--;
-						if ((*k).Elems[1] > SelectedElem) (*k).Elems[1]--;
-						++k;
-					}
-				}
-				DeleteElementGUI(Elems.begin() + SelectedElem);
-			}
-			SelectedElems.clear();
-			SelectedLinks.clear();
-		}
-	}
-	void DeleteLinks()
-	{
-		if (SelectedElems.size() > 0)
-		{
-			CopyBufferAction("Elems_Remove_Links");
-			for (int i = (int)SelectedElems.size() - 1; i >= 0; i--)
-			{
-				std::vector<LinkOnCanvas>::iterator k = Links.begin();
-				while (k != Links.end())
-				{
-					int SelectedElem = SelectedElems[i];
-					if ((*k).Elems[0] == SelectedElem || (*k).Elems[1] == SelectedElem) k = DeleteLinkGUI(k);
-					else
-					{
-						++k;
-					}
-				}
-			}
-			SelectedLinks.clear();
-		}
-	}
-
-	// Give linking points coordinates depending on elem's type and texture
-	ImVec2 GetLinkingPointLocation(int Elem, int Point)
-	{
-		switch (Point)
-		{
-		case 0: return ImVec2(
-			origin.x + Elems[Elem].Pos.x * CanvasZoom + ElementsData::GetElementTexture(Elems[Elem].Element, CanvasZoom).Width / 2.0f,
-			origin.y + Elems[Elem].Pos.y * CanvasZoom
-		); break;
-		case 1: return ImVec2(
-			origin.x + Elems[Elem].Pos.x * CanvasZoom + ElementsData::GetElementTexture(Elems[Elem].Element, CanvasZoom).Width,
-			origin.y + Elems[Elem].Pos.y * CanvasZoom + ElementsData::GetElementTexture(Elems[Elem].Element, CanvasZoom).Height / 2.0f
-		); break;
-		case 2: return ImVec2(
-			origin.x + Elems[Elem].Pos.x * CanvasZoom + ElementsData::GetElementTexture(Elems[Elem].Element, CanvasZoom).Width / 2.0f,
-			origin.y + Elems[Elem].Pos.y * CanvasZoom + ElementsData::GetElementTexture(Elems[Elem].Element, CanvasZoom).Height
-		); break;
-		case 3: return ImVec2(
-			origin.x + Elems[Elem].Pos.x * CanvasZoom,
-			origin.y + Elems[Elem].Pos.y * CanvasZoom + ElementsData::GetElementTexture(Elems[Elem].Element, CanvasZoom).Height / 2.0f
-		); break;
-		}
-		throw;
-	}
-
-	ImVec2 GetMapLinkingPointLocation(int Elem, int Point, float Zoom, ImVec2 origin, float shift_x, float shift_y)
-	{
-		switch (Point)
-		{
-		case 0: return ImVec2(
-			origin.x + (Elems[Elem].Pos.x + shift_x) * Zoom + ElementsData::GetElementTexture(Elems[Elem].Element, Zoom).Width / 2.0f,
-			origin.y + (Elems[Elem].Pos.y + shift_y) * Zoom
-		); break;
-		case 1: return ImVec2(
-			origin.x + (Elems[Elem].Pos.x + shift_x) * Zoom + ElementsData::GetElementTexture(Elems[Elem].Element, Zoom).Width,
-			origin.y + (Elems[Elem].Pos.y + shift_y) * Zoom + ElementsData::GetElementTexture(Elems[Elem].Element, Zoom).Height / 2.0f
-		); break;
-		case 2: return ImVec2(
-			origin.x + (Elems[Elem].Pos.x + shift_x) * Zoom + ElementsData::GetElementTexture(Elems[Elem].Element, Zoom).Width / 2.0f,
-			origin.y + (Elems[Elem].Pos.y + shift_y) * Zoom + ElementsData::GetElementTexture(Elems[Elem].Element, Zoom).Height
-		); break;
-		case 3: return ImVec2(
-			origin.x + (Elems[Elem].Pos.x + shift_x) * Zoom,
-			origin.y + (Elems[Elem].Pos.y + shift_y) * Zoom + ElementsData::GetElementTexture(Elems[Elem].Element, Zoom).Height / 2.0f
-		); break;
-		}
-		throw;
-	}
-
-
 
 	// Add buttons which represent linking points
 	void AddLinkingPoint(int* hover_on, int Point, int* ClickedElem, int* ClickedType, int Elem)
@@ -1183,8 +1120,6 @@ namespace ScenariosEditorGUI {
 				canvas_draw_list->AddText(ImGui::GetFont(), font_size, ImVec2(origin.x + Elem.Pos.x * CanvasZoom + shift_x, origin.y + Elem.Pos.y * CanvasZoom + shift_y), IM_COL32(0, 0, 0, 255), (Elem.ElementInStorage)->caption.c_str(), (const char*)0, wrap_size);
 		}
 	}
-
-
 	// Logic functions, using state machine, used to handle io actions
 	//
 	// Changes state machine, handles canvas-related actions
@@ -1699,29 +1634,135 @@ namespace ScenariosEditorGUI {
 		}
 	}
 
-	static void HelpMarker(const char* desc)
+#pragma endregion Canvas window related functions
+
+#pragma region Elements operations
+
+	void Cut()
 	{
-		ImGui::TextDisabled("(?)");
-		if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+		Copy();
+		Delete();
+	}
+
+	void Copy()
+	{
+		if (SelectedElems.size() > 0)
 		{
-			ImGui::BeginTooltip();
-			ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-			ImGui::TextUnformatted(desc);
-			ImGui::PopTextWrapPos();
-			ImGui::EndTooltip();
+			CopyBuffer.clear();
+			LinksBuffer.clear();
+			std::vector<int> Positions;
+			for (int i = 0; i < SelectedElems.size(); i++)
+			{
+				CopyBuffer.push_back(Elems[SelectedElems[i]]);
+				Positions.push_back(SelectedElems[i]);
+			}
+			for (int k = 0; k < SelectedLinks.size(); k++)
+			{
+				int Elem1 = (int)(find(Positions.begin(), Positions.end(), Links[SelectedLinks[k]].Elems[0]) - Positions.begin());
+				int Elem2 = (int)(find(Positions.begin(), Positions.end(), Links[SelectedLinks[k]].Elems[1]) - Positions.begin());
+				if (Elem1 < Positions.size() && Elem2 < Positions.size())
+					LinksBuffer.push_back({ {Links[SelectedLinks[k]].Points[0], Links[SelectedLinks[k]].Points[1]},{Elem1, Elem2} });
+			}
 		}
 	}
-	std::string toUtf8(const std::wstring& str)
+
+	void Paste()
 	{
-		std::string ret;
-		int len = WideCharToMultiByte(CP_UTF8, 0, str.c_str(), (int)str.length(), NULL, 0, NULL, NULL);
-		if (len > 0)
+		if (CopyBuffer.size() > 0)
 		{
-			ret.resize(len);
-			WideCharToMultiByte(CP_UTF8, 0, str.c_str(), (int)str.length(), &ret[0], len, NULL, NULL);
+			SelectedElems.clear();
+			SelectedLinks.clear();
+			ImVec2 min = ImVec2(FLT_MAX, FLT_MAX);
+			int ElemsSize = (int)Elems.size();
+			std::map<int, int> ToChange;
+			for (int i = 0; i < CopyBuffer.size(); i++)
+			{
+				if (CopyBuffer[i].Pos.x < min.x) min.x = CopyBuffer[i].Pos.x;
+				if (CopyBuffer[i].Pos.y < min.y) min.y = CopyBuffer[i].Pos.y;
+			}
+			for (int i = 0; i < CopyBuffer.size(); i++)
+			{
+				std::shared_ptr<ScenarioElement> Added = AddElementGUI(CopyBuffer[i].Element,
+					ImVec2(CopyBuffer[i].Pos.x - min.x + MousePosInCanvas.x, CopyBuffer[i].Pos.y - min.y + MousePosInCanvas.y),
+					CopyBuffer[i].Type, CopyBuffer[i].ElementInStorage);
+				if (Added)
+				{
+					SelectedElems.push_back((int)Elems.size() - 1);
+					ToChange[i] = GetNumOfElement(Added);
+				}
+			}
+			for (int k = 0; k < LinksBuffer.size(); k++)
+			{
+				if (ToChange.find(LinksBuffer[k].Elems[0]) != ToChange.end() && ToChange.find(LinksBuffer[k].Elems[1]) != ToChange.end())
+				{
+					AddLinkGUI(LinksBuffer[k].Points[0], LinksBuffer[k].Points[1],
+						ToChange[LinksBuffer[k].Elems[0]], ToChange[LinksBuffer[k].Elems[1]]);
+					SelectedLinks.push_back((int)Links.size() - 1);
+				}
+			}
+			CopyBufferAction("Elem_Group_Add");
 		}
-		return ret;
 	}
+
+	void Delete()
+	{
+		if (SelectedElems.size() > 0 || SelectedLinks.size() > 0)
+		{
+			CopyBufferAction("Elem_Group_Delete");
+			for (int i = (int)SelectedLinks.size() - 1; i >= 0; i--)
+			{
+				std::sort(SelectedLinks.begin(), SelectedLinks.end());
+				int SelectedLink = SelectedLinks[i];
+				DeleteLinkGUI(Links.begin() + SelectedLink);
+			}
+			for (int i = (int)SelectedElems.size() - 1; i >= 0; i--)
+			{
+				std::sort(SelectedElems.begin(), SelectedElems.end());
+				int SelectedElem = SelectedElems[i];
+				std::vector<LinkOnCanvas>::iterator k = Links.begin();
+				while (k != Links.end())
+				{
+					if ((*k).Elems[0] == SelectedElem || (*k).Elems[1] == SelectedElem) k = DeleteLinkGUI(k);
+					else
+					{
+						if ((*k).Elems[0] > SelectedElem) (*k).Elems[0]--;
+						if ((*k).Elems[1] > SelectedElem) (*k).Elems[1]--;
+						++k;
+					}
+				}
+				DeleteElementGUI(Elems.begin() + SelectedElem);
+			}
+			SelectedElems.clear();
+			SelectedLinks.clear();
+		}
+	}
+
+	void DeleteLinks()
+	{
+		if (SelectedElems.size() > 0)
+		{
+			CopyBufferAction("Elems_Remove_Links");
+			for (int i = (int)SelectedElems.size() - 1; i >= 0; i--)
+			{
+				std::vector<LinkOnCanvas>::iterator k = Links.begin();
+				while (k != Links.end())
+				{
+					int SelectedElem = SelectedElems[i];
+					if ((*k).Elems[0] == SelectedElem || (*k).Elems[1] == SelectedElem) k = DeleteLinkGUI(k);
+					else
+					{
+						++k;
+					}
+				}
+			}
+			SelectedLinks.clear();
+		}
+	}
+
+#pragma endregion Copying, pasting, etc...
+
+#pragma region Scenarios
+
 	// scenarios section
 	void DrawScenariosSection(const ImGuiViewport* viewport)
 	{
@@ -1839,6 +1880,10 @@ namespace ScenariosEditorGUI {
 		}
 	}
 
+#pragma endregion Scenarios window related functions
+
+#pragma region Elems
+
 	// elements section
 	void DrawElementsSection(const ImGuiViewport* viewport)
 	{
@@ -1889,6 +1934,10 @@ namespace ScenariosEditorGUI {
 		}
 		ImGui::PopStyleVar();
 	}
+
+#pragma endregion Elems window related functions
+
+#pragma region Params
 
 	// fill params window
 	void ParamsInitialization()
@@ -1965,6 +2014,20 @@ namespace ScenariosEditorGUI {
 			}
 			ImGui::EndTable();
 		}
+	}
+
+#pragma endregion Params window related functions
+
+#pragma region Search and map
+
+	void SwitchSearch()
+	{
+		SearchOpen = !SearchOpen;
+	}
+
+	void SwitchMap()
+	{
+		MapOpen = !MapOpen;
 	}
 
 	void SearchWindow()
@@ -2283,6 +2346,11 @@ namespace ScenariosEditorGUI {
 		}
 	}
 
+
+#pragma endregion Search and map window related functions
+
+#pragma region Actions buffer
+
 	// Ctrl+Y, Ctrl+Z realization
 	bool CopyBufferAction(std::string Operation, float drag_shift_x, float drag_shift_y)
 	{
@@ -2311,7 +2379,7 @@ namespace ScenariosEditorGUI {
 		}
 		if (Operation == "Can_Undo")
 		{
-			return Operations.size() > 0 && CurrentlyAt != Operations.size()-1;
+			return Operations.size() > 0 && CurrentlyAt != Operations.size() - 1;
 		}
 		if (Operation == "Elem_Add")
 		{
@@ -2444,9 +2512,9 @@ namespace ScenariosEditorGUI {
 					else
 						RememberedElems[j].Action--;
 				}
-					if (Operations.size() > 1)
-				Operations.erase(Operations.begin() + 1);
-				
+				if (Operations.size() > 1)
+					Operations.erase(Operations.begin() + 1);
+
 			}
 			CurrentlyAt = -1;
 		}
@@ -2768,9 +2836,20 @@ namespace ScenariosEditorGUI {
 		return false;
 	}
 
-	// .h file helper functions realisation
-	// 
-	// Add element on canvas
+#pragma endregion Function, which implements Ctrl+Z, Ctrl+Y functionality
+	
+#pragma region Header functions
+
+	// Hooked from main, starts scenarios editor window
+	void ShowDemoScenarioGUI()
+	{
+		ScenariosEditorRender::InitializeWindowAndImGUIContext();
+		PreLoopSetup();
+		MainLoop();
+		ScenariosEditorRender::EraseWindowAndImGuiContext();
+	}
+
+	// Adds element (e.g. from storage), this one doesn't create new object in elements storage
 	void AddElement(const char* name, float x, float y, std::shared_ptr<ScenarioElement> actual_element)
 	{
 		int j = -1;
@@ -2784,39 +2863,19 @@ namespace ScenariosEditorGUI {
 		}
 		Elems.push_back(ElementOnCanvas{ j, ImVec2(x,y), ScenariosEditorElementsData::ElementsData::GetElementType(j), actual_element });
 	}
-	// Add link on canvas
+
+	// Adds link (e.g. from sstorage), this one doesn't create new object in links storage
 	void AddLink(int element_a_index, int element_b_index, int element_a_point, int element_b_point)
 	{
 		Links.push_back({ {element_a_point, element_b_point} , {element_a_index, element_b_index } });
 	}
 
+	// Returns name of element
 	const char* GetNameOfElementOnCanvas(int index)
 	{
 		return ElementsData::GetElementName(Elems[index].Element);
 	}
-	int GetNumOfElement(std::shared_ptr<ScenariosEditorScenarioElement::ScenarioElement> Elem)
-	{
-		for (int i = 0; i < Elems.size(); i++)
-		{
-			if (Elems[i].ElementInStorage == Elem)
-				return i;
-		}
-		return -1;
-	}
-	std::vector<ImVec2> GetCorners()
-	{
-		std::vector<ImVec2> ret;
-		ImVec2 Min{ FLT_MAX, FLT_MAX };
-		ImVec2 Max{ -FLT_MAX, -FLT_MAX };
-		for (ElementOnCanvas Elem : Elems)
-		{
-			if (Elem.Pos.x < Min.x) Min.x = Elem.Pos.x;
-			if (Elem.Pos.y < Min.y) Min.y = Elem.Pos.y;
-			if (Elem.Pos.x > Max.x) Max.x = Elem.Pos.x;
-			if (Elem.Pos.y > Max.y) Max.y = Elem.Pos.y;
-		}
-		ret.push_back(Min);
-		ret.push_back(Max);
-		return ret;
-	}
+
+#pragma endregion Functions that are used only from other files
+
 }
