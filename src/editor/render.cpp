@@ -2,7 +2,6 @@
 // Window, directx11, win32, ImGUI render-related functions
 //
 
-#include <d3d11.h>
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #include "imgui_impl_win32.h"

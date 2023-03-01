@@ -89,7 +89,7 @@ namespace ScenariosEditorElementsData
 
 	int ElementsData::NumberOfElements()
 	{
-		return ElementNames.size();
+		return (int)ElementNames.size();
 	}
 
 	const char* ElementsData::GetElementName(int index)
