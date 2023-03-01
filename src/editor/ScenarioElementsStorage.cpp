@@ -18,6 +18,7 @@
 #include "Danger.h"
 #include "scenariosgui.h"
 #include "CanvasPositioning.h"
+#include "ScenarioStorage.h"
 
 namespace ScenariosEditorScenarioElement
 {

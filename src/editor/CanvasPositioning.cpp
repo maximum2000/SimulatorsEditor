@@ -1,6 +1,4 @@
 #include "CanvasPositioning.h"
-#include <iostream>
-#include "scenariosgui.h"
 
 namespace ScenariosEditorCanvasPositioning
 {

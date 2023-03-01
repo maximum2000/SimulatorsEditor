@@ -1,7 +1,5 @@
 #include "ScenarioStorage.h"
 #include <combaseapi.h>
-#include "ScenarioStorage.h"
-#include "ScenarioElementsStorage.h"
 
 namespace ScenarioEditorScenarioStorage
 {

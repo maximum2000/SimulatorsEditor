@@ -1,4 +1,5 @@
 #include "Answer.h"
+
 namespace ScenariosEditorScenarioElement
 {
 	const std::string Answer::ElementName = "answer";

@@ -1,8 +1,8 @@
 #include "ElementsData.h"
 #include "render.h"
-#include <string>
 #include <imgui_impl_win32.h>
 #include <map>
+#include <vector>
 
 namespace ScenariosEditorElementsData
 {

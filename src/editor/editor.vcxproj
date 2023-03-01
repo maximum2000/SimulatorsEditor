@@ -147,7 +147,6 @@
     <ClInclude Include="Arrow.h" />
     <ClInclude Include="CanvasPositioning.h" />
     <ClInclude Include="Clear.h" />
-    <ClInclude Include="clearclass.h" />
     <ClInclude Include="Danger.h" />
     <ClInclude Include="ElementAttribute.h" />
     <ClInclude Include="Message.h" />
@@ -187,7 +186,6 @@
     <ClCompile Include="Arrow.cpp" />
     <ClCompile Include="CanvasPositioning.cpp" />
     <ClCompile Include="Clear.cpp" />
-    <ClCompile Include="clearclass.cpp" />
     <ClCompile Include="Danger.cpp" />
     <ClCompile Include="ElementAttribute.cpp" />
     <ClCompile Include="main.cpp" />

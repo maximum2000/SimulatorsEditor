@@ -3,18 +3,12 @@
 //
 
 #include "xmlhandling.h"
-
-#include <iostream>
 #include "pugixml.hpp"
-#include "scenariosgui.h"
-#include <algorithm>
-#include <cctype>
 #include <string>
 #include <vector>
 #include "ScenarioElementsStorage.h"
 #include "ScenarioStorage.h"
 #include <rpc.h>
-#include <rpcdce.h>
 #include <iomanip>
 #include <sstream>
 #pragma comment(lib, "Rpcrt4.lib")

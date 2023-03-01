@@ -3,7 +3,6 @@
 #include <memory>
 #include <vector>
 #include "imgui.h"
-#include "misc/cpp/imgui_stdlib.h"
 
 namespace ScenariosEditorGUI {
 	void ShowDemoScenarioGUI();

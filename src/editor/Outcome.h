@@ -1,6 +1,5 @@
 #pragma once
 #include "ScenarioElement.h"
-#include "ElementAttribute.h"
 
 namespace ScenariosEditorScenarioElement
 {

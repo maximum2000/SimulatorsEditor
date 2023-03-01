@@ -1,5 +1,4 @@
 #include "SaveFileDialog.h"
-#include <windows.h>
 #include <shobjidl.h> 
 
 namespace ScenarioEditorFileDialog

@@ -1,8 +1,6 @@
 #include "SavedSettings.h"
 #include <Shlwapi.h>
-#include <Shlobj.h>
 #include <Shlobj_core.h>
-#include <iostream>
 #include "pugixml.hpp"
 #pragma execution_character_set("utf-8")
 

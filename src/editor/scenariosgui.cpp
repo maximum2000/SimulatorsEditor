@@ -2,31 +2,16 @@
 // ImGui-based UI functions
 //
 
-/*
-
-Known problems:
-
--Config
--Highlighting (static struct of colors, link)
--Should check space on disk
--CTRL+TAB main menu
-
-*/
-
 #include <algorithm>
-#include <locale>
 #include <codecvt>
 #include <fstream>
 #include "SavedSettings.h"
 #include <iomanip>
-#include <tchar.h>
-#include <iostream>
 #include <d3d11.h>
-
+#include <map>
 #include "xmlhandling.h"
 #include "render.h"
 #include "ElementsData.h"
-#include "ScenarioElement.h"
 #include "OpenFileDialog.h"
 #include "ScenarioElementsStorage.h"
 #include "ScenarioStorage.h"
@@ -34,7 +19,7 @@ Known problems:
 #include "CanvasPositioning.h"
 #include <sstream>
 #include "scenariosgui.h"
-#include <comdef.h>
+#include "misc/cpp/imgui_stdlib.h"
 #pragma execution_character_set("utf-8")
 
 using namespace ScenariosEditorElementsData;
@@ -2404,7 +2389,6 @@ namespace ScenariosEditorGUI {
 			{
 				RememberedElems.push_back({ -1, Elems[SelectedElems[i]], SelectedElems[i], { Elems[SelectedElems[i]].Pos.x - drag_shift_x, Elems[SelectedElems[i]].Pos.y - drag_shift_y} });
 			}
-			std::cout << drag_shift_x;
 		}
 		if (IsFilling)
 		{

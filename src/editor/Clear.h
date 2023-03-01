@@ -1,5 +1,6 @@
 #pragma once
 #include "ScenarioElement.h"
+
 namespace ScenariosEditorScenarioElement
 {
 	class Clear : public ScenarioElement

@@ -1,6 +1,6 @@
 #pragma once
 #include "ScenarioElement.h"
-#include <iostream> // delete later
+
 namespace ScenariosEditorScenarioElement
 {
 	class Uzel : public ScenarioElement

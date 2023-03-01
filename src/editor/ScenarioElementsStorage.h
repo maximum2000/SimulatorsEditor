@@ -3,8 +3,6 @@
 #include <string>
 #include <memory>
 #include "ScenarioElement.h"
-#include "ScenarioStorage.h"
-
 
 namespace ScenariosEditorScenarioElement
 {

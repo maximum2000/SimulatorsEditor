@@ -2,7 +2,6 @@
 #include <string>
 #include <vector>
 #include "ElementAttribute.h"
-#include <iostream>
 
 namespace ScenariosEditorScenarioElement
 {
