@@ -33,13 +33,15 @@ namespace EditorMathModel
         /* 8*/RectangleSelection,
         /* 9*/RectangleSelectionPlus,
         /*10*/ElementDrag,
-        /*11*/CanvasDrag
+        /*11*/CanvasDrag,
+        /*12*/LinkPointHover,
+        /*13*/LinkCreate,
+        /*14*/LinkHover
     };
 
     // Forward declarations of helper functions
     void CreateDemoScenarioGUI();
 
-    std::string DEBUGstate(int index);
 #pragma region State Machine (declaration)
     void StateMachineSetState(ProgrammState newState);
     void StateMachineLogic(ImGuiIO& io);
@@ -51,7 +53,7 @@ namespace EditorMathModel
     void DrawCanvas();
     void DrawBottomBar();
 #pragma endregion
-#pragma region Additional draws (definition)
+#pragma region Additional draws (declaration)
     void CanvasDrawElements(ImGuiIO& io);
     void CanvasElementRenderRect(ImVec2 startPosition, ImVec2 endPosition, ImU32 colorBorder, ImU32 colorFill);
     void DrawDragNDropWindow();
@@ -61,7 +63,7 @@ namespace EditorMathModel
 #pragma endregion
 #pragma region Helper functions for canvas (declaration)
     void CanvasDragging(ImVec2 moveDelta);
-    void CanvasScaling(float deltaValue);
+    void CanvasScaling(float deltaValue, ImGuiIO& io);
 #pragma endregion
 #pragma region Helper function for Rectangle Selection (declaration)
     void CanvasRectangleSelection(ImGuiIO& io, ImVec2 SelectionStartPosition);
@@ -79,6 +81,10 @@ namespace EditorMathModel
     void CanvasElementsSearchClear();
 #pragma endregion
     float ReverseScale(float value);
+#pragma region Debug (declaration)
+    std::string DEBUGstate(int index);
+    void CanvasCenterRectangle();
+#pragma endregion
 
     // Forward declarations of variables
     bool show_elements_window = false;
@@ -181,33 +187,13 @@ namespace EditorMathModel
         EditorMMRender::Cleanup();
     }
 
-    std::string DEBUGstate(int index)
-    {
-        switch (index)
-        {
-        case 0: return "Rest";
-        case 1: return "CanvasSelection";
-        case 2: return "ElementSelection";
-        case 3: return "ElementWindowSelection";
-        case 4: return "CanvasMapWindowSelection";
-        case 5: return "TopBarSelection";
-        case 6: return "BottomBarSelection";
-        case 7: return "ElementHover";
-        case 8: return "RectangleSelection";
-        case 9: return "RectangleSelectionPlus";
-        case 10: return "ElementDrag";
-        case 11: return "CanvasDrag";
-        }
-        return "null";
-    }
-    
 #pragma region State Machine (definition)
     void StateMachineSetState(ProgrammState newState)
     {
         if (currentState < 8)
         {
             currentState = newState;
-        } 
+        }
         else if (newState == Rest)
         {
             currentState = newState;
@@ -255,7 +241,7 @@ namespace EditorMathModel
         }
         if (currentState == CanvasSelection)
         {
-            CanvasScaling(io.MouseWheel);
+            CanvasScaling(io.MouseWheel, io);
             if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
             {
                 mousePositionOnClick = io.MousePos;
@@ -353,7 +339,7 @@ namespace EditorMathModel
         //ImGui::Text("Mouse current Y: %f", io.MousePos.y);
         //ImGui::Separator();
         ImGui::Text("Scale factor: %f", canvasScaleFactor);
-        ImGui::Text("Scale factor: %f", ImGui::GetIO().MouseWheel);
+        ImGui::Text("Scale mouse wheel: %f", ImGui::GetIO().MouseWheel);
         ImGui::Separator();
         //ImGui::Text("Selected: |%s|", searchInput);
         if (CanvasElements.size() > 0)
@@ -460,14 +446,14 @@ namespace EditorMathModel
         draw_list->PushClipRect(canvas_p0, canvas_p1, true);
         {
             const float GRID_STEP = 64.0f * canvasScaleFactor;
-            for (float x = fmodf(origin.x, GRID_STEP); x < canvas_sz.x; x += GRID_STEP) 
+            for (float x = fmodf(origin.x, GRID_STEP); x < canvas_sz.x; x += GRID_STEP)
             {
                 draw_list->AddLine(
                     ImVec2(canvas_p0.x + x, canvas_p0.y),
                     ImVec2(canvas_p0.x + x, canvas_p1.y),
                     IM_COL32(200, 200, 200, 119));
             }
-            for (float y = fmodf(origin.y, GRID_STEP); y < canvas_sz.y; y += GRID_STEP) 
+            for (float y = fmodf(origin.y, GRID_STEP); y < canvas_sz.y; y += GRID_STEP)
             {
                 draw_list->AddLine(
                     ImVec2(canvas_p0.x, canvas_p0.y + y),
@@ -513,6 +499,7 @@ namespace EditorMathModel
             ImGui::EndDragDropTarget();
         }
         CanvasDrawElements(io);
+        CanvasCenterRectangle();
     }
     void DrawBottomBar()
     {
@@ -550,12 +537,12 @@ namespace EditorMathModel
         {
             EditorMMTextureLoader::LoadedTexture UsedTexture = TextureLoader.GetTextureByIndex(CanvasElements[i].elementDataNumber);
             draw_list->AddImage((void*)UsedTexture.myTexture,
-                ImVec2((origin.x + CanvasElements[i].position.x) * canvasScaleFactor, 
+                ImVec2((origin.x + CanvasElements[i].position.x) * canvasScaleFactor,
                     (origin.y + CanvasElements[i].position.y) * canvasScaleFactor + topBarHeight),
                 ImVec2((origin.x + CanvasElements[i].position.x) * canvasScaleFactor + UsedTexture.imageWidth * canvasScaleFactor,
                     (origin.y + CanvasElements[i].position.y) * canvasScaleFactor + topBarHeight + UsedTexture.imageHeight * canvasScaleFactor));
             ImGui::SetCursorScreenPos(ImVec2(
-                (origin.x + CanvasElements[i].position.x) * canvasScaleFactor, 
+                (origin.x + CanvasElements[i].position.x) * canvasScaleFactor,
                 (origin.y + CanvasElements[i].position.y) * canvasScaleFactor + topBarHeight));
             ImGui::InvisibleButton("canvas123",
                 ImVec2(UsedTexture.imageWidth * canvasScaleFactor, UsedTexture.imageHeight * canvasScaleFactor),
@@ -568,13 +555,13 @@ namespace EditorMathModel
                     CurrentHoveredElementIndex = i;
                     StateMachineSetState(ElementHover);
                     CanvasElementRenderRect(
-                        ImVec2((origin.x + CanvasElements[i].position.x) * canvasScaleFactor, 
+                        ImVec2((origin.x + CanvasElements[i].position.x) * canvasScaleFactor,
                             (origin.y + CanvasElements[i].position.y) * canvasScaleFactor + topBarHeight),
                         ImVec2((origin.x + CanvasElements[i].position.x) * canvasScaleFactor + UsedTexture.imageWidth * canvasScaleFactor,
                             (origin.y + CanvasElements[i].position.y) * canvasScaleFactor + topBarHeight + UsedTexture.imageHeight * canvasScaleFactor),
                         ColorData.CanvasElementHoverColorRect, ColorData.CanvasElementHoverColorRectFill);
                     ImGui::SetTooltip("Center X position: %f", CanvasElements[i].centerPosition.x);
-                } 
+                }
                 else
                 {
                     CurrentHoveredElementIndex = -1;
@@ -648,8 +635,21 @@ namespace EditorMathModel
         }
         origin = newOrigin;
     }
-    void CanvasScaling(float deltaValue)
+    void CanvasScaling(float deltaValue, ImGuiIO& io)
     {
+        /*if (canvasScaleFactor != canvasScaleFactor + (deltaValue * -0.1f))
+        {
+            std::cout << "test\n";
+            ImVec2 distance = ImVec2(viewport->WorkSize.x / 2 - io.MousePos.x, viewport->WorkSize.y / 2 - io.MousePos.y);
+            std::cout << distance.x;
+            std::cout << "\n";
+            std::cout << distance.y;
+            std::cout << "\n";
+            std::cout << "------------\n";
+            CanvasDragging(distance);
+            // get delta by multiply to canvas scale (canvas position)
+            // divide this delta by 2 - movement delta for canvas when scale
+        }*/
         canvasScaleFactor += deltaValue * -0.1f;
         if (canvasScaleFactor < 0.1f)
         {
@@ -659,6 +659,7 @@ namespace EditorMathModel
         {
             canvasScaleFactor = 2.0f;
         }
+        std::cout << "wrong test\n";
     }
 #pragma endregion
 #pragma region Helper function for Rectangle Selection (definition)
@@ -831,7 +832,7 @@ namespace EditorMathModel
                     CanvasElements[i].isBlockSelection = true;
                 }
             }
-            else 
+            else
             {
                 CanvasElements[i].isBlockSelection = newValue;
             }
@@ -900,4 +901,33 @@ namespace EditorMathModel
         // < 1
 
     }
+#pragma region Debug (definition)
+    std::string DEBUGstate(int index)
+    {
+        switch (index)
+        {
+        case 0: return "Rest";
+        case 1: return "CanvasSelection";
+        case 2: return "ElementSelection";
+        case 3: return "ElementWindowSelection";
+        case 4: return "CanvasMapWindowSelection";
+        case 5: return "TopBarSelection";
+        case 6: return "BottomBarSelection";
+        case 7: return "ElementHover";
+        case 8: return "RectangleSelection";
+        case 9: return "RectangleSelectionPlus";
+        case 10: return "ElementDrag";
+        case 11: return "CanvasDrag";
+        case 12: return "LinkPointHover";
+        case 13: return "LinkCreate";
+        case 14: return "LinkHover";
+        }
+        return "null";
+    }
+    void CanvasCenterRectangle()
+    {
+        draw_list->AddRect(ImVec2(viewport->WorkSize.x / 2 - 2.5f, viewport->WorkSize.y / 2 - 2.5f), ImVec2(viewport->WorkSize.x / 2 + 2.5f, viewport->WorkSize.y / 2 + 2.5f), IM_COL32(255, 255, 255, 255));
+        draw_list->AddRectFilled(ImVec2(viewport->WorkSize.x / 2 - 2.5f, viewport->WorkSize.y / 2 - 2.5f), ImVec2(viewport->WorkSize.x / 2 + 2.5f, viewport->WorkSize.y / 2 + 2.5f), IM_COL32(255, 255, 255, 15));
+    }
+#pragma endregion
 }
