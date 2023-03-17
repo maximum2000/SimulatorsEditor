@@ -47,7 +47,8 @@
             LoadedTexture Temp;
             while (!ret)
             {
-                if (ret = LoadTextureFromFile((std::string(u8"C:/Users/VR/Desktop/projects c++/SimulatorsEditor/src/editor/img/") + std::string(ElementNames[i]) + u8".png").c_str(), &Temp.myTexture, &Temp.imageWidth, &Temp.imageHeight))
+               /* if (ret = LoadTextureFromFile((std::string(u8"C:/Users/VR/Desktop/projects c++/SimulatorsEditor/src/editor/img/") + std::string(ElementNames[i]) + u8".png").c_str(), &Temp.myTexture, &Temp.imageWidth, &Temp.imageHeight))*/
+                if (ret = LoadTextureFromFile((std::string(u8"C:/Users/VR/Desktop/projects/SE_branch_dvolkov/SimulatorsEditor/src/editor/img/") + std::string(ElementNames[i]) + u8".png").c_str(), &Temp.myTexture, &Temp.imageWidth, &Temp.imageHeight))
                 {
                     IM_ASSERT(ret);
                 }

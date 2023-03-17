@@ -14,9 +14,11 @@
 #include "TextureLoader.h"
 #include "Render.h"
 #include "CanvasElements.h"
+#include "CanvasLinks.h"
 #include <ctime>
 #include "ColorData.h"
 #include <math.h>
+#include <string>
 
 namespace EditorMathModel
 {
@@ -55,6 +57,8 @@ namespace EditorMathModel
 #pragma endregion
 #pragma region Additional draws (declaration)
     void CanvasDrawElements(ImGuiIO& io);
+    void CanvasDrawLinkingPoints();
+    void CanvasDrawLinks();
     void CanvasElementRenderRect(ImVec2 startPosition, ImVec2 endPosition, ImU32 colorBorder, ImU32 colorFill);
     void DrawDragNDropWindow();
 #pragma endregion
@@ -79,6 +83,12 @@ namespace EditorMathModel
     void CanvasElementDelete(int countOfDeleteOperation);
     void CanvasElementsDragByValue(float xDelta, float yDelta);
     void CanvasElementsSearchClear();
+#pragma endregion
+#pragma region Helper function for linking point location (definition)
+    ImVec2 GetLinkingPointLocation(int Elem, int Point);
+#pragma endregion
+#pragma region Helper functions for links (declaration)
+    void CanvasAddLinkingPointsButtons();
 #pragma endregion
     float ReverseScale(float value);
 #pragma region Debug (declaration)
@@ -366,6 +376,7 @@ namespace EditorMathModel
         ImGui::PushStyleVar(ImGuiStyleVar_WindowMinSize, ImVec2(0.f, 0.f));
         ImGui::Begin("Main Window", 0, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoMove |
             ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoBringToFrontOnFocus);
+        ImGui::PopStyleVar();
         if (ImGui::BeginMenuBar())
         {
             if (ImGui::BeginMenu("File"))
@@ -410,7 +421,7 @@ namespace EditorMathModel
         {
             StateMachineSetState(TopBarSelection);
         }
-        //ImGui::End();
+        ImGui::End();
     }
     void DrawCanvas()
     {
@@ -423,7 +434,6 @@ namespace EditorMathModel
         ImGui::Begin("MainWorkspace", NULL,
             ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus
             | ImGuiWindowFlags_NoScrollWithMouse);
-        ImGui::PopStyleVar();
         // Canvas positioning
         static ImVec2 scrolling(0.0f, 0.0f); // current scrolling
         ImVec2 canvas_p0 = ImGui::GetCursorScreenPos();
@@ -494,12 +504,15 @@ namespace EditorMathModel
                 mousePosition.y -= topBarHeight;
                 //std::string elemName = TextureLoader.GetTextureNameByIndex(ElementNum);
                 //CanvasElements.push_back({ elemName, ElementNum, ImVec2(x, y), mousePosition });
-                CanvasElements.push_back({ ElementNum, ImVec2(x, y), mousePosition });
+                CanvasElements.push_back({ ElementNum, (short)(15), ImVec2(x, y), mousePosition });
             }
             ImGui::EndDragDropTarget();
         }
+        CanvasDrawLinkingPoints();
+        CanvasAddLinkingPointsButtons();
         CanvasDrawElements(io);
         CanvasCenterRectangle();
+        ImGui::End();
     }
     void DrawBottomBar()
     {
@@ -510,6 +523,7 @@ namespace EditorMathModel
         ImGui::Begin("BottomMenuBar", NULL,
             ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus
             | ImGuiWindowFlags_NoScrollWithMouse);
+        ImGui::PopStyleVar();
         ImGui::Separator();
         ImGui::Text(" Selected elements: %d |", selectedElementsCount);
         ImGui::SameLine();
@@ -518,7 +532,8 @@ namespace EditorMathModel
         float searchItemPosition = searchInputWidth + ImGui::GetStyle().ItemSpacing.x;
         ImGui::SameLine(ImGui::GetWindowWidth() - searchItemPosition);
         ImGui::PushItemWidth(searchInputWidth);
-        ImGui::InputText("", searchInput, 64);
+        //ImGui::InputText("", searchInput, 64);
+        ImGui::InputText("1", searchInput, 64);
         searchItemPosition += ImGui::CalcTextSize("Search:").x + ImGui::GetStyle().ItemSpacing.x;
         ImGui::SameLine(ImGui::GetWindowWidth() - searchItemPosition);
         ImGui::Text("Search:");
@@ -598,6 +613,28 @@ namespace EditorMathModel
             ImVec2(endPosition.x, endPosition.y),
             colorFill);
     }
+    void CanvasDrawLinkingPoints()
+    {
+        for (int i = 0; i < CanvasElements.size(); i++)
+        {
+            if (CanvasElements[i].elementDataType & 1)
+            {
+                draw_list->AddCircleFilled(GetLinkingPointLocation(i, 0), 5.0f, IM_COL32(255, 255, 255, 255));
+            }
+            if (CanvasElements[i].elementDataType & 2)
+            {
+                draw_list->AddCircleFilled(GetLinkingPointLocation(i, 1), 5.0f, IM_COL32(255, 255, 255, 255));
+            }
+            if (CanvasElements[i].elementDataType & 4)
+            {
+                draw_list->AddCircleFilled(GetLinkingPointLocation(i, 2), 5.0f, IM_COL32(255, 255, 255, 255));
+            }
+            if (CanvasElements[i].elementDataType & 8)
+            {
+                draw_list->AddCircleFilled(GetLinkingPointLocation(i, 3), 5.0f, IM_COL32(255, 255, 255, 255));
+            }
+        }
+    }
     void DrawDragNDropWindow()
     {
 
@@ -659,7 +696,7 @@ namespace EditorMathModel
         {
             canvasScaleFactor = 2.0f;
         }
-        std::cout << "wrong test\n";
+        //std::cout << "wrong test\n";
     }
 #pragma endregion
 #pragma region Helper function for Rectangle Selection (definition)
@@ -928,6 +965,88 @@ namespace EditorMathModel
     {
         draw_list->AddRect(ImVec2(viewport->WorkSize.x / 2 - 2.5f, viewport->WorkSize.y / 2 - 2.5f), ImVec2(viewport->WorkSize.x / 2 + 2.5f, viewport->WorkSize.y / 2 + 2.5f), IM_COL32(255, 255, 255, 255));
         draw_list->AddRectFilled(ImVec2(viewport->WorkSize.x / 2 - 2.5f, viewport->WorkSize.y / 2 - 2.5f), ImVec2(viewport->WorkSize.x / 2 + 2.5f, viewport->WorkSize.y / 2 + 2.5f), IM_COL32(255, 255, 255, 15));
+    }
+#pragma endregion
+#pragma region Helper function for linking point location (definition)
+
+    ImVec2 GetLinkingPointLocation(int Elem, int Point)
+    {
+        static const float Spacing = 0.25; // counted from texture height/width. (spacing = times from def. texture / height)
+        // 0 = up linking point
+        // 1 = right
+        // 2 = down
+        // 3 = left
+        
+        int Width = TextureLoader.GetTextureWidthByIndex(CanvasElements[Elem].elementDataNumber);
+        int Height = TextureLoader.GetTextureHeightByIndex(CanvasElements[Elem].elementDataNumber);
+
+        switch (Point)
+        {
+        case 0: return ImVec2(
+            (origin.x + CanvasElements[Elem].position.x + Width / 2.0f) * canvasScaleFactor,
+            topBarHeight + (origin.y + CanvasElements[Elem].position.y - Height * Spacing) * canvasScaleFactor
+        ); break;
+        case 1: return ImVec2(
+            (origin.x + CanvasElements[Elem].position.x + Width + Width * Spacing) * canvasScaleFactor,
+            topBarHeight + (origin.y + CanvasElements[Elem].position.y + Height / 2.0f) * canvasScaleFactor
+        ); break;
+        case 2: return ImVec2(
+            (origin.x + CanvasElements[Elem].position.x + Width / 2.0f) * canvasScaleFactor,
+            topBarHeight + (origin.y + CanvasElements[Elem].position.y + Height + Height * Spacing) * canvasScaleFactor
+        ); break;
+        case 3: return ImVec2(
+            (origin.x + CanvasElements[Elem].position.x - Width * Spacing) * canvasScaleFactor,
+            topBarHeight + (origin.y + CanvasElements[Elem].position.y + Height / 2.0f) * canvasScaleFactor
+        ); break;
+        }
+        throw;
+    }
+
+#pragma endregion
+#pragma region Helper functions for links (declaration)
+    void CanvasAddLinkingPointsButtons()
+    {
+        ImVec2 OldCursorPos = ImGui::GetCursorPos();
+        for (int i = 0; i < CanvasElements.size(); i++)
+        {
+            if (CanvasElements[i].elementDataType & 1)
+            {
+                ImVec2 DotCenter = GetLinkingPointLocation(i, 0);
+                ImGui::SetCursorPos({ DotCenter.x - 5.0f, DotCenter.y - 5.0f - topBarHeight });
+                if (ImGui::InvisibleButton((std::to_string(i) + "LinkingPointUp").c_str(), {10.0f, 10.0f}, ImGuiButtonFlags_MouseButtonLeft))
+                {
+                    std::cout << "Clicked";
+                }
+            }
+            if (CanvasElements[i].elementDataType & 2)
+            {
+                ImVec2 DotCenter = GetLinkingPointLocation(i, 1);
+                ImGui::SetCursorPos({ DotCenter.x - 5.0f, DotCenter.y - 5.0f - topBarHeight });
+                if (ImGui::InvisibleButton((std::to_string(i) + "LinkingPointRight").c_str(), { 10.0f, 10.0f }, ImGuiButtonFlags_MouseButtonLeft))
+                {
+                    std::cout << "Clicked";
+                }
+            }
+            if (CanvasElements[i].elementDataType & 4)
+            {
+                ImVec2 DotCenter = GetLinkingPointLocation(i, 2);
+                ImGui::SetCursorPos({ DotCenter.x - 5.0f, DotCenter.y - 5.0f - topBarHeight });
+                if (ImGui::InvisibleButton((std::to_string(i) + "LinkingPointDown").c_str(), { 10.0f, 10.0f }, ImGuiButtonFlags_MouseButtonLeft))
+                {
+                    std::cout << "Clicked";
+                }
+            }
+            if (CanvasElements[i].elementDataType & 8)
+            {
+                ImVec2 DotCenter = GetLinkingPointLocation(i, 3);
+                ImGui::SetCursorPos({ DotCenter.x - 5.0f, DotCenter.y - 5.0f - topBarHeight });
+                if (ImGui::InvisibleButton((std::to_string(i) + "LinkingPointLeft").c_str(), { 10.0f, 10.0f }, ImGuiButtonFlags_MouseButtonLeft))
+                {
+                    std::cout << "Clicked";
+                }
+            }
+        }
+        ImGui::SetCursorPos(OldCursorPos);
     }
 #pragma endregion
 }

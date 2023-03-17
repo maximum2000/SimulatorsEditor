@@ -145,6 +145,7 @@
     <ClInclude Include="ColorData.h" />
     <ClInclude Include="EditorMM.h" />
     <ClInclude Include="EditorMMElement.h" />
+    <ClInclude Include="CanvasLinks.h" />
     <ClInclude Include="Render.h" />
     <ClInclude Include="scenariosgui.h" />
     <ClInclude Include="TextureLoader.h" />
