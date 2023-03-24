@@ -19,6 +19,14 @@ namespace ScenarioEditorFileDialog
             if (SUCCEEDED(hr))
             {
                 // Show the Open dialog box.
+                COMDLG_FILTERSPEC rgSpec[] =
+                {
+                    { L"Матмодель", L"*.model"},
+                    { L"Все файлы", L"*.*"},
+                };
+                pFileOpen->SetFileTypes(2, rgSpec);
+                pFileOpen->SetFileTypeIndex(1);
+                pFileOpen->SetDefaultExtension(L"model");
                 hr = pFileOpen->Show(NULL);
 
                 // Get the file name from the dialog box.

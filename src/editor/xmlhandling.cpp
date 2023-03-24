@@ -1,5 +1,5 @@
 //
-// XML-Canvas connection
+// XML-Storage connection
 //
 
 #include "xmlhandling.h"
@@ -23,22 +23,28 @@ namespace ScenariosEditorXML
 	void InitializeDOM();
 	std::vector<std::string> GetArguments(pugi::xml_node Element);
 	pugi::xml_document Model, Testing;
+
 	void ScenariosDOM::LoadFrom(const wchar_t* path)
 	{
 		pugi::xml_parse_result result = Model.load_file(path, pugi::parse_default, pugi::encoding_utf8);
 		LoadElementsToStorage();
 		LoadScenariosToStorage();
 	}
+
+	// When trying to open file we should check if it is xml file
 	bool ScenariosDOM::CheckFile(const wchar_t* path)
 	{
 		if (Testing.load_file(path, pugi::parse_default, pugi::encoding_utf8).status != pugi::status_ok) return false;
 		else return true;
 	}
+
 	bool ScenariosDOM::SaveTo(const wchar_t* path)
 	{
 		LoadElementsFromStorage();
 		return Model.save_file(path);
 	}
+
+	// Load elements and link to our storage
 	void LoadElementsToStorage()
 	{
 		pugi::xml_node ElementParentNode = Model.child("root").child("scenarions2").child("elements");
@@ -60,6 +66,7 @@ namespace ScenariosEditorXML
 		}
 	}
 
+	// Reverse to previous, save changes from our storage to dom storage
 	void LoadElementsFromStorage()
 	{
 		if (Model.child("root") == nullptr) InitializeDOM();
@@ -115,6 +122,7 @@ namespace ScenariosEditorXML
 		}
 	}
 
+	// If new scenario created that hasn't been saved yet, we should append standart nodes (used for compatability with previous MMEditor)
 	void InitializeDOM()
 	{
 		pugi::xml_node root = Model.append_child("root");
@@ -127,6 +135,7 @@ namespace ScenariosEditorXML
 		root.append_child("scenarions2");
 	}
 
+	// May differ in future (because of win UUID syscalls)
 	void LoadScenariosToStorage()
 	{
 		ScenarioEditorScenarioStorage::ClearScenarioStorage();
@@ -158,6 +167,8 @@ namespace ScenariosEditorXML
 			}
 		}
 	}
+
+	// Fill vector of string containing element params (handled in storage)
 	std::vector<std::string> GetArguments(pugi::xml_node Element)
 	{
 		// same order as xml, with exception: name of element placed first

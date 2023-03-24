@@ -21,6 +21,7 @@
 #include <map>
 #include <sstream>
 #include "misc/cpp/imgui_stdlib.h"
+#include <iostream>
 #pragma execution_character_set("utf-8")
 
 using namespace ScenariosEditorElementsData;
@@ -40,14 +41,22 @@ namespace ScenariosEditorGUI {
 		CanvasDragging
 	};
 	static CanvasState CurrentState = Rest;
+	static bool IsLinking = false;
 
 	// XML Data
 	static ScenariosEditorXML::ScenariosDOM Model;
 
 	// ImGui data
 	ImDrawList* canvas_draw_list;
+	static bool SearchOpen = false;
+	static bool MapOpen = false;
+	static bool ShowCaption = true;
+	static float WindowsGroupWidth = -1;
+	static float LinksWidth = 4.0f;
+	static float PointsRadius = 6.5f;
+	static float ParamsWidth;
 
-	// Helper data
+	// GUI-only elements data
 	struct ElementOnCanvas
 	{
 		int Element = -1;
@@ -55,90 +64,121 @@ namespace ScenariosEditorGUI {
 		int Type = -1;
 		std::shared_ptr<ScenarioElement> ElementInStorage;
 	};
-
 	struct LinkOnCanvas
 	{
 		int Points[2];
 		int Elems[2];
 	};
-
-	static ImVec2 scrolling(0.0f, 0.0f);
-	static ImVec2 MousePosInCanvas, origin, MousePos, canvas_sz;
-	static ImVec2 shift = { 0, 0 };
-	static const float Space = 500;
-	static int SelectedElemGUI = -1;
-	static float CanvasZoom = 1;
-	static int ShiftSelectionBeginElem = -1;
-	static std::vector<int> CurrentSelectionElems;
-	static std::vector<int> CurrentSelectionLinks;
-	static bool IsLinking = false;
 	static std::vector<ElementOnCanvas> Elems;
 	static std::vector<LinkOnCanvas> Links;
+
+
+	// Canvas positioning data
+	static ImVec2 scrolling(0.0f, 0.0f);
+	static ImVec2 MousePosInCanvas, origin, MousePos, canvas_sz;
+	static ImVec2 Shift(0.0f, 0.0f);
+	static const float Space = 500;
+	static float CanvasZoom = 1;
+
+	// Canvas-related data
 	static std::vector<int> SelectedElems;
 	static std::vector<int> SelectedLinks;
-	static std::wstring CurrentFile = L"";
+	static std::vector<int> CurrentSelectionElems;
+	static std::vector<int> CurrentSelectionLinks;
 	static std::vector<ElementOnCanvas> CopyBuffer;
 	static std::vector<LinkOnCanvas> LinksBuffer;
+	static int ShiftSelectionBeginElem = -1;
 
-	static bool SearchOpen = false;
-	static bool MapOpen = false;
+	// Current scenario data
+	static int SelectedScenario = -1;
+
+	// Current file data
+	static std::wstring CurrentFile = L"";
 	static bool CheckSave = false;
 
+	// Helper
+	int GetNumOfElement(std::shared_ptr<ScenariosEditorScenarioElement::ScenarioElement> Elem);
+	ImVec2 GetLinkingPointLocation(int Elem, int Point);
+	ImVec2 GetMapLinkingPointLocation(int Elem, int Point, float Zoom, ImVec2 origin, float shift_x, float shift_y);
+	std::vector<ImVec2> GetCorners();
+	float Distance(ImVec2 v, ImVec2 w, ImVec2 p);
+	std::string toUtf8(const std::wstring& str);
+	static void HelpMarker(const char* desc);
+	// Window startup
 	void PreLoopSetup();
 	void MainLoop();
-	bool CopyBufferAction(std::string Operation, float Drag_Shift_x = NULL, float Drag_Shift_y = NULL);
 
-	void DrawMenu();
-	void MakeCanvas(const ImGuiViewport* viewport, ImGuiIO& io);
-	void DrawCanvas(const ImGuiViewport* viewport, ImGuiIO& io);
-	void DrawScenariosSection(const ImGuiViewport* viewport);
-	void DrawElementsSection(const ImGuiViewport* viewport);
-	void DrawParamsSection(const ImGuiViewport* viewport);
-	void CanvasLogic(int hover_on, ImVec2* SelectionStartPosition, ImGuiIO& io);
-	void SearchWindow();
-	std::vector<int> DoSearch(int SearchType, int SearchElement, std::string SearchAttribute, std::string SearchField);
-	void MapWindow();
-
-	void ClearElements();
-	void ElementsMakeObjects();
-	void AddCanvasContextMenu();
-	void AddDragAndDropReciever();
+	// GUI-to-Storage
 	std::shared_ptr<ScenarioElement> AddElementGUI(int Element, ImVec2 Pos, int Type, std::shared_ptr<ScenarioElement> CopyOrigin = nullptr);
 	void AddLinkGUI(int PointA, int PointB, int ElemA, int ElemB);
 	std::vector<ElementOnCanvas>::iterator DeleteElementGUI(std::vector<ElementOnCanvas>::iterator iter);
 	std::vector<LinkOnCanvas>::iterator DeleteLinkGUI(std::vector<LinkOnCanvas>::iterator iter);
-	std::vector<const char*> GetElementAttributeNames(ScenariosEditorScenarioElement::ScenarioElement* Elem);
-	void RemoveSelectedScenario(std::string GUID);
-	void DoubleSelectedScenario(std::string GUID);
-	static void HelpMarker(const char* desc);
-	void CanvasDrawLinking();
-	void CanvasLinkingLogic(int* hover_on);
-	void CanvasDrawElems();
-	void CanvasDrawCaption();
-	void CanvasDrawSelectedElems();
-	void CanvasElemsLogic(int* hover_on, ImVec2* SelectionStartPosition);
-	void CanvasLinkingSelection(int* hover_on, ImVec2* SelectionStartPosition);
+
+	// Menu and File
+	void DrawMenu();
+	void New();
+	void Open();
+	void OpenRecent(const wchar_t* File);
+	void Save();
+	void SaveAs();
+	void SaveCopyAs();
+	void SwitchShowCaption();
+
+	// Canvas
+	void MakeCanvas(const ImGuiViewport* viewport, ImGuiIO& io);
 	void CanvasDrawSelectedLinks();
-	void CanvasSelectedElemsLogic(ImGuiIO& io);
+	void CanvasLinkingSelection(int* hover_on, ImVec2* SelectionStartPosition);
 	void AddCanvasScrollbar(int* hover_on);
-	void ParamsInitialization();
+	void ClearElements();
+	void AddDragAndDropReciever();
+	void AddCanvasContextMenu();
+	void AddLinkingPoint(int* hover_on, int Point, int* ClickedElem, int* ClickedType, int Elem);
+	void DrawCanvas(const ImGuiViewport* viewport, ImGuiIO& io);
+	void CanvasDrawElems();
+	void CanvasDrawSelectedElems();
+	void CanvasDrawLinking();
+	void CanvasDrawCaption();
+	void CanvasLogic(int hover_on, ImVec2* SelectionStartPosition, ImGuiIO& io);
+	void CanvasElemsLogic(int* hover_on, ImVec2* SelectionStartPosition);
+	void CanvasSelectedElemsLogic(ImGuiIO& io);
+	void CanvasLinkingLogic(int* hover_on);
+
+	// Elements operations
+	void Cut();
 	void Copy();
 	void Paste();
 	void Delete();
 	void DeleteLinks();
-	void Open();
-	void New();
-	void Save();
-	void SaveAs();
-	void SaveCopyAs();
+
+	// Scenarios
+	void DrawScenariosSection(const ImGuiViewport* viewport);
+	void RemoveSelectedScenario(std::string GUID);
+	void DoubleSelectedScenario(std::string GUID);
+
+	// Elems
+	void DrawElementsSection(const ImGuiViewport* viewport);
+	void ElementsMakeObjects();
+
+	// Params
+	struct CallbackInfo
+	{
+		int SelectionStart;
+		int SelectionEnd;
+		std::string* Text;
+	};
+	void DrawParamsSection(const ImGuiViewport* viewport);
+	void ParamsInitialization();
+	void AddInputTextContextMenu(CallbackInfo InputInfo);
+
+	// Search and map
 	void SwitchSearch();
 	void SwitchMap();
-	void Cut();
-	void OpenRecent(const wchar_t* File);
-	std::vector<ImVec2> GetCorners();
-	std::string toUtf8(const std::wstring& str);
-	ImVec2 GetLinkingPointLocation(int Elem, int Point);
-	ImVec2 GetMapLinkingPointLocation(int Elem, int Point, float Zoom, ImVec2 origin, float shift_x, float shift_y);
+	void SearchWindow();
+	std::vector<int> DoSearch(int SearchType, int SearchElement, std::string SearchAttribute, std::string SearchField);
+	void MapWindow();
+
+	// Actions buffer
+	bool CopyBufferAction(std::string Operation, float Drag_Shift_x = NULL, float Drag_Shift_y = NULL);
 
 #pragma endregion Local variables, struct and function definitions
 
@@ -168,18 +208,18 @@ namespace ScenariosEditorGUI {
 		{
 		case 0: return ImVec2(
 			origin.x + Elems[Elem].Pos.x * CanvasZoom + ElementsData::GetElementTexture(Elems[Elem].Element, CanvasZoom).Width / 2.0f,
-			origin.y + Elems[Elem].Pos.y * CanvasZoom
+			origin.y + Elems[Elem].Pos.y * CanvasZoom - PointsRadius
 		); break;
 		case 1: return ImVec2(
-			origin.x + Elems[Elem].Pos.x * CanvasZoom + ElementsData::GetElementTexture(Elems[Elem].Element, CanvasZoom).Width,
+			origin.x + Elems[Elem].Pos.x * CanvasZoom + ElementsData::GetElementTexture(Elems[Elem].Element, CanvasZoom).Width + PointsRadius,
 			origin.y + Elems[Elem].Pos.y * CanvasZoom + ElementsData::GetElementTexture(Elems[Elem].Element, CanvasZoom).Height / 2.0f
 		); break;
 		case 2: return ImVec2(
 			origin.x + Elems[Elem].Pos.x * CanvasZoom + ElementsData::GetElementTexture(Elems[Elem].Element, CanvasZoom).Width / 2.0f,
-			origin.y + Elems[Elem].Pos.y * CanvasZoom + ElementsData::GetElementTexture(Elems[Elem].Element, CanvasZoom).Height
+			origin.y + Elems[Elem].Pos.y * CanvasZoom + ElementsData::GetElementTexture(Elems[Elem].Element, CanvasZoom).Height + PointsRadius
 		); break;
 		case 3: return ImVec2(
-			origin.x + Elems[Elem].Pos.x * CanvasZoom,
+			origin.x + Elems[Elem].Pos.x * CanvasZoom - PointsRadius,
 			origin.y + Elems[Elem].Pos.y * CanvasZoom + ElementsData::GetElementTexture(Elems[Elem].Element, CanvasZoom).Height / 2.0f
 		); break;
 		}
@@ -229,6 +269,7 @@ namespace ScenariosEditorGUI {
 		return ret;
 	}
 
+	// Distance between line segment (point v, point w) and dot p
 	float Distance(ImVec2 v, ImVec2 w, ImVec2 p) {
 		// Return minimum distance between line segment vw and point p
 		const float l2 = powf((w.x - v.x), 2) + powf((w.y - v.y), 2);
@@ -242,6 +283,7 @@ namespace ScenariosEditorGUI {
 		return sqrt(powf(p.x - projection.x, 2) + powf(p.y - projection.y, 2));
 	}
 
+	// Convert wstring (e.g. file name) into utf8
 	std::string toUtf8(const std::wstring& str)
 	{
 		std::string ret;
@@ -254,6 +296,7 @@ namespace ScenariosEditorGUI {
 		return ret;
 	}
 
+	// ImGui hint
 	static void HelpMarker(const char* desc)
 	{
 		ImGui::TextDisabled("(?)");
@@ -266,6 +309,7 @@ namespace ScenariosEditorGUI {
 			ImGui::EndTooltip();
 		}
 	}
+
 #pragma endregion Functions that are used for subsidiary calculations
 
 #pragma region Window startup
@@ -284,7 +328,7 @@ namespace ScenariosEditorGUI {
 		builder.AddRanges(io.Fonts->GetGlyphRangesCyrillic()); // Add one of the default ranges
 		builder.BuildRanges(&ranges);                          // Build the final result (ordered ranges with all the unique characters submitted)
 
-		io.Fonts->AddFontFromFileTTF(u8"C:/Users/VR/Desktop/projects/SimulatorsEditor/src/editor/LiberationSans.ttf", 22.0f, NULL, ranges.Data);
+		io.Fonts->AddFontFromFileTTF(u8"LiberationSans.ttf", 22.0f, NULL, ranges.Data);
 		io.Fonts->Build();
 		ElementsData::Initialization();
 		ScenarioEditorSavedSettings::Initialization();
@@ -305,6 +349,11 @@ namespace ScenariosEditorGUI {
 				break;
 			ScenariosEditorRender::StartFrame();
 			const ImGuiViewport* viewport = ImGui::GetMainViewport();
+			if (WindowsGroupWidth == -1)
+			{
+				WindowsGroupWidth = ImGui::GetMainViewport()->WorkSize.x / 4;
+				ParamsWidth = WindowsGroupWidth;
+			}
 			ImGui::ShowDemoWindow(); // remove later
 			// Menu
 			DrawMenu();
@@ -321,9 +370,10 @@ namespace ScenariosEditorGUI {
 	}
 
 #pragma endregion Functions initializing main loop
-	
+
 #pragma region GUI-to-Storage
 
+	// Element added should be also added in storage
 	std::shared_ptr<ScenarioElement> AddElementGUI(int Element, ImVec2 Pos, int Type, std::shared_ptr<ScenarioElement> CopyOrigin)
 	{
 		std::shared_ptr<ScenarioElement> NewElem;
@@ -348,6 +398,7 @@ namespace ScenariosEditorGUI {
 		return NewElem;
 	}
 
+	// Link added should be also added in storage
 	void AddLinkGUI(int PointA, int PointB, int ElemA, int ElemB)
 	{
 		std::vector<int> ToAdd;
@@ -360,6 +411,7 @@ namespace ScenariosEditorGUI {
 		CheckSave = true;
 	}
 
+	// Element deleted should be also deleted in storage
 	std::vector<ElementOnCanvas>::iterator DeleteElementGUI(std::vector<ElementOnCanvas>::iterator iter)
 	{
 		CheckSave = true;
@@ -367,6 +419,7 @@ namespace ScenariosEditorGUI {
 		return Elems.erase(iter);
 	}
 
+	// Link deleted should be also deleted in storage
 	std::vector<LinkOnCanvas>::iterator DeleteLinkGUI(std::vector<LinkOnCanvas>::iterator iter)
 	{
 		CheckSave = true;
@@ -383,6 +436,7 @@ namespace ScenariosEditorGUI {
 
 #pragma region Menu and File
 
+	// Menu and menu-functions linking
 	void DrawMenu()
 	{
 		ImGui::BeginMainMenuBar();
@@ -435,11 +489,16 @@ namespace ScenariosEditorGUI {
 			{
 				SwitchMap();
 			}
+			if (ImGui::MenuItem(u8"Отобразить Caption", "Ctrl+H", ShowCaption))
+			{
+				SwitchShowCaption();
+			}
 			ImGui::EndMenu();
 		}
 		ImGui::EndMainMenuBar();
 	}
 
+	// Reset storages
 	void New()
 	{
 		if (CheckSave)
@@ -481,6 +540,7 @@ namespace ScenariosEditorGUI {
 		CurrentFile = L"";
 	}
 
+	// Open existing file
 	void Open()
 	{
 		if (CheckSave)
@@ -519,7 +579,7 @@ namespace ScenariosEditorGUI {
 				ClearElements();
 				Model.LoadFrom(File);
 				CurrentFile = File;
-				SelectedElemGUI = -1;
+				SelectedScenario = -1;
 				CheckSave = false;
 				ScenarioEditorSavedSettings::AddToRecentFiles(File);
 				ScenarioEditorScenarioStorage::SetActualScenario(0);
@@ -529,6 +589,7 @@ namespace ScenariosEditorGUI {
 		}
 	}
 
+	// Open recent file
 	void OpenRecent(const wchar_t* File)
 	{
 		if (CheckSave)
@@ -564,7 +625,7 @@ namespace ScenariosEditorGUI {
 			ClearElements();
 			Model.LoadFrom(File);
 			CurrentFile = File;
-			SelectedElemGUI = -1;
+			SelectedScenario = -1;
 			CheckSave = false;
 			ScenarioEditorSavedSettings::AddToRecentFiles(File);
 			ScenarioEditorScenarioStorage::SetActualScenario(0);
@@ -573,6 +634,7 @@ namespace ScenariosEditorGUI {
 		else MessageBoxW(NULL, L"При попытке открыть файл возникла ошибка", L"Ошибка", MB_OK);
 	}
 
+	// Save into current file
 	void Save()
 	{
 		if (CurrentFile != L"")
@@ -586,6 +648,7 @@ namespace ScenariosEditorGUI {
 
 	}
 
+	// Save into new file, change context to it
 	void SaveAs()
 	{
 		const wchar_t* File = ScenarioEditorFileDialog::SaveFileDialog();
@@ -605,6 +668,7 @@ namespace ScenariosEditorGUI {
 
 	}
 
+	// Save into new file, do not change context
 	void SaveCopyAs()
 	{
 		const wchar_t* File = ScenarioEditorFileDialog::SaveFileDialog();
@@ -620,7 +684,8 @@ namespace ScenariosEditorGUI {
 #pragma endregion Menu and file interaction functions
 
 #pragma region Canvas
-	// Canvas section
+
+	// Ordered sub-functions calls
 	void MakeCanvas(const ImGuiViewport* viewport, ImGuiIO& io)
 	{
 
@@ -659,6 +724,7 @@ namespace ScenariosEditorGUI {
 		ImGui::End();
 	}
 
+	// Drawing selected links
 	void CanvasDrawSelectedLinks()
 	{
 		for (int Link : SelectedLinks)
@@ -666,11 +732,12 @@ namespace ScenariosEditorGUI {
 			canvas_draw_list->AddLine(
 				GetLinkingPointLocation(Links[Link].Elems[0], Links[Link].Points[0]),
 				GetLinkingPointLocation(Links[Link].Elems[1], Links[Link].Points[1]),
-				IM_COL32(255, 0, 0, 255), 3
+				IM_COL32(255, 0, 0, 255), LinksWidth + 2
 			);
 		}
 	}
 
+	// Linking selection logic
 	void CanvasLinkingSelection(int* hover_on, ImVec2* selection_start_position)
 	{
 		if (CurrentState == Rest && (*hover_on) == 1 && (ImGui::IsMouseClicked(ImGuiMouseButton_Left) || ImGui::IsMouseClicked(ImGuiMouseButton_Right)))
@@ -679,7 +746,7 @@ namespace ScenariosEditorGUI {
 			{
 				ImVec2 a = GetLinkingPointLocation(Links[i].Elems[0], Links[i].Points[0]);
 				ImVec2 b = GetLinkingPointLocation(Links[i].Elems[1], Links[i].Points[1]);
-				if (Distance(a, b, MousePos) < 3)
+				if (!IsLinking && Distance(a, b, MousePos) < 6)
 				{
 					if (ImGui::GetIO().KeyCtrl)
 					{
@@ -760,6 +827,7 @@ namespace ScenariosEditorGUI {
 		}
 	}
 
+	// Add scrollbar
 	void AddCanvasScrollbar(int* hover_on)
 	{
 		static const int short_side = 25;
@@ -774,7 +842,7 @@ namespace ScenariosEditorGUI {
 		// 0 - Min
 		// 1 - Max
 
-		ImVec2 ScreenTopLeft = { -scrolling.x - shift.x / CanvasZoom, -scrolling.y - shift.y / CanvasZoom };
+		ImVec2 ScreenTopLeft = { -scrolling.x - Shift.x / CanvasZoom, -scrolling.y - Shift.y / CanvasZoom };
 		if (ScreenTopLeft.y + Space < Corners[0].y) Corners[0].y = ScreenTopLeft.y + Space;
 		if (ScreenTopLeft.x + Space < Corners[0].x) Corners[0].x = ScreenTopLeft.x + Space;
 
@@ -799,7 +867,7 @@ namespace ScenariosEditorGUI {
 
 		if (scroll_y_enable)
 		{
-			static ImU32 scroll_color = scrolling_y ? IM_COL32(128, 128, 128, 255) : IM_COL32(192, 192, 192, 255);
+			ImU32 scroll_color = scrolling_y ? IM_COL32(128, 128, 128, 255) : IM_COL32(192, 192, 192, 255);
 			canvas_draw_list->AddRectFilled({ ImGui::GetWindowPos().x + 1 + canvas_sz.x - offset - short_side, ImGui::GetWindowPos().y + 1 + offset },
 				{ ImGui::GetWindowPos().x + canvas_sz.x - offset , ImGui::GetWindowPos().y + 1 + canvas_sz.y - offset * 2 - short_side },
 				IM_COL32(255, 255, 255, 255));
@@ -824,8 +892,8 @@ namespace ScenariosEditorGUI {
 			{
 				*hover_on = 4;
 				float MouseY = (ImGui::GetIO().MousePos.y - ImGui::GetWindowPos().y - 1 - offset - inner_spacing.y) - scroll_y_height / 2;
-				scrolling.y = min(-(shift.y / CanvasZoom + Corners[0].y - Space + (ActualRangeY * MouseY / scroll_y_max)), -(shift.y / CanvasZoom + Corners[0].y - Space));
-				scrolling.y = max(scrolling.y, -(shift.y / CanvasZoom + Corners[1].y + Space - canvas_sz.y / CanvasZoom));
+				scrolling.y = min(-(Shift.y / CanvasZoom + Corners[0].y - Space + (ActualRangeY * MouseY / scroll_y_max)), -(Shift.y / CanvasZoom + Corners[0].y - Space));
+				scrolling.y = max(scrolling.y, -(Shift.y / CanvasZoom + Corners[1].y + Space - canvas_sz.y / CanvasZoom));
 			}
 		}
 		else
@@ -835,7 +903,7 @@ namespace ScenariosEditorGUI {
 
 		if (scroll_x_enable)
 		{
-			static ImU32 scroll_color = scrolling_x ? IM_COL32(128, 128, 128, 255) : IM_COL32(192, 192, 192, 255);
+			ImU32 scroll_color = scrolling_x ? IM_COL32(128, 128, 128, 255) : IM_COL32(192, 192, 192, 255);
 			canvas_draw_list->AddRectFilled({ ImGui::GetWindowPos().x + 1 + offset, ImGui::GetWindowPos().y + 1 + canvas_sz.y - offset - short_side },
 				{ ImGui::GetWindowPos().x + 1 + canvas_sz.x - offset * 2 - short_side, ImGui::GetWindowPos().y + canvas_sz.y - offset },
 				IM_COL32(255, 255, 255, 255));
@@ -860,8 +928,8 @@ namespace ScenariosEditorGUI {
 			{
 				*hover_on = 4;
 				float MouseX = (ImGui::GetIO().MousePos.x - ImGui::GetWindowPos().x - 1 - offset - inner_spacing.y) - scroll_x_widht / 2;
-				scrolling.x = min(-(shift.x / CanvasZoom + Corners[0].x - Space + (ActualRangeX * MouseX / scroll_x_max)), -(shift.x / CanvasZoom + Corners[0].x - Space));
-				scrolling.x = max(scrolling.x, -(shift.x / CanvasZoom + Corners[1].x + Space - canvas_sz.x / CanvasZoom));
+				scrolling.x = min(-(Shift.x / CanvasZoom + Corners[0].x - Space + (ActualRangeX * MouseX / scroll_x_max)), -(Shift.x / CanvasZoom + Corners[0].x - Space));
+				scrolling.x = max(scrolling.x, -(Shift.x / CanvasZoom + Corners[1].x + Space - canvas_sz.x / CanvasZoom));
 			}
 		}
 		else
@@ -878,6 +946,7 @@ namespace ScenariosEditorGUI {
 
 		ImGui::SetCursorPos(OldPos);
 	}
+
 	// Clear existing elements
 	void ClearElements()
 	{
@@ -891,6 +960,7 @@ namespace ScenariosEditorGUI {
 		CopyBufferAction("Clear");
 	}
 
+	// Add drop processing on canvas
 	void AddDragAndDropReciever()
 	{
 		// canvas is drag'n'drop reciever
@@ -960,9 +1030,9 @@ namespace ScenariosEditorGUI {
 	{
 		// out of state machine for logic purposes
 
-		canvas_draw_list->AddCircleFilled(GetLinkingPointLocation(Elem, Point), 5.0f, IM_COL32(0, 0, 0, 255));
-		ImGui::SetCursorScreenPos(ImVec2(GetLinkingPointLocation(Elem, Point).x - 5.0f, GetLinkingPointLocation(Elem, Point).y - 5.0f));
-		ImGui::InvisibleButton("LinkingPoint", ImVec2(10.0f, 10.0f), ImGuiButtonFlags_MouseButtonLeft);
+		canvas_draw_list->AddCircleFilled(GetLinkingPointLocation(Elem, Point), PointsRadius, IM_COL32(0, 0, 0, 255));
+		ImGui::SetCursorScreenPos(ImVec2(GetLinkingPointLocation(Elem, Point).x - PointsRadius, GetLinkingPointLocation(Elem, Point).y - PointsRadius));
+		ImGui::InvisibleButton("LinkingPoint", ImVec2(PointsRadius * 2, PointsRadius * 2), ImGuiButtonFlags_MouseButtonLeft);
 		ImGui::SetItemAllowOverlap();
 		if (*hover_on == 1 && ImGui::IsItemClicked(ImGuiMouseButton_Left))
 		{
@@ -986,7 +1056,7 @@ namespace ScenariosEditorGUI {
 		{
 			SelectedLinks.clear();
 			SelectedElems.clear();
-			canvas_draw_list->AddLine(GetLinkingPointLocation(*ClickedElem, *ClickedType), MousePos, IM_COL32(0, 0, 0, 255));
+			canvas_draw_list->AddLine(GetLinkingPointLocation(*ClickedElem, *ClickedType), MousePos, IM_COL32(0, 0, 0, 255), LinksWidth);
 			if (ImGui::IsMouseClicked(ImGuiMouseButton_Right))
 			{
 				IsLinking = false;
@@ -995,13 +1065,12 @@ namespace ScenariosEditorGUI {
 		}
 	}
 
-	// Sub-canvas drawing functions
 	// Draw canvas
 	void DrawCanvas(const ImGuiViewport* viewport, ImGuiIO& io)
 	{
 		// Canvas size and style
-		ImGui::SetNextWindowPos(ImVec2(viewport->WorkSize.x / 4, viewport->WorkPos.y));
-		ImGui::SetNextWindowSize(ImVec2(3 * viewport->WorkSize.x / 4, viewport->WorkSize.y));
+		ImGui::SetNextWindowPos(ImVec2(WindowsGroupWidth, viewport->WorkPos.y));
+		ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x - WindowsGroupWidth, viewport->WorkSize.y));
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
 		ImGui::Begin("MainWorkspace", NULL, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoScrollWithMouse);
 		ImGui::PopStyleVar();
@@ -1032,8 +1101,8 @@ namespace ScenariosEditorGUI {
 
 					if (oldzoom != CanvasZoom)
 					{
-						shift.x -= (canvas_sz.x * CanvasZoom - canvas_sz.x * oldzoom) / 2.0f;
-						shift.y -= (canvas_sz.y * CanvasZoom - canvas_sz.y * oldzoom) / 2.0f;
+						Shift.x -= (canvas_sz.x * CanvasZoom - canvas_sz.x * oldzoom) / 2.0f;
+						Shift.y -= (canvas_sz.y * CanvasZoom - canvas_sz.y * oldzoom) / 2.0f;
 					}
 				}
 				else
@@ -1050,22 +1119,23 @@ namespace ScenariosEditorGUI {
 			}
 		}
 		if (canvas_sz.x != old_canvas_sz.x || canvas_sz.y != old_canvas_sz.y)
-			shift = { -(canvas_sz.x * CanvasZoom - canvas_sz.x) / 2.0f, -(canvas_sz.y * CanvasZoom - canvas_sz.y) / 2.0f };
+			Shift = { -(canvas_sz.x * CanvasZoom - canvas_sz.x) / 2.0f, -(canvas_sz.y * CanvasZoom - canvas_sz.y) / 2.0f };
 		canvas_draw_list->PopClipRect();
-		origin = ImVec2(canvas_p0.x + scrolling.x * CanvasZoom + shift.x, canvas_p0.y + scrolling.y * CanvasZoom + shift.y);
+		origin = ImVec2(canvas_p0.x + scrolling.x * CanvasZoom + Shift.x, canvas_p0.y + scrolling.y * CanvasZoom + Shift.y);
 		// Draw grid
 		canvas_draw_list->PushClipRect(canvas_p0, canvas_p1, true);
 		{
 			const float GRID_STEP = 79.0f * CanvasZoom;
-			for (float x = fmodf(scrolling.x * CanvasZoom + shift.x, GRID_STEP); x < canvas_sz.x; x += GRID_STEP)
+			for (float x = fmodf(scrolling.x * CanvasZoom + Shift.x, GRID_STEP); x < canvas_sz.x; x += GRID_STEP)
 				canvas_draw_list->AddLine(ImVec2(canvas_p0.x + x, canvas_p0.y), ImVec2(canvas_p0.x + x, canvas_p1.y), IM_COL32(200, 200, 200, 119));
-			for (float y = fmodf(scrolling.y * CanvasZoom + shift.y, GRID_STEP); y < canvas_sz.y; y += GRID_STEP)
+			for (float y = fmodf(scrolling.y * CanvasZoom + Shift.y, GRID_STEP); y < canvas_sz.y; y += GRID_STEP)
 				canvas_draw_list->AddLine(ImVec2(canvas_p0.x, canvas_p0.y + y), ImVec2(canvas_p1.x, canvas_p0.y + y), IM_COL32(200, 200, 200, 119));
 		}
 		MousePosInCanvas = ImVec2((io.MousePos.x - origin.x) / CanvasZoom, (io.MousePos.y - origin.y) / CanvasZoom);
 		MousePos = io.MousePos;
 		old_canvas_sz = canvas_sz;
 	}
+
 	// Draw elems
 	void CanvasDrawElems()
 	{
@@ -1077,6 +1147,7 @@ namespace ScenariosEditorGUI {
 				ImVec2(origin.x + Elems[i].Pos.x * CanvasZoom + UsedTexture.Width, origin.y + Elems[i].Pos.y * CanvasZoom + UsedTexture.Height));
 		}
 	}
+
 	// Draw rectangle over selected elems
 	void CanvasDrawSelectedElems()
 	{
@@ -1095,6 +1166,7 @@ namespace ScenariosEditorGUI {
 				IM_COL32(255, 255, 0, 10));
 		}
 	}
+
 	// Draw links
 	void CanvasDrawLinking()
 	{
@@ -1103,25 +1175,28 @@ namespace ScenariosEditorGUI {
 			canvas_draw_list->AddLine(
 				GetLinkingPointLocation(Links[j].Elems[0], Links[j].Points[0]),
 				GetLinkingPointLocation(Links[j].Elems[1], Links[j].Points[1]),
-				IM_COL32(0, 0, 0, 255)
+				IM_COL32(0, 0, 0, 255), LinksWidth
 			);
 		}
 	}
+
 	// Draw caption
 	void CanvasDrawCaption()
 	{
-		float font_size = 20;
-		float wrap_size = 400;
-		float shift_x = 200 * CanvasZoom;
-		float shift_y = 20 * CanvasZoom;
-		for (ElementOnCanvas Elem : Elems)
+		if (ShowCaption)
 		{
-			if (origin.y + Elem.Pos.y * CanvasZoom > 0)
-				canvas_draw_list->AddText(ImGui::GetFont(), font_size, ImVec2(origin.x + Elem.Pos.x * CanvasZoom + shift_x, origin.y + Elem.Pos.y * CanvasZoom + shift_y), IM_COL32(0, 0, 0, 255), (Elem.ElementInStorage)->caption.c_str(), (const char*)0, wrap_size);
+			float font_size = 20;
+			float wrap_size = 400;
+			float shift_x = 200 * CanvasZoom;
+			float shift_y = 20 * CanvasZoom;
+			for (ElementOnCanvas Elem : Elems)
+			{
+				if (origin.y + Elem.Pos.y * CanvasZoom > 0)
+					canvas_draw_list->AddText(ImGui::GetFont(), font_size, ImVec2(origin.x + Elem.Pos.x * CanvasZoom + shift_x, origin.y + Elem.Pos.y * CanvasZoom + shift_y), IM_COL32(0, 0, 0, 255), (Elem.ElementInStorage)->caption.c_str(), (const char*)0, wrap_size);
+			}
 		}
 	}
-	// Logic functions, using state machine, used to handle io actions
-	//
+
 	// Changes state machine, handles canvas-related actions
 	void CanvasLogic(int clicked_on, ImVec2* SelectionStartPosition, ImGuiIO& io)
 	{
@@ -1129,6 +1204,30 @@ namespace ScenariosEditorGUI {
 		bool ShorcutsChecked = false;
 		if (!ImGui::IsAnyItemActive() && !ShorcutsChecked)
 		{
+			if (ImGui::IsKeyPressed(ImGuiKey_F11, false) && SelectedElems.size() == 1)
+			{
+				for (int i = 0; i < Elems.size(); i++)
+				{
+					if (Elems[i].Pos.y > Elems[SelectedElems[0]].Pos.y)
+					{
+						Elems[i].Pos.y += 250 / CanvasZoom;
+						ScenariosEditorScenarioElement::UpdateCoordinates(Elems[i].ElementInStorage, Elems[i].Pos.x, Elems[i].Pos.y);
+						CheckSave = true;
+					}
+				}
+			}
+			if (ImGui::IsKeyPressed(ImGuiKey_F10, false) && SelectedElems.size() == 1)
+			{
+				for (int i = 0; i < Elems.size(); i++)
+				{
+					if (Elems[i].Pos.y > Elems[SelectedElems[0]].Pos.y)
+					{
+						Elems[i].Pos.y -= 250 / CanvasZoom;
+						ScenariosEditorScenarioElement::UpdateCoordinates(Elems[i].ElementInStorage, Elems[i].Pos.x, Elems[i].Pos.y);
+						CheckSave = true;
+					}
+				}
+			}
 			ShorcutsChecked = true;
 			if (ImGui::GetIO().KeyCtrl)
 			{
@@ -1159,6 +1258,10 @@ namespace ScenariosEditorGUI {
 				if (ImGui::IsKeyPressed(ImGuiKey_V, false) && clicked_on > 0)
 				{
 					Paste();
+				}
+				if (ImGui::IsKeyPressed(ImGuiKey_H, false) && clicked_on > 0)
+				{
+					SwitchShowCaption();
 				}
 				if (ImGui::IsKeyPressed(ImGuiKey_Delete, false))
 				{
@@ -1229,7 +1332,7 @@ namespace ScenariosEditorGUI {
 		{
 			CurrentState = Rest;
 		}
-		if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && clicked_on == 1 && CurrentState == Rest)
+		if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && clicked_on == 1 && CurrentState == Rest && !IsLinking)
 		{
 			CurrentState = Selection;
 			*SelectionStartPosition = MousePosInCanvas;
@@ -1437,7 +1540,7 @@ namespace ScenariosEditorGUI {
 			ImGui::SetItemAllowOverlap();
 			// IsMouseClicked() + IsItemHovered() usage to find which element user selected
 
-			if (CurrentState == Rest && ImGui::IsItemHovered())
+			if (!IsLinking && CurrentState == Rest && ImGui::IsItemHovered())
 			{
 				if (std::find(SelectedElems.begin(), SelectedElems.end(), i) == SelectedElems.end())
 				{
@@ -1558,7 +1661,8 @@ namespace ScenariosEditorGUI {
 			}
 		}
 	}
-	//
+
+	// Handles selected elems depending logic
 	void CanvasSelectedElemsLogic(ImGuiIO& io)
 	{
 		ElementOnCanvas ToAdd;
@@ -1608,7 +1712,8 @@ namespace ScenariosEditorGUI {
 		auto new_end = std::remove(SelectedElems.begin(), SelectedElems.end(), -1);
 		SelectedElems.erase(new_end, SelectedElems.end());
 	}
-	//
+
+	// Handles links-depending logic
 	void CanvasLinkingLogic(int* hover_on)
 	{
 		static int ClickedElem;
@@ -1767,8 +1872,8 @@ namespace ScenariosEditorGUI {
 	void DrawScenariosSection(const ImGuiViewport* viewport)
 	{
 		ImGui::SetNextWindowPos(viewport->WorkPos);
-		ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x / 4, (viewport->WorkSize.y / 3) - 29));
-		ImGui::Begin(u8"Сценарии", NULL, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus);
+		ImGui::SetNextWindowSize(ImVec2(WindowsGroupWidth, (viewport->WorkSize.y / 3) - 29));
+		ImGui::Begin(u8"Сценарии", NULL, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus);
 		if (ImGui::Button(u8"Создать сценарий"))
 		{
 			ScenarioEditorScenarioStorage::CreateNewScenario();
@@ -1776,13 +1881,13 @@ namespace ScenariosEditorGUI {
 		}
 		ImGui::SameLine();
 		std::vector<std::string> Scenarios = ScenarioEditorScenarioStorage::GetScenarioNames();
-		if (SelectedElemGUI > 0 && SelectedElemGUI < Scenarios.size())
+		if (SelectedScenario > 0 && SelectedScenario < Scenarios.size())
 		{
 			if (ImGui::Button(u8"Дублировать выбранный"))
 			{
 				DoubleSelectedScenario(ScenarioEditorScenarioStorage::GetActualGUID());
 				Scenarios = ScenarioEditorScenarioStorage::GetScenarioNames();
-				SelectedElemGUI = (int)Scenarios.size() - 1;
+				SelectedScenario = (int)Scenarios.size() - 1;
 				CheckSave = true;
 			}
 			ImGui::SameLine();
@@ -1790,18 +1895,17 @@ namespace ScenariosEditorGUI {
 			{
 				RemoveSelectedScenario(ScenarioEditorScenarioStorage::GetActualGUID());
 				Scenarios = ScenarioEditorScenarioStorage::GetScenarioNames();
-				SelectedElemGUI = 0;
+				SelectedScenario = 0;
 				CheckSave = true;
 			}
 		}
 
 		ImGui::SameLine();
 		HelpMarker(
-			u8"Имя сценария идентично значению аттрибута \"Caption\" элемента \"Start\"\n"
-			"Элемет \"Start\" в сценарии может быть только один");
+			u8"Имя сценария идентично значению аттрибута \"Caption\" элемента \"Start\"\nЭлемет \"Start\" в сценарии может быть только один");
 		static bool ShouldCenter = true;
 		ImGui::Checkbox(u8"Центрировать при загрузке сценария", &ShouldCenter);
-		const float footer_height_to_reserve = (ImGui::GetStyle().ItemSpacing.y * 2) + ImGui::GetTextLineHeight();
+		const float footer_height_to_reserve = (ImGui::GetStyle().ItemSpacing.y * 4) + ImGui::GetTextLineHeight() * 3;
 		if (ImGui::BeginChild("ScrollingRegion", ImVec2(0, -footer_height_to_reserve), false, ImGuiWindowFlags_HorizontalScrollbar))
 		{
 			std::vector<std::vector<std::string>> ScenarioList = ScenarioEditorScenarioStorage::GetScenarios();
@@ -1815,9 +1919,9 @@ namespace ScenariosEditorGUI {
 						item = u8"<Вне сценария>";
 					else item = u8"<Без имени>";
 				}
-				if (ImGui::Selectable((item + u8"##" + GUID).c_str(), SelectedElemGUI == n))
+				if (ImGui::Selectable((item + u8"##" + GUID).c_str(), SelectedScenario == n))
 				{
-					SelectedElemGUI = n;
+					SelectedScenario = n;
 					CurrentState = Rest;
 					ScenarioEditorScenarioStorage::SetActualScenario(n);
 					ScenariosEditorScenarioElement::LoadElements();
@@ -1828,8 +1932,8 @@ namespace ScenariosEditorGUI {
 					int n_next = n + (ImGui::GetMouseDragDelta(0).y < 0.f ? -1 : 1);
 					if (n != 0 && n_next >= 1 && n_next < Scenarios.size())
 					{
-						if (n_next == SelectedElemGUI) SelectedElemGUI = n;
-						else if (n == SelectedElemGUI) SelectedElemGUI = n_next;
+						if (n_next == SelectedScenario) SelectedScenario = n;
+						else if (n == SelectedScenario) SelectedScenario = n_next;
 						ScenarioEditorScenarioStorage::SwapScenario(n, n_next);
 						ImGui::ResetMouseDragDelta();
 					}
@@ -1844,16 +1948,23 @@ namespace ScenariosEditorGUI {
 		{
 			ImGui::Text((std::string(u8"Выбранный файл: ") + toUtf8(CurrentFile)).c_str());
 		}
+		ImGui::Text(u8"Заглушка - клиенты");
+		ImGui::Text(u8"Заглушка - скорость");
 		ImGui::End();
 	}
 
 	void RemoveSelectedScenario(std::string GUID)
 	{
 		ScenarioEditorScenarioStorage::RemoveScenario(GUID);
-		std::vector<ElementOnCanvas>::iterator k = Elems.begin();
-		while (k != Elems.end())
+		std::vector<LinkOnCanvas>::iterator k = Links.begin();
+		while (k != Links.end())
 		{
-			k = DeleteElementGUI(k);
+			k = DeleteLinkGUI(k);
+		}
+		std::vector<ElementOnCanvas>::iterator l = Elems.begin();
+		while (l != Elems.end())
+		{
+			l = DeleteElementGUI(l);
 		}
 		ScenarioEditorScenarioStorage::SetActualScenario(0);
 		ScenariosEditorScenarioElement::LoadElements();
@@ -1888,21 +1999,11 @@ namespace ScenariosEditorGUI {
 	void DrawElementsSection(const ImGuiViewport* viewport)
 	{
 		ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x, (viewport->WorkSize.y / 3) - 2));
-		ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x / 4, viewport->WorkSize.y / 3));
+		ImGui::SetNextWindowSize(ImVec2(WindowsGroupWidth, viewport->WorkSize.y / 3));
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 15));
-		ImGui::Begin(u8"Элементы сценария", NULL, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus);
+		ImGui::Begin(u8"Элементы сценария", NULL, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus);
 		ImGui::PopStyleVar();
 		ElementsMakeObjects();
-		ImGui::End();
-	}
-
-	// params section
-	void DrawParamsSection(const ImGuiViewport* viewport)
-	{
-		ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x, (2 * viewport->WorkSize.y / 3) - 4));
-		ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x / 4, (viewport->WorkSize.y / 3) + 33));
-		ImGui::Begin(u8"Свойства", NULL, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus);
-		ParamsInitialization();
 		ImGui::End();
 	}
 
@@ -1939,12 +2040,84 @@ namespace ScenariosEditorGUI {
 
 #pragma region Params
 
+	void DrawParamsSection(const ImGuiViewport* viewport)
+	{
+		ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x, (2 * viewport->WorkSize.y / 3) - 4));
+		ImGui::SetNextWindowSize(ImVec2(ParamsWidth, (viewport->WorkSize.y / 3) + 33));
+		ImGui::SetNextWindowSizeConstraints(ImVec2(WindowsGroupWidth, -1), ImVec2(FLT_MAX, -1));
+		ImGui::Begin(u8"Свойства", NULL, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoNavFocus);
+		ParamsWidth = ImGui::GetWindowWidth();
+		ParamsInitialization();
+		ImGui::End();
+	}
+
+	int InputTextCallbackHandler(ImGuiInputTextCallbackData* InputCallback)
+	{
+		CallbackInfo* InputInfo = (CallbackInfo*)InputCallback->UserData;
+		InputInfo->SelectionStart = min(InputCallback->SelectionStart, InputCallback->SelectionEnd);
+		InputInfo->SelectionEnd = max(InputCallback->SelectionStart, InputCallback->SelectionEnd);
+		return 0;
+	}
+
+	void AddInputTextContextMenu(CallbackInfo InputInfo)
+	{
+		if (ImGui::BeginPopup("contextinputstring"))
+		{
+			if (ImGui::MenuItem(u8"Копировать", u8"Ctrl+C", false, InputInfo.SelectionStart != -1))
+			{
+				if ((InputInfo.SelectionStart != -1) && (InputInfo.SelectionStart != InputInfo.SelectionEnd))
+				{
+					ImGui::SetClipboardText(InputInfo.Text->substr(InputInfo.SelectionStart, InputInfo.SelectionEnd - InputInfo.SelectionStart).c_str());
+				}
+			}
+			if (ImGui::MenuItem(u8"Вставить", u8"Ctrl+V", false))
+			{
+				if (InputInfo.SelectionStart != -1)
+				{
+					*InputInfo.Text = InputInfo.Text->substr(0, InputInfo.SelectionStart) + ImGui::GetClipboardText()
+						+ InputInfo.Text->substr(InputInfo.SelectionEnd);
+				}
+				else
+				{
+					*InputInfo.Text = ImGui::GetClipboardText();
+				}
+				CheckSave = true;
+			}
+			if (ImGui::MenuItem(u8"Удалить", u8"Delete", false))
+			{
+				if (InputInfo.SelectionStart != -1)
+				{
+					*InputInfo.Text = InputInfo.Text->substr(0, InputInfo.SelectionStart) + InputInfo.Text->substr(InputInfo.SelectionEnd);
+				}
+				else
+				{
+					*InputInfo.Text = "";
+				}
+			}
+			if (ImGui::MenuItem(u8"Вырезать", u8"Ctrl+X", false))
+			{
+				if (InputInfo.SelectionStart != -1)
+				{
+					ImGui::SetClipboardText(InputInfo.Text->substr(InputInfo.SelectionStart, InputInfo.SelectionEnd - InputInfo.SelectionStart).c_str());
+					*InputInfo.Text = InputInfo.Text->substr(0, InputInfo.SelectionStart) + InputInfo.Text->substr(InputInfo.SelectionEnd);
+				}
+				else
+				{
+					ImGui::SetClipboardText((*InputInfo.Text).c_str());
+					*InputInfo.Text = "";
+				}
+			}
+			ImGui::EndPopup();
+		}
+	}
+
 	// fill params window
 	void ParamsInitialization()
 	{
-		if (SelectedElems.size() == 1)
+		if (SelectedElems.size() > 0)
 		{
 			std::vector<ElementAttribute*> Attributes = (*Elems[SelectedElems[0]].ElementInStorage).GetAttributes();
+			static CallbackInfo InputInfo{ -1,-1 };
 			if (ImGui::BeginTable("Attributes", 3, ImGuiTableFlags_SizingFixedFit))
 			{
 				ImGui::TableSetupColumn("Names", ImGuiTableColumnFlags_WidthFixed);
@@ -1957,62 +2130,183 @@ namespace ScenariosEditorGUI {
 				ImGui::TableSetColumnIndex(1);
 				ImGui::PushItemWidth(ImGui::GetColumnWidth());
 				int count = 1;
-				for (int j = 0; j < (Elems[SelectedElems[0]].ElementInStorage)->caption.size(); j++)
-					if ((Elems[SelectedElems[0]].ElementInStorage)->caption[j] == '\n') count++;
-				if (ImGui::InputTextMultiline("##Caption", &(Elems[SelectedElems[0]].ElementInStorage)->caption, ImVec2(-FLT_MIN, ImGui::GetTextLineHeight() * (count + 1))))
+				std::string Text = Elems[SelectedElems[0]].ElementInStorage->caption;
+				for (int i = 1; i < SelectedElems.size(); i++)
+				{
+					if ((Elems[SelectedElems[i]].ElementInStorage)->caption != Text)
+					{
+						Text = u8"<Значения свойства отличаются>";
+						break;
+					}
+				}
+				if (SelectedElems.size() == 1 || Text != u8"<Значения свойства отличаются>")
+				{
+					for (int j = 0; j < (Elems[SelectedElems[0]].ElementInStorage)->caption.size(); j++)
+						if ((Elems[SelectedElems[0]].ElementInStorage)->caption[j] == '\n') count++;
+				}
+				if (ImGui::InputTextMultiline("##Caption", &Text, ImVec2(-FLT_MIN, ImGui::GetTextLineHeight() * (count + 1)), ImGuiInputTextFlags_CallbackAlways, InputTextCallbackHandler, (void*)&InputInfo))
+				{
+					for (int i = 0; i < SelectedElems.size(); i++)
+					{
+						(Elems[SelectedElems[i]].ElementInStorage)->caption = Text;
+					}
 					CheckSave = true;
+				}
+				if (ImGui::IsItemHovered())
+				{
+					InputInfo.Text = &(Elems[SelectedElems[0]].ElementInStorage)->caption;
+					if (ImGui::IsItemActive())
+					{
+						ImGui::OpenPopupOnItemClick("contextinputstring", ImGuiPopupFlags_MouseButtonRight);
+					}
+				}
+				else if (!ImGui::IsPopupOpen("contextinputstring"))
+				{
+					InputInfo.SelectionStart = InputInfo.SelectionEnd = -1;
+				}
 				if (ScenariosEditorElementsData::ElementsData::GetElementName(Elems[SelectedElems[0]].Element) == "Start")
+				{
 					ScenarioEditorScenarioStorage::SetActualScenarioName((Elems[SelectedElems[0]].ElementInStorage)->caption);
+				}
 				ImGui::PopItemWidth();
 				ImGui::TableSetColumnIndex(2);
 				static const float wrap_width = 200.0f;
-				for (int i = 0; i < Attributes.size(); i++)
+				if (ParamsWidth > WindowsGroupWidth)
 				{
-					std::string label = std::string("##") + (Attributes[i])->Name;
-					ImGui::TableNextRow();
-					ImGui::TableSetColumnIndex(0);
-					ImGui::AlignTextToFramePadding();
-					ImGui::Text((Attributes[i])->Name.c_str());
-					ImGui::TableSetColumnIndex(1);
-					ImGui::PushItemWidth(ImGui::GetColumnWidth());
-					int count = 1;
-					switch ((Attributes[i])->GetFormat())
+					float OldCursorPosX = ImGui::GetCursorPosX();
+					ImGui::SetCursorPosX(ImGui::GetCursorPosX() + wrap_width - ImGui::GetFrameHeight() - ImGui::GetStyle().ItemSpacing.x);
+					if (ImGui::ArrowButton("##PreviousWidth", ImGuiDir_Left))
 					{
-					case 0:
-						for (int j = 0; j < (Attributes[i])->ValueS.size(); j++)
-							if ((Attributes[i])->ValueS[j] == '\n') count++;
-						if (ImGui::InputTextMultiline(label.c_str(), &(Attributes[i])->ValueS, ImVec2(-FLT_MIN, ImGui::GetTextLineHeight() * (count + 1))))
-						{
-							CheckSave = true;
-						}
-						break;
-					case 1:
-					{
-						int State = (int)(Attributes[i])->ValueF;
-						const char* items[] = { "False", "True" };
-						if (ImGui::Combo(label.c_str(), &State, items, IM_ARRAYSIZE(items)))
-						{
-							CheckSave = true;
-						}
-						(Attributes[i])->ValueF = (float)State;
-						break;
+						ParamsWidth = WindowsGroupWidth;
 					}
-					case 2:
-						if (ImGui::InputFloat(label.c_str(), &(Attributes[i])->ValueF, 0.01f, 1.0f, "%.2f"))
-						{
-							CheckSave = true;
-						}
-						break;
-					}
-					ImGui::PopItemWidth();
-					ImGui::TableSetColumnIndex(2);
-					ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + wrap_width);
-					ImGui::AlignTextToFramePadding();
-					ImGui::Text(ScenariosEditorElementsData::ElementsData::GetAttributeHint((Attributes[i])->Name).c_str(), wrap_width);
-					ImGui::PopTextWrapPos();
+					ImGui::SetCursorPosX(OldCursorPosX);
 				}
+				bool ShowParams = true;
+				int FirstElement = Elems[SelectedElems[0]].Element;
+				for (int i = 1; i < SelectedElems.size(); i++)
+				{
+					if (Elems[SelectedElems[i]].Element != FirstElement)
+					{
+						ShowParams = false;
+						break;
+					}
+				}
+				if (ShowParams)
+				{
+					for (int i = 0; i < Attributes.size(); i++)
+					{
+						std::string label = std::string("##") + (Attributes[i])->Name;
+						ImGui::TableNextRow();
+						ImGui::TableSetColumnIndex(0);
+						ImGui::AlignTextToFramePadding();
+						ImGui::Text((Attributes[i])->Name.c_str());
+						ImGui::TableSetColumnIndex(1);
+						ImGui::PushItemWidth(ImGui::GetColumnWidth());
+						int count = 1;
+						std::string TextAttribute = (Attributes[i])->ValueS;
+						float FloatAttribute = (Attributes[i])->ValueF;
+						switch ((Attributes[i])->GetFormat())
+						{
+						case 0:
+							for (int j = 1; j < SelectedElems.size(); j++)
+							{
+								if ((Elems[SelectedElems[j]].ElementInStorage)->GetAttributes()[i]->ValueS != TextAttribute)
+								{
+									TextAttribute = u8"<Значения свойства отличаются>";
+									break;
+								}
+							}
+							if (SelectedElems.size() == 1 || TextAttribute != u8"<Значения свойства отличаются>")
+							{
+								for (int j = 0; j < Attributes[i]->ValueS.size(); j++)
+									if (Attributes[i]->ValueS[j] == '\n') count++;
+							}
+							if (ImGui::InputTextMultiline(label.c_str(), &TextAttribute, ImVec2(-FLT_MIN, ImGui::GetTextLineHeight() * (count + 1)), ImGuiInputTextFlags_CallbackAlways, InputTextCallbackHandler, (void*)&InputInfo))
+							{
+								for (int j = 0; j < SelectedElems.size(); j++)
+								{
+									(Elems[SelectedElems[j]].ElementInStorage)->GetAttributes()[i]->ValueS = TextAttribute;
+								}
+								CheckSave = true;
+							}
+							if (ImGui::IsItemHovered())
+							{
+								InputInfo.Text = &Attributes[i]->ValueS;
+								if (ImGui::IsItemActive())
+								{
+									ImGui::OpenPopupOnItemClick("contextinputstring", ImGuiPopupFlags_MouseButtonRight);
+								}
+							}
+							else if (!ImGui::IsPopupOpen("contextinputstring"))
+							{
+								InputInfo.SelectionStart = InputInfo.SelectionEnd = -1;
+							}
+							break;
+						case 1:
+						{
+							int State = (int)FloatAttribute;
+							const char* items[] = { "False", "True" };
+							for (int j = 1; j < SelectedElems.size(); j++)
+							{
+								if ((Elems[SelectedElems[j]].ElementInStorage)->GetAttributes()[i]->ValueF != FloatAttribute)
+								{
+									State = 0;
+									break;
+								}
+							}
+							if (ImGui::Combo(label.c_str(), &State, items, IM_ARRAYSIZE(items)))
+							{
+								for (int j = 0; j < SelectedElems.size(); j++)
+								{
+									(Elems[SelectedElems[j]].ElementInStorage)->GetAttributes()[i]->ValueF = (float)State;
+								}
+								CheckSave = true;
+							}
+							break;
+						}
+						case 2:
+							for (int j = 1; j < SelectedElems.size(); j++)
+							{
+								if ((Elems[SelectedElems[j]].ElementInStorage)->GetAttributes()[i]->ValueF != FloatAttribute)
+								{
+									FloatAttribute = 0;
+									break;
+								}
+							}
+							if (ImGui::InputFloat(label.c_str(), &FloatAttribute, 0.01f, 1.0f, "%.2f"))
+							{
+								for (int j = 0; j < SelectedElems.size(); j++)
+								{
+									(Elems[SelectedElems[j]].ElementInStorage)->GetAttributes()[i]->ValueF = FloatAttribute;
+								}
+								CheckSave = true;
+							}
+							break;
+						}
+						ImGui::PopItemWidth();
+						ImGui::TableSetColumnIndex(2);
+						ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + wrap_width);
+						ImGui::AlignTextToFramePadding();
+						ImGui::Text(ScenariosEditorElementsData::ElementsData::GetAttributeHint((Attributes[i])->Name).c_str(), wrap_width);
+						ImGui::PopTextWrapPos();
+					}
+				}
+				AddInputTextContextMenu(InputInfo);
 			}
 			ImGui::EndTable();
+		}
+		else
+		{
+			if (ParamsWidth > WindowsGroupWidth)
+			{
+				float OldCursorPosX = ImGui::GetCursorPosX();
+				ImGui::SetCursorPosX(ImGui::GetContentRegionMax().x - ImGui::GetFrameHeight());
+				if (ImGui::ArrowButton("##PreviousWidth", ImGuiDir_Left))
+				{
+					ParamsWidth = WindowsGroupWidth;
+				}
+				ImGui::SetCursorPosX(OldCursorPosX);
+			}
 		}
 	}
 
@@ -2028,6 +2322,10 @@ namespace ScenariosEditorGUI {
 	void SwitchMap()
 	{
 		MapOpen = !MapOpen;
+	}
+	void SwitchShowCaption()
+	{
+		ShowCaption = !ShowCaption;
 	}
 
 	void SearchWindow()
@@ -2140,7 +2438,7 @@ namespace ScenariosEditorGUI {
 					else CurrentElem--;
 					float shift_x = ElementsData::GetElementTexture(Elems[SearchResult[CurrentElem]].Element, CanvasZoom).Width / 2.0f;
 					float shift_y = ElementsData::GetElementTexture(Elems[SearchResult[CurrentElem]].Element, CanvasZoom).Height / 2.0f;
-					CenterView(Elems[SearchResult[CurrentElem]].Pos.x + shift_x, Elems[SearchResult[CurrentElem]].Pos.y + shift_y);
+					::CenterView(Elems[SearchResult[CurrentElem]].Pos.x + shift_x, Elems[SearchResult[CurrentElem]].Pos.y + shift_y);
 				}
 				ImGui::SameLine();
 				if (ImGui::ArrowButton("##Next", ImGuiDir_Right))
@@ -2149,7 +2447,17 @@ namespace ScenariosEditorGUI {
 					else CurrentElem++;
 					float shift_x = ElementsData::GetElementTexture(Elems[SearchResult[CurrentElem]].Element, CanvasZoom).Width / 2.0f;
 					float shift_y = ElementsData::GetElementTexture(Elems[SearchResult[CurrentElem]].Element, CanvasZoom).Height / 2.0f;
-					CenterView(Elems[SearchResult[CurrentElem]].Pos.x + shift_x, Elems[SearchResult[CurrentElem]].Pos.y + shift_y);
+					::CenterView(Elems[SearchResult[CurrentElem]].Pos.x + shift_x, Elems[SearchResult[CurrentElem]].Pos.y + shift_y);
+				}
+				ImGui::SameLine();
+				if (ImGui::Button(u8"Выделить все"))
+				{
+					SelectedElems.clear();
+					SelectedLinks.clear();
+					for (int Elem : SearchResult)
+					{
+						SelectedElems.push_back(Elem);
+					}
 				}
 			}
 			ImGui::End();
@@ -2193,7 +2501,7 @@ namespace ScenariosEditorGUI {
 				{
 					ret.push_back(Elem);
 					Texture UsedTexture = ElementsData::GetElementTexture(Elems[Elem].Element, CanvasZoom);
-					float x = origin.x + Elems[Elem].Pos.x * CanvasZoom - 10 > viewport->WorkSize.x / 4 ? origin.x + Elems[Elem].Pos.x * CanvasZoom - 10 : viewport->WorkSize.x / 4;
+					float x = origin.x + Elems[Elem].Pos.x * CanvasZoom - 10 > WindowsGroupWidth ? origin.x + Elems[Elem].Pos.x * CanvasZoom - 10 : WindowsGroupWidth;
 					if (x < origin.x + Elems[Elem].Pos.x * CanvasZoom + UsedTexture.Width + 10)
 						canvas_draw_list->AddRectFilled(
 							ImVec2(x, origin.y + Elems[Elem].Pos.y * CanvasZoom - 10),
@@ -2250,7 +2558,7 @@ namespace ScenariosEditorGUI {
 				{
 					ret.push_back(Elem);
 					Texture UsedTexture = ElementsData::GetElementTexture(Elems[Elem].Element, CanvasZoom);
-					float x = origin.x + Elems[Elem].Pos.x * CanvasZoom - 10 > viewport->WorkSize.x / 4 ? origin.x + Elems[Elem].Pos.x * CanvasZoom - 10 : viewport->WorkSize.x / 4;
+					float x = origin.x + Elems[Elem].Pos.x * CanvasZoom - 10 > WindowsGroupWidth ? origin.x + Elems[Elem].Pos.x * CanvasZoom - 10 : WindowsGroupWidth;
 					if (x < origin.x + Elems[Elem].Pos.x * CanvasZoom + UsedTexture.Width + 10)
 						canvas_draw_list->AddRectFilled(
 							ImVec2(x, origin.y + Elems[Elem].Pos.y * CanvasZoom - 10),
@@ -2299,8 +2607,8 @@ namespace ScenariosEditorGUI {
 				NewOriginOnMap.y = min(NewOriginOnMap.y, (map_p0.y + (Corners[1].y - Corners[0].y + Space * 2) * MapZoom - canvas_sz.y / CanvasZoom * MapZoom));
 				NewOriginOnMap.x = max(NewOriginOnMap.x, map_p0.x);
 				NewOriginOnMap.y = max(NewOriginOnMap.y, map_p0.y);
-				scrolling.x = -((NewOriginOnMap.x - map_p0.x) / MapZoom - Space + Corners[0].x + shift.x / CanvasZoom);
-				scrolling.y = -((NewOriginOnMap.y - map_p0.y) / MapZoom - Space + Corners[0].y + shift.y / CanvasZoom);
+				scrolling.x = -((NewOriginOnMap.x - map_p0.x) / MapZoom - Space + Corners[0].x + Shift.x / CanvasZoom);
+				scrolling.y = -((NewOriginOnMap.y - map_p0.y) / MapZoom - Space + Corners[0].y + Shift.y / CanvasZoom);
 			}
 
 			for (int i = 0; i < Elems.size(); i++)
@@ -2322,11 +2630,11 @@ namespace ScenariosEditorGUI {
 			}
 
 			ImVec2 ScreenTopLeft = {
-				max(-scrolling.x - shift.x / CanvasZoom, Corners[0].x - Space),
-				max(-scrolling.y - shift.y / CanvasZoom, Corners[0].y - Space) };
+				max(-scrolling.x - Shift.x / CanvasZoom, Corners[0].x - Space),
+				max(-scrolling.y - Shift.y / CanvasZoom, Corners[0].y - Space) };
 			ImVec2 ScreenBottomRight = {
-				min(-scrolling.x - shift.x / CanvasZoom + canvas_sz.x / CanvasZoom, Corners[1].x + Space),
-				min(-scrolling.y - shift.y / CanvasZoom + canvas_sz.y / CanvasZoom, Corners[1].y + Space)
+				min(-scrolling.x - Shift.x / CanvasZoom + canvas_sz.x / CanvasZoom, Corners[1].x + Space),
+				min(-scrolling.y - Shift.y / CanvasZoom + canvas_sz.y / CanvasZoom, Corners[1].y + Space)
 			};
 
 			if (ScreenTopLeft.x < ScreenBottomRight.x && ScreenTopLeft.y < ScreenBottomRight.y)
@@ -2837,7 +3145,7 @@ namespace ScenariosEditorGUI {
 	}
 
 #pragma endregion Function, which implements Ctrl+Z, Ctrl+Y functionality
-	
+
 #pragma region Header functions
 
 	// Hooked from main, starts scenarios editor window

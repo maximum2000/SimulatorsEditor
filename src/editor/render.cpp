@@ -31,7 +31,7 @@ namespace ScenariosEditorRender
 		// Create application window
 		wc = { sizeof(wc), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(NULL), NULL, NULL, NULL, NULL, L"ImGui Example", NULL };
 		::RegisterClassExW(&wc);
-		hwnd = ::CreateWindowW(wc.lpszClassName, L"САПР КИТ", WS_OVERLAPPEDWINDOW, 0, 0, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN), NULL, NULL, wc.hInstance, NULL);
+		hwnd = ::CreateWindowW(wc.lpszClassName, L"Редактор сценариев", WS_OVERLAPPEDWINDOW, 0, 0, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN), NULL, NULL, wc.hInstance, NULL);
 
 		// Initialize Direct3D
 		if (!CreateDeviceD3D(hwnd))

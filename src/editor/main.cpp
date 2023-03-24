@@ -8,6 +8,7 @@
 #include <d3d11.h>
 #include <tchar.h>
 #include "scenariosgui.h"
+#include <iostream>
 
 // Data
 static ID3D11Device*            g_pd3dDevice = NULL;
@@ -25,8 +26,20 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 // Main code
 int main(int, char**)
 {
-    ScenariosEditorGUI::ShowDemoScenarioGUI();
-    //CreateDemonstrationMenuMM();
+    try
+    {
+        ScenariosEditorGUI::ShowDemoScenarioGUI();
+        //CreateDemonstrationMenuMM();
+    }
+    catch (const std::exception& exc)
+    {
+        // catch anything thrown within try block that derives from std::exception
+        std::cerr << exc.what();
+    }
+    catch (...)
+    {
+        std::cout << u"error_uncatched";
+    }
     return 0;
 }
 

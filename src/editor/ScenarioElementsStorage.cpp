@@ -120,11 +120,21 @@ namespace ScenariosEditorScenarioElement
 			}
 		}
 		if (found)
+		{
 			for (int i = 0; i < ScenarioElements.size(); i++)
 			{
 				for (int j = 0; j < (*ScenarioElements[i]).pins.size(); j++)
-					if ((*ScenarioElements[i]).pins[j] > MinPin) (*ScenarioElements[i]).pins[j] += Shift;
+					if ((*ScenarioElements[i]).pins[j] > MinPin)
+					{
+						(*ScenarioElements[i]).pins[j] += Shift;
+					}
 			}
+			for (int i = 0; i < Links.size(); i++)
+			{
+				if (Links[i][0] > MinPin) Links[i][0] += Shift;
+				if (Links[i][1] > MinPin) Links[i][1] += Shift;
+			}
+		}
 		MaxPin += Shift;
 	}
 
