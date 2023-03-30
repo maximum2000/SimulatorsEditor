@@ -427,7 +427,6 @@ namespace EditorMathModel
 				if (ImGui::MenuItem("Save As..")) {}
 				ImGui::Separator();
 				if (ImGui::MenuItem("Import")) {}
-				if (ImGui::MenuItem("Export as")) {}
 				ImGui::Separator();
 				if (ImGui::MenuItem("Exit")) {}
 				ImGui::EndMenu();
@@ -436,6 +435,7 @@ namespace EditorMathModel
 			{
 				if (ImGui::MenuItem("Undo", "Ctrl+Z")) {}
 				if (ImGui::MenuItem("Redo", "Ctrl+Y")) {}
+				ImGui::Separator();
 				ImGui::EndMenu();
 			}
 			if (ImGui::BeginMenu("Window"))
@@ -1023,7 +1023,6 @@ namespace EditorMathModel
 	}
 #pragma endregion
 #pragma region Helper function for linking point location (definition)
-
 	ImVec2 GetLinkingPointLocation(int Elem, int Point)
 	{
 		static const float Spacing = 0.25; // counted from texture height/width. (spacing = times from def. texture / height)
@@ -1056,7 +1055,6 @@ namespace EditorMathModel
 		}
 		throw;
 	}
-
 #pragma endregion
 #pragma region Helper functions for links (declaration)
 	void CanvasAddLinkingPointsButton(int elem, int pin, const char* label, ImVec2 position)
