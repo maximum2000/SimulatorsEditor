@@ -11,6 +11,7 @@ namespace ScenariosEditorScenarioElement
 	{
 		Text = ElementAttribute(u8"Text",0);
 		WithButtonOk = ElementAttribute(u8"WithButtonOk",1);
+		WithButtonOk.ValueF = 1;
 	}
 	std::vector<ElementAttribute*> Message::GetAttributes()
 	{

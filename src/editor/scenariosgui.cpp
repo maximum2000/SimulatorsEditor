@@ -149,6 +149,7 @@ namespace ScenariosEditorGUI {
 	void Paste();
 	void Delete();
 	void DeleteLinks();
+	void ElemsCenter();
 
 	// Scenarios
 	void DrawScenariosSection(const ImGuiViewport* viewport);
@@ -354,7 +355,7 @@ namespace ScenariosEditorGUI {
 				WindowsGroupWidth = ImGui::GetMainViewport()->WorkSize.x / 4;
 				ParamsWidth = WindowsGroupWidth;
 			}
-			ImGui::ShowDemoWindow(); // remove later
+			//ImGui::ShowDemoWindow(); // remove later
 			// Menu
 			DrawMenu();
 			// Window
@@ -1003,13 +1004,17 @@ namespace ScenariosEditorGUI {
 				{
 					Paste();
 				}
-				if (ImGui::MenuItem(u8"Удалить", u8"Ctrl+Delete", false, SelectedElems.size() > 0 || SelectedLinks.size() > 0))
+				if (ImGui::MenuItem(u8"Удалить", u8"Shift+Delete", false, SelectedElems.size() > 0 || SelectedLinks.size() > 0))
 				{
 					Delete();
 				}
-				if (ImGui::MenuItem(u8"Удалить связи элементов", u8"Ctrl+Shift+Delete", false, SelectedElems.size() > 0))
+				if (ImGui::MenuItem(u8"Удалить связи элементов", u8"Shift+Ctrl+Delete", false, SelectedElems.size() > 0))
 				{
 					DeleteLinks();
+				}
+				if (ImGui::MenuItem(u8"Центрировать элементы", u8"Ctrl+G", false, SelectedElems.size() > 1))
+				{
+					ElemsCenter();
 				}
 				ImGui::Separator();
 				if (ImGui::MenuItem(u8"Отменить", u8"Ctrl+Z", false, CopyBufferAction("Can_Undo")))
@@ -1094,6 +1099,17 @@ namespace ScenariosEditorGUI {
 			{
 				if (ImGui::GetIO().KeyCtrl)
 				{
+					if (ImGui::GetIO().KeyShift)
+					{
+						scrolling.x += ImGui::GetIO().MouseWheel * ScrollStep / CanvasZoom;
+					}
+					else
+					{
+						scrolling.y += ImGui::GetIO().MouseWheel * ScrollStep / CanvasZoom;
+					}
+				}
+				else
+				{
 					float oldzoom = CanvasZoom;
 					CanvasZoom += ImGui::GetIO().MouseWheel * 0.05f;
 					if (CanvasZoom > 2) CanvasZoom = 2;
@@ -1103,17 +1119,6 @@ namespace ScenariosEditorGUI {
 					{
 						Shift.x -= (canvas_sz.x * CanvasZoom - canvas_sz.x * oldzoom) / 2.0f;
 						Shift.y -= (canvas_sz.y * CanvasZoom - canvas_sz.y * oldzoom) / 2.0f;
-					}
-				}
-				else
-				{
-					if (ImGui::GetIO().KeyShift)
-					{
-						scrolling.x += ImGui::GetIO().MouseWheel * ScrollStep / CanvasZoom;
-					}
-					else
-					{
-						scrolling.y += ImGui::GetIO().MouseWheel * ScrollStep / CanvasZoom;
 					}
 				}
 			}
@@ -1163,7 +1168,7 @@ namespace ScenariosEditorGUI {
 			canvas_draw_list->AddRectFilled(
 				ImVec2(origin.x + Elems[SelectedElem].Pos.x * CanvasZoom, origin.y + Elems[SelectedElem].Pos.y * CanvasZoom),
 				ImVec2(origin.x + Elems[SelectedElem].Pos.x * CanvasZoom + UsedTexture.Width, origin.y + Elems[SelectedElem].Pos.y * CanvasZoom + UsedTexture.Height),
-				IM_COL32(255, 255, 0, 10));
+				IM_COL32(248, 156, 20, 75));
 		}
 	}
 
@@ -1204,6 +1209,7 @@ namespace ScenariosEditorGUI {
 		bool ShorcutsChecked = false;
 		if (!ImGui::IsAnyItemActive() && !ShorcutsChecked)
 		{
+			ShorcutsChecked = true;
 			if (ImGui::IsKeyPressed(ImGuiKey_F11, false) && SelectedElems.size() == 1)
 			{
 				for (int i = 0; i < Elems.size(); i++)
@@ -1228,7 +1234,92 @@ namespace ScenariosEditorGUI {
 					}
 				}
 			}
-			ShorcutsChecked = true;
+			if (ImGui::IsKeyPressed(ImGuiKey_DownArrow, false) && SelectedElems.size() == 1)
+			{
+				float ElemY = Elems[SelectedElems[0]].Pos.y;
+				int ClosestElem = -1;
+				int FirstElem = -1;
+				float LeastDiffY = FLT_MAX;
+				float MinY = FLT_MAX;
+				SelectedElems.clear();
+				for (int i = 0; i < Elems.size(); i++)
+				{
+					if (Elems[i].Pos.y < MinY)
+					{
+						MinY = Elems[i].Pos.y;
+						FirstElem = i;
+					}
+					if (Elems[i].Pos.y > ElemY && Elems[i].Pos.y - ElemY < LeastDiffY)
+					{
+						LeastDiffY = Elems[i].Pos.y - ElemY;
+						ClosestElem = i;
+					}
+				}
+				if (ClosestElem != -1)
+				{
+					SelectedElems.push_back(ClosestElem);
+					float shift_x = ElementsData::GetElementTexture(Elems[ClosestElem].Element, CanvasZoom).Width / 2.0f;
+					float shift_y = ElementsData::GetElementTexture(Elems[ClosestElem].Element, CanvasZoom).Height / 2.0f;
+					::CenterView(Elems[ClosestElem].Pos.x + shift_x, Elems[ClosestElem].Pos.y + shift_y);
+				}
+				else
+				{
+					SelectedElems.push_back(FirstElem);
+					float shift_x = ElementsData::GetElementTexture(Elems[FirstElem].Element, CanvasZoom).Width / 2.0f;
+					float shift_y = ElementsData::GetElementTexture(Elems[FirstElem].Element, CanvasZoom).Height / 2.0f;
+					::CenterView(Elems[FirstElem].Pos.x + shift_x, Elems[FirstElem].Pos.y + shift_y);
+				}
+			}
+			if (ImGui::IsKeyPressed(ImGuiKey_UpArrow, false) && SelectedElems.size() == 1)
+			{
+				float ElemY = Elems[SelectedElems[0]].Pos.y;
+				int ClosestElem = -1;
+				int LastElem = -1;
+				float LeastDiffY = FLT_MAX;
+				float MaxY = -FLT_MAX;
+				SelectedElems.clear();
+				for (int i = 0; i < Elems.size(); i++)
+				{
+					if (Elems[i].Pos.y > MaxY)
+					{
+						MaxY = Elems[i].Pos.y;
+						LastElem = i;
+					}
+					if (Elems[i].Pos.y < ElemY && ElemY - Elems[i].Pos.y < LeastDiffY)
+					{
+						LeastDiffY = ElemY - Elems[i].Pos.y;
+						ClosestElem = i;
+					}
+				}
+				if (ClosestElem != -1)
+				{
+					SelectedElems.push_back(ClosestElem);
+					float shift_x = ElementsData::GetElementTexture(Elems[ClosestElem].Element, CanvasZoom).Width / 2.0f;
+					float shift_y = ElementsData::GetElementTexture(Elems[ClosestElem].Element, CanvasZoom).Height / 2.0f;
+					::CenterView(Elems[ClosestElem].Pos.x + shift_x, Elems[ClosestElem].Pos.y + shift_y);
+				}
+				else
+				{
+					SelectedElems.push_back(LastElem);
+					float shift_x = ElementsData::GetElementTexture(Elems[LastElem].Element, CanvasZoom).Width / 2.0f;
+					float shift_y = ElementsData::GetElementTexture(Elems[LastElem].Element, CanvasZoom).Height / 2.0f;
+					::CenterView(Elems[LastElem].Pos.x + shift_x, Elems[LastElem].Pos.y + shift_y);
+				}
+			}
+			if (ImGui::GetIO().KeyShift)
+			{
+				if (ImGui::IsKeyPressed(ImGuiKey_Delete, false))
+				{
+					if (ImGui::GetIO().KeyCtrl)
+					{
+						DeleteLinks();
+					}
+					else
+					{
+						Delete();
+					}
+				}
+			}
 			if (ImGui::GetIO().KeyCtrl)
 			{
 				if (ImGui::IsKeyPressed(ImGuiKey_X, false))
@@ -1263,16 +1354,9 @@ namespace ScenariosEditorGUI {
 				{
 					SwitchShowCaption();
 				}
-				if (ImGui::IsKeyPressed(ImGuiKey_Delete, false))
+				if (ImGui::IsKeyPressed(ImGuiKey_G, false))
 				{
-					if (ImGui::GetIO().KeyShift)
-					{
-						DeleteLinks();
-					}
-					else
-					{
-						Delete();
-					}
+					ElemsCenter();
 				}
 				if (ImGui::IsKeyPressed(ImGuiKey_O))
 				{
@@ -1323,12 +1407,12 @@ namespace ScenariosEditorGUI {
 			CurrentSelectionLinks.clear();
 		}
 		// Right-mouse dragging causes canvas dragging
-		if (ImGui::IsMouseClicked(ImGuiMouseButton_Right) && CurrentState == Rest && clicked_on == 1)
+		if (ImGui::IsMouseClicked(ImGuiMouseButton_Middle) && CurrentState == Rest && clicked_on == 1)
 		{
 			CurrentState = CanvasDragging;
 		}
 		// Releasing right mouse while dragging will return to rest position
-		if (ImGui::IsMouseReleased(ImGuiMouseButton_Right) && CurrentState == CanvasDragging)
+		if (ImGui::IsMouseReleased(ImGuiMouseButton_Middle) && CurrentState == CanvasDragging)
 		{
 			CurrentState = Rest;
 		}
@@ -1863,6 +1947,36 @@ namespace ScenariosEditorGUI {
 			SelectedLinks.clear();
 		}
 	}
+	void ElemsCenter()
+	{
+		if (SelectedElems.size() > 1)
+		{
+			CopyBufferAction("Elem_Group_Center");
+			int min_elem = INT_MAX;
+			float min_y = FLT_MAX;
+			for (int i = 0; i < (int)SelectedElems.size(); i++)
+			{
+				if (min_y > Elems[SelectedElems[i]].Pos.y)
+				{
+					min_y = Elems[SelectedElems[i]].Pos.y;
+					min_elem = SelectedElems[i];
+				}
+			}
+			Texture MinElemTexture = ElementsData::GetElementTexture(Elems[min_elem].Element);
+			float Center = Elems[min_elem].Pos.x + MinElemTexture.Width / 2;
+			for (int i = 0; i < (int)SelectedElems.size(); i++)
+			{
+				Texture UsedTexture = ElementsData::GetElementTexture(Elems[SelectedElems[i]].Element);
+				Elems[SelectedElems[i]].Pos.x = Center - UsedTexture.Width / 2;
+				ScenariosEditorScenarioElement::UpdateCoordinates(
+					Elems[SelectedElems[i]].ElementInStorage,
+					Elems[SelectedElems[i]].Pos.x,
+					Elems[SelectedElems[i]].Pos.y
+				);
+			}
+		}
+		CheckSave = true;
+	}
 
 #pragma endregion Copying, pasting, etc...
 
@@ -2027,8 +2141,7 @@ namespace ScenariosEditorGUI {
 			if (ImGui::BeginDragDropSource())
 			{
 				ImGui::SetDragDropPayload("Element", &i, sizeof(int), ImGuiCond_Once);
-				//ImGui::Text(ElementNames[i]);
-				ImGui::ImageButton("Element", (void*)Tex.Payload, ImVec2((float)Tex.Width, (float)Tex.Height));
+				ImGui::Image((void*)Tex.Payload, ImVec2((float)Tex.Width, (float)Tex.Height));
 				ImGui::EndDragDropSource();
 			}
 			ImGui::PopID();
@@ -2114,12 +2227,40 @@ namespace ScenariosEditorGUI {
 	// fill params window
 	void ParamsInitialization()
 	{
+		static std::map<int, std::string> CaptionBuffer;
+		static std::map<int, std::vector<ElementAttribute>> AttrBuffer;
 		if (SelectedElems.size() > 0)
 		{
+			static std::vector<int> PreviousElems = SelectedElems;
+			static std::shared_ptr<ScenarioElement> PreviousElem = Elems[SelectedElems[0]].ElementInStorage;
+			bool ShouldClear = false;
+			if (PreviousElems.size() != SelectedElems.size())
+			{
+				ShouldClear = true;
+			}
+			else {
+				for (int i = 0; i < SelectedElems.size(); i++)
+				{
+					if (PreviousElems[i] != SelectedElems[i])
+					{
+						ShouldClear = true;
+						break;
+					}
+				}
+			}
+			if (ShouldClear ||
+				(SelectedElems.size() == 1 && Elems[SelectedElems[0]].ElementInStorage != PreviousElem))
+			{
+				CaptionBuffer.clear();
+				AttrBuffer.clear();
+			}
+			PreviousElems = SelectedElems;
+			PreviousElem = Elems[SelectedElems[0]].ElementInStorage;
 			std::vector<ElementAttribute*> Attributes = (*Elems[SelectedElems[0]].ElementInStorage).GetAttributes();
 			static CallbackInfo InputInfo{ -1,-1 };
 			if (ImGui::BeginTable("Attributes", 3, ImGuiTableFlags_SizingFixedFit))
 			{
+				ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 8.0f, 12.0f });
 				ImGui::TableSetupColumn("Names", ImGuiTableColumnFlags_WidthFixed);
 				ImGui::TableSetupColumn("Fields", ImGuiTableColumnFlags_WidthStretch);
 				ImGui::TableSetupColumn("Hints", ImGuiTableColumnFlags_WidthFixed);
@@ -2144,6 +2285,20 @@ namespace ScenariosEditorGUI {
 					for (int j = 0; j < (Elems[SelectedElems[0]].ElementInStorage)->caption.size(); j++)
 						if ((Elems[SelectedElems[0]].ElementInStorage)->caption[j] == '\n') count++;
 				}
+				if (CaptionBuffer.size() == 0)
+				{
+					for (int j = 0; j < SelectedElems.size(); j++)
+					{
+						std::vector<ElementAttribute> Attributes;
+						for (ElementAttribute* Attribute : (Elems[SelectedElems[j]].ElementInStorage)->GetAttributes())
+						{
+							Attributes.push_back(*Attribute);
+						}
+						AttrBuffer[j] = Attributes;
+						CaptionBuffer[j] = (Elems[SelectedElems[j]].ElementInStorage)->caption;
+					}
+				}
+				ImGui::PopStyleVar();
 				if (ImGui::InputTextMultiline("##Caption", &Text, ImVec2(-FLT_MIN, ImGui::GetTextLineHeight() * (count + 1)), ImGuiInputTextFlags_CallbackAlways, InputTextCallbackHandler, (void*)&InputInfo))
 				{
 					for (int i = 0; i < SelectedElems.size(); i++)
@@ -2152,6 +2307,7 @@ namespace ScenariosEditorGUI {
 					}
 					CheckSave = true;
 				}
+				ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 8.0f, 12.0f });
 				if (ImGui::IsItemHovered())
 				{
 					InputInfo.Text = &(Elems[SelectedElems[0]].ElementInStorage)->caption;
@@ -2221,6 +2377,7 @@ namespace ScenariosEditorGUI {
 								for (int j = 0; j < Attributes[i]->ValueS.size(); j++)
 									if (Attributes[i]->ValueS[j] == '\n') count++;
 							}
+							ImGui::PopStyleVar();
 							if (ImGui::InputTextMultiline(label.c_str(), &TextAttribute, ImVec2(-FLT_MIN, ImGui::GetTextLineHeight() * (count + 1)), ImGuiInputTextFlags_CallbackAlways, InputTextCallbackHandler, (void*)&InputInfo))
 							{
 								for (int j = 0; j < SelectedElems.size(); j++)
@@ -2241,24 +2398,27 @@ namespace ScenariosEditorGUI {
 							{
 								InputInfo.SelectionStart = InputInfo.SelectionEnd = -1;
 							}
+							ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 8.0f, 12.0f });
 							break;
 						case 1:
 						{
-							int State = (int)FloatAttribute;
-							const char* items[] = { "False", "True" };
 							for (int j = 1; j < SelectedElems.size(); j++)
 							{
 								if ((Elems[SelectedElems[j]].ElementInStorage)->GetAttributes()[i]->ValueF != FloatAttribute)
 								{
-									State = 0;
+									FloatAttribute = 0;
 									break;
 								}
 							}
-							if (ImGui::Combo(label.c_str(), &State, items, IM_ARRAYSIZE(items)))
+							if (ImGui::InputFloat(label.c_str(), &FloatAttribute, 1.0f, 1.0f, "%.0f"))
 							{
+								FloatAttribute = std::round(FloatAttribute);
+								if (FloatAttribute < 0) FloatAttribute = 0;
+								else if (FloatAttribute > 1) FloatAttribute = 1;
+								std::cout << FloatAttribute;
 								for (int j = 0; j < SelectedElems.size(); j++)
 								{
-									(Elems[SelectedElems[j]].ElementInStorage)->GetAttributes()[i]->ValueF = (float)State;
+									(Elems[SelectedElems[j]].ElementInStorage)->GetAttributes()[i]->ValueF = FloatAttribute;
 								}
 								CheckSave = true;
 							}
@@ -2273,7 +2433,7 @@ namespace ScenariosEditorGUI {
 									break;
 								}
 							}
-							if (ImGui::InputFloat(label.c_str(), &FloatAttribute, 0.01f, 1.0f, "%.2f"))
+							if (ImGui::InputFloat(label.c_str(), &FloatAttribute, 1.0f, 10.0f, "%.2f"))
 							{
 								for (int j = 0; j < SelectedElems.size(); j++)
 								{
@@ -2294,6 +2454,30 @@ namespace ScenariosEditorGUI {
 				AddInputTextContextMenu(InputInfo);
 			}
 			ImGui::EndTable();
+			ImGui::PopStyleVar();
+			if (CaptionBuffer.size() > 0)
+			{
+				if (ImGui::Button(u8"Откатить значения"))
+				{
+					for (int i = 0; i < SelectedElems.size(); i++)
+					{
+						(Elems[SelectedElems[i]].ElementInStorage)->caption = CaptionBuffer[i];
+						std::vector<ElementAttribute*> CurentAttributes = (*Elems[SelectedElems[i]].ElementInStorage).GetAttributes();
+						for (int j = 0; j < CurentAttributes.size(); j++)
+						{
+							switch (CurentAttributes[j]->GetFormat())
+							{
+							case 0:
+								CurentAttributes[j]->ValueS = AttrBuffer[i][j].ValueS;
+								break;
+							default:
+								CurentAttributes[j]->ValueF = AttrBuffer[i][j].ValueF;
+								break;
+							}
+						}
+					}
+				}
+			}
 		}
 		else
 		{
@@ -2307,6 +2491,8 @@ namespace ScenariosEditorGUI {
 				}
 				ImGui::SetCursorPosX(OldCursorPosX);
 			}
+			CaptionBuffer.clear();
+			AttrBuffer.clear();
 		}
 	}
 
@@ -2766,6 +2952,29 @@ namespace ScenariosEditorGUI {
 				RememberedElems.push_back({ -1, Elems[SelectedElems[i]], SelectedElems[i], { Elems[SelectedElems[i]].Pos.x - drag_shift_x, Elems[SelectedElems[i]].Pos.y - drag_shift_y} });
 			}
 		}
+		else if (Operation == "Elem_Group_Center")
+		{
+			IsFilling = true;
+			int min_elem = INT_MAX;
+			float min_y = FLT_MAX;
+			for (int i = 0; i < (int)SelectedElems.size(); i++)
+			{
+				if (min_y > Elems[SelectedElems[i]].Pos.y)
+				{
+					min_y = Elems[SelectedElems[i]].Pos.y;
+					min_elem = SelectedElems[i];
+				}
+			}
+			Texture MinElemTexture = ElementsData::GetElementTexture(Elems[min_elem].Element);
+			float Center = Elems[min_elem].Pos.x + MinElemTexture.Width / 2;
+			for (int i = 0; i < SelectedElems.size(); i++)
+			{
+				ElementOnCanvas CurrentElem = Elems[SelectedElems[i]];
+				Texture UsedTexture = ElementsData::GetElementTexture(CurrentElem.Element);
+				CurrentElem.Pos.x = Center - UsedTexture.Width / 2;
+				RememberedElems.push_back({ -1, CurrentElem, SelectedElems[i], Elems[SelectedElems[i]].Pos });
+			}
+		}
 		if (IsFilling)
 		{
 			std::vector<ElementMemory>::iterator k = RememberedElems.begin();
@@ -2967,7 +3176,7 @@ namespace ScenariosEditorGUI {
 					}
 				}
 			}
-			if (Operations[CurrentlyAt] == "Elem_Group_Move")
+			if (Operations[CurrentlyAt] == "Elem_Group_Move" || Operations[CurrentlyAt] == "Elem_Group_Center")
 			{
 				for (int i = 0; i < RememberedElems.size(); i++)
 				{
@@ -3123,7 +3332,7 @@ namespace ScenariosEditorGUI {
 					}
 				}
 			}
-			if (Operations[CurrentlyAt] == "Elem_Group_Move")
+			if (Operations[CurrentlyAt] == "Elem_Group_Move" || Operations[CurrentlyAt] == "Elem_Group_Center")
 			{
 				for (int i = 0; i < RememberedElems.size(); i++)
 				{

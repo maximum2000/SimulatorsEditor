@@ -13,6 +13,8 @@ namespace ScenariosEditorScenarioElement
 		function = ElementAttribute(u8"function",0);
 		argumentFloat = ElementAttribute(u8"argumentFloat",2);
 		argumentString = ElementAttribute(u8"argumentString",0);
+		argumentFloat.ValueF = 1;
+		argumentString.ValueS = u8"1";
 	}
 	std::vector<ElementAttribute*> Script::GetAttributes()
 	{
