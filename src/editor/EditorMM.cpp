@@ -2,6 +2,9 @@
 // If you are new to Dear ImGui, read documentation from the docs/ folder + read the top of imgui.cpp.
 // Read online: https://github.com/ocornut/imgui/tree/master/docs
 
+// #define STBI_WINDOWS_UTF8 - в stb_image, для поддержки русских названий
+// #define STBI_FAILURE_USERMSG - в stb_image, для более подробного описания олшибки при загрузке
+
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "imgui_impl_win32.h"
@@ -19,6 +22,8 @@
 #include "ColorData.h"
 #include <math.h>
 #include <string>
+#include "FileDialog.h"
+#include "SchemeStorage.h"
 
 namespace EditorMathModel
 {
@@ -39,7 +44,12 @@ namespace EditorMathModel
 		/*12*/LinkDotHover,
 		/*13*/LinkCreate,
 		/*14*/LinkHover,
-		/*15*/LinkSelected
+		/*15*/LinkSelected,
+		/*16*/SchemeHover,
+		/*17*/SchemeDrag,
+		/*18*/SchemeScalingHover,
+		/*19*/SchemeResize,
+		/*20*/SchemeContext
 	};
 
 	// Forward declarations of helper functions
@@ -60,6 +70,7 @@ namespace EditorMathModel
 	void CanvasDrawElements(ImGuiIO& io);
 	void CanvasDrawLinkingPoints();
 	void CanvasDrawLinks();
+	void CanvasDrawSchemes();
 	void CanvasElementRenderRect(ImVec2 startPosition, ImVec2 endPosition, ImU32 colorBorder, ImU32 colorFill);
 	void DrawDragNDropWindow();
 #pragma endregion
@@ -93,6 +104,13 @@ namespace EditorMathModel
 	void CanvasAddLinkingPointsButton(int elem, int pin, const char* label, ImVec2 position);
 	void CanvasCreateLink(int first_element, int first_pin, int second_element, int second_pin);
 	void CanvasDrawLineFromPointToMouse(ImVec2 point);
+#pragma region Helper functions for schemes (declaration)
+	void CanvasSchemeResize();
+	void CanvasSchemeDragByValue(float xDelta, float yDelta);
+	void CanvasAddSchemeContextMenu();
+	void AddScalingButtons(ImVec2 p0, ImVec2 size, int Scheme);
+	void CanvasAddSchemesButtons();
+#pragma endregion
 #pragma endregion
 	float ReverseScale(float value);
 #pragma region Debug (declaration)
@@ -109,6 +127,7 @@ namespace EditorMathModel
 	static int CurrentHoveredElementIndex = -1;
 	static int CurrentHoveredLinkingPointElementIndex = -1;
 	static int CurrentHoveredLinkingPointPinIndex = -1;
+	static int CurrentHoveredSchemeIndex = -1;
 	static ImVec2 mousePositionOnClick;
 	static float canvasScaleFactor = 1.0f;
 	static float topBarHeight;
@@ -122,6 +141,7 @@ namespace EditorMathModel
 	EditorMMColorData::ColorData ColorData;
 	static std::vector<CanvasElement> CanvasElements;
 	static std::vector<CanvasLink> CanvasLinks;
+	static EditorMMSchemeStorage::SchemeStorage Schemes;
 	ProgrammState currentState = Rest;
 
 	void CreateDemoScenarioGUI()
@@ -208,7 +228,7 @@ namespace EditorMathModel
 #pragma region State Machine (definition)
 	void StateMachineSetState(ProgrammState newState)
 	{
-		if (currentState < 8 || currentState == 12)
+		if (currentState < 8 || currentState == 12 || currentState == 16 || currentState == 18)
 		{
 			currentState = newState;
 		}
@@ -333,6 +353,54 @@ namespace EditorMathModel
 				StateMachineSetState(LinkCreate);
 			}
 		}
+		if (currentState == SchemeHover)
+		{
+			if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+			{
+				mousePositionOnClick = io.MousePos;
+				StateMachineSetState(SchemeDrag);
+			}
+			else if (ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+			{
+				StateMachineSetState(SchemeContext);
+				CanvasAddSchemeContextMenu();
+				ImGui::OpenPopup("ContextScheme");
+			}
+		}
+		if (currentState == SchemeDrag)
+		{
+			CanvasSchemeDragByValue(io.MouseDelta.x, io.MouseDelta.y);
+			if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+			{
+				StateMachineSetState(Rest);
+			}
+		}
+		if (currentState == SchemeScalingHover)
+		{
+			ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeNWSE);
+			if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+			{
+				//mousePositionOnClick = io.MousePos;
+				StateMachineSetState(SchemeResize);
+			}
+		}
+		if (currentState == SchemeResize)
+		{
+			CanvasSchemeResize();
+			ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeNWSE);
+			if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+			{
+				StateMachineSetState(Rest);
+			}
+		}
+		if (currentState == SchemeContext)
+		{
+			CanvasAddSchemeContextMenu();
+			if (!ImGui::IsPopupOpen("ContextScheme"))
+			{
+				currentState = Rest;
+			}
+		}
 		if (ImGui::IsKeyPressed(ImGuiKey_Delete))
 		{
 			if (currentState < 8)
@@ -433,9 +501,14 @@ namespace EditorMathModel
 			}
 			if (ImGui::BeginMenu("Edit"))
 			{
+				// Load Function
 				if (ImGui::MenuItem("Undo", "Ctrl+Z")) {}
 				if (ImGui::MenuItem("Redo", "Ctrl+Y")) {}
 				ImGui::Separator();
+				if (ImGui::MenuItem("Load image"))
+				{
+					Schemes.LoadFileToStorage(EditorFileDialog::OpenFileDialog(0), { -origin.x, -origin.y });
+				}
 				ImGui::EndMenu();
 			}
 			if (ImGui::BeginMenu("Window"))
@@ -552,6 +625,8 @@ namespace EditorMathModel
 		CurrentHoveredLinkingPointPinIndex = -1;
 		CanvasAddLinkingPointsButtons();
 		CanvasDrawLinks();
+		CanvasDrawSchemes();
+		CanvasAddSchemesButtons();
 		CanvasDrawElements(io);
 		CanvasCenterRectangle();
 		ImGui::End();
@@ -683,10 +758,19 @@ namespace EditorMathModel
 		{
 			for (int j = 1; j < CanvasLinks[i].linkDots.size(); j++)
 			{
-				ImVec2 FirstPoint { CanvasLinks[i].linkDots[j - 1].x + origin.x, CanvasLinks[i].linkDots[j - 1].y + origin.y };
-				ImVec2 SecondPoint { CanvasLinks[i].linkDots[j].x + origin.x, CanvasLinks[i].linkDots[j].y + origin.y };
+				ImVec2 FirstPoint{ CanvasLinks[i].linkDots[j - 1].x + origin.x, CanvasLinks[i].linkDots[j - 1].y + origin.y };
+				ImVec2 SecondPoint{ CanvasLinks[i].linkDots[j].x + origin.x, CanvasLinks[i].linkDots[j].y + origin.y };
 				draw_list->AddLine(FirstPoint, SecondPoint, IM_COL32(255, 255, 255, 255));
 			}
+		}
+	}
+	void CanvasDrawSchemes()
+	{
+		for (int i = 0; i < Schemes.size(); i++)
+		{
+			draw_list->AddImage(Schemes[i].myTexture,
+				{ (Schemes[i].Pos.x + origin.x) * canvasScaleFactor, (Schemes[i].Pos.y + origin.y) * canvasScaleFactor + topBarHeight },
+				{ (Schemes[i].Pos.x + origin.x + Schemes[i].imageWidth) * canvasScaleFactor , (Schemes[i].Pos.y + origin.y + Schemes[i].imageHeight) * canvasScaleFactor + topBarHeight });
 		}
 	}
 	void DrawDragNDropWindow()
@@ -1108,6 +1192,125 @@ namespace EditorMathModel
 	void CanvasDrawLineFromPointToMouse(ImVec2 point)
 	{
 		draw_list->AddLine(point, ImGui::GetMousePos(), IM_COL32(255, 255, 255, 255), 1.0f);
+	}
+#pragma endregion
+#pragma region Helper functions for schemes (definition)
+	void CanvasSchemeDragByValue(float xDelta, float yDelta)
+	{
+		Schemes[CurrentHoveredSchemeIndex].Pos = {
+				Schemes[CurrentHoveredSchemeIndex].Pos.x + xDelta / canvasScaleFactor,
+				Schemes[CurrentHoveredSchemeIndex].Pos.y + yDelta / canvasScaleFactor
+		};
+	}
+	void CanvasSchemeResize()
+	{
+		const float MinWidth = 100.0f;
+		ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeNWSE);
+		ImVec2 MousePos = ImGui::GetMousePos();
+		Schemes[CurrentHoveredSchemeIndex].imageWidth = (int)(max(MinWidth, (MousePos.x - (Schemes[CurrentHoveredSchemeIndex].Pos.x + origin.x) * canvasScaleFactor) / canvasScaleFactor));
+		Schemes[CurrentHoveredSchemeIndex].imageHeight = (int)(Schemes[CurrentHoveredSchemeIndex].imageWidth / Schemes[CurrentHoveredSchemeIndex].AspectRatio);
+	}
+	void CanvasAddSchemeContextMenu()
+	{
+		if (ImGui::BeginPopup("ContextScheme"))
+		{
+			if (ImGui::MenuItem("Bring Forward", (const char*)0, false, CurrentHoveredSchemeIndex < Schemes.size() - 1))
+			{
+				Schemes.Swap(CurrentHoveredSchemeIndex, CurrentHoveredSchemeIndex + 1);
+			}
+			if (ImGui::MenuItem("Bring to Front", (const char*)0, false, CurrentHoveredSchemeIndex < Schemes.size() - 1))
+			{
+				Schemes.PushFront(CurrentHoveredSchemeIndex);
+			}
+			if (ImGui::MenuItem("Send Backward", (const char*)0, false, CurrentHoveredSchemeIndex > 0))
+			{
+				Schemes.Swap(CurrentHoveredSchemeIndex, CurrentHoveredSchemeIndex - 1);
+			}
+			if (ImGui::MenuItem("Send to Back", (const char*)0, false, CurrentHoveredSchemeIndex > 0))
+			{
+				Schemes.PushBack(CurrentHoveredSchemeIndex);
+			}
+			ImGui::Separator();
+			if (ImGui::MenuItem("Delete"))
+			{
+				Schemes.Delete(CurrentHoveredSchemeIndex);
+			}
+			if (ImGui::MenuItem("Delete all"))
+			{
+				Schemes.Clear();
+			}
+			ImGui::EndPopup();
+		}
+	}
+	void AddScalingButtons(ImVec2 p0, ImVec2 size, int Scheme)
+	{
+		const float ScalingButtonSize = 5.0f;
+		bool BootomRightOverlapped = false;
+		ImVec2 BottomRightButtonTopLeft { 
+			p0.x + size.x - ScalingButtonSize / 2.0f,
+			p0.y + size.y - ScalingButtonSize / 2.0f };
+		ImVec2 BottomRightButtonBottomRight{
+			BottomRightButtonTopLeft.x + ScalingButtonSize,
+			BottomRightButtonTopLeft.y + ScalingButtonSize };
+		for (int i = Scheme + 1; i < Schemes.size(); i++)
+		{
+			ImVec2 RectSchemeTopLeft { 
+				(Schemes[i].Pos.x + origin.x) * canvasScaleFactor, 
+				(Schemes[i].Pos.y + origin.y) * canvasScaleFactor };
+			ImVec2 RectSchemeBottomRight{
+				RectSchemeTopLeft.x + Schemes[i].imageWidth * canvasScaleFactor,
+				RectSchemeTopLeft.y + Schemes[i].imageHeight * canvasScaleFactor };
+			if (BottomRightButtonTopLeft.x < RectSchemeBottomRight.x &&
+				BottomRightButtonBottomRight.x > RectSchemeTopLeft.x &&
+				BottomRightButtonTopLeft.y < RectSchemeBottomRight.y &&
+				BottomRightButtonBottomRight.y > RectSchemeTopLeft.y)
+			{
+				BootomRightOverlapped = true;
+				break;
+			}
+		}
+		if (!BootomRightOverlapped)
+		{
+			ImGui::SetCursorPos(BottomRightButtonTopLeft);
+			ImGui::InvisibleButton(
+				(std::to_string(Scheme) + "##Scaling").c_str(),
+				{ ScalingButtonSize, ScalingButtonSize },
+				ImGuiButtonFlags_MouseButtonLeft);
+			ImGui::SetItemAllowOverlap();
+			if (ImGui::IsItemHovered())
+			{
+				StateMachineSetState(SchemeScalingHover);
+				if (currentState == SchemeScalingHover)
+				{
+					CurrentHoveredSchemeIndex = Scheme;
+				}
+			}
+		}
+	}
+	void CanvasAddSchemesButtons()
+	{
+		ImVec2 PreviousCursorPos = ImGui::GetCursorPos();
+		for (int i = 0; i < Schemes.size(); i++)
+		{
+			ImGui::SetCursorPos({ (Schemes[i].Pos.x + origin.x) * canvasScaleFactor, (Schemes[i].Pos.y + origin.y) * canvasScaleFactor });
+			ImGui::InvisibleButton(
+				(std::string("##Button") + std::to_string(i)).c_str(),
+				{ Schemes[i].imageWidth * canvasScaleFactor , Schemes[i].imageHeight * canvasScaleFactor },
+				ImGuiButtonFlags_MouseButtonLeft);
+			ImGui::SetItemAllowOverlap();
+			if (ImGui::IsItemHovered())
+			{
+				StateMachineSetState(SchemeHover);
+				if (currentState == SchemeHover)
+				{
+					CurrentHoveredSchemeIndex = i;
+				}
+			}
+			AddScalingButtons(
+				{ (Schemes[i].Pos.x + origin.x) * canvasScaleFactor, (Schemes[i].Pos.y + origin.y) * canvasScaleFactor },
+				{ Schemes[i].imageWidth * canvasScaleFactor, Schemes[i].imageHeight * canvasScaleFactor }, i);
+		}
+		ImGui::SetCursorPos(PreviousCursorPos);
 	}
 #pragma endregion
 	void LinkRecalculate(CanvasElement* element, ImVec2 delta)

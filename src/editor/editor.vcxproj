@@ -146,8 +146,11 @@
     <ClInclude Include="EditorMM.h" />
     <ClInclude Include="EditorMMElement.h" />
     <ClInclude Include="CanvasLinks.h" />
+    <ClInclude Include="FileDialog.h" />
+    <ClInclude Include="ImageLoader.h" />
     <ClInclude Include="Render.h" />
     <ClInclude Include="scenariosgui.h" />
+    <ClInclude Include="SchemeStorage.h" />
     <ClInclude Include="TextureLoader.h" />
   </ItemGroup>
   <ItemGroup>
@@ -163,9 +166,12 @@
     <ClCompile Include="ColorData.cpp" />
     <ClCompile Include="EditorMM.cpp" />
     <ClCompile Include="EditorMMElement.cpp" />
+    <ClCompile Include="FileDialog.cpp" />
+    <ClCompile Include="ImageLoader.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Render.cpp" />
     <ClCompile Include="scenariosgui.cpp" />
+    <ClCompile Include="SchemeStorage.cpp" />
     <ClCompile Include="TextureLoader.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

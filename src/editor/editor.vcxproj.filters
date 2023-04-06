@@ -66,6 +66,15 @@
     <ClInclude Include="CanvasLinks.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
+    <ClInclude Include="FileDialog.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="ImageLoader.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="SchemeStorage.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\imgui\imgui.cpp">
@@ -114,6 +123,15 @@
       <Filter>Исходные файлы</Filter>
     </ClCompile>
     <ClCompile Include="ColorData.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="FileDialog.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="ImageLoader.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="SchemeStorage.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
   </ItemGroup>
