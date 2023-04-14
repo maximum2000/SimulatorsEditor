@@ -75,6 +75,12 @@
     <ClInclude Include="SchemeStorage.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
+    <ClInclude Include="HashGenerator.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="sha256.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\imgui\imgui.cpp">
@@ -132,6 +138,12 @@
       <Filter>Исходные файлы</Filter>
     </ClCompile>
     <ClCompile Include="SchemeStorage.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="HashGenerator.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="sha256.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
   </ItemGroup>

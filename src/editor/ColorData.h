@@ -13,5 +13,8 @@ namespace EditorMMColorData
 		static ImU32 CanvasElementSearchColorRectFill;
 		static ImU32 CanvasElementErrorColorRect;
 		static ImU32 CanvasElementErrorColorRectFill;
+		static ImU32 CanvasSchemeHoverColorRect;
+		static ImU32 CanvasSchemeHoverColorRectFill;
+		static ImU32 CanvasElementPreview;
 	};
 }

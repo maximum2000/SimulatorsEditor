@@ -24,6 +24,7 @@
 #include <string>
 #include "FileDialog.h"
 #include "SchemeStorage.h"
+#include "HashGenerator.h"
 
 namespace EditorMathModel
 {
@@ -71,6 +72,7 @@ namespace EditorMathModel
 	void CanvasDrawLinkingPoints();
 	void CanvasDrawLinks();
 	void CanvasDrawSchemes();
+	void CanvasDrawSelectedScheme();
 	void CanvasElementRenderRect(ImVec2 startPosition, ImVec2 endPosition, ImU32 colorBorder, ImU32 colorFill);
 	void DrawDragNDropWindow();
 #pragma endregion
@@ -103,6 +105,7 @@ namespace EditorMathModel
 	void CanvasAddLinkingPointsButtons();
 	void CanvasAddLinkingPointsButton(int elem, int pin, const char* label, ImVec2 position);
 	void CanvasCreateLink(int first_element, int first_pin, int second_element, int second_pin);
+	void CanvasElementDeleteLinks(std::string UUID);
 	void CanvasDrawLineFromPointToMouse(ImVec2 point);
 #pragma region Helper functions for schemes (declaration)
 	void CanvasSchemeResize();
@@ -332,7 +335,9 @@ namespace EditorMathModel
 				BeginElemPin = CurrentHoveredLinkingPointPinIndex;
 			}
 			CanvasDrawLineFromPointToMouse(GetLinkingPointLocation(BeginElemIndex, BeginElemPin));
-			if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && CurrentHoveredLinkingPointElementIndex != -1)
+			if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) 
+				&& CurrentHoveredLinkingPointElementIndex != -1 
+				&& BeginElemIndex != CurrentHoveredLinkingPointElementIndex)
 			{
 				CanvasCreateLink(BeginElemIndex, BeginElemPin, CurrentHoveredLinkingPointElementIndex, CurrentHoveredLinkingPointPinIndex);
 				BeginElemIndex = -1;
@@ -355,6 +360,7 @@ namespace EditorMathModel
 		}
 		if (currentState == SchemeHover)
 		{
+			CanvasDrawSelectedScheme();
 			if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
 			{
 				mousePositionOnClick = io.MousePos;
@@ -433,10 +439,9 @@ namespace EditorMathModel
 			}
 			ImGui::PushID(i);
 			if (ImGui::ImageButton("Element", (void*)Temp.myTexture, ImVec2(Temp.imageWidth, Temp.imageHeight)));
-			if (ImGui::BeginDragDropSource())
+			if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceNoPreviewTooltip))
 			{
 				ImGui::SetDragDropPayload("Element", &i, sizeof(int), ImGuiCond_Once);
-				ImGui::Text("Payload data is: %d", *(int*)ImGui::GetDragDropPayload()->Data);
 				ImGui::EndDragDropSource();
 			}
 			ImGui::PopID();
@@ -568,18 +573,18 @@ namespace EditorMathModel
 		draw_list->PushClipRect(canvas_p0, canvas_p1, true);
 		{
 			const float GRID_STEP = 64.0f * canvasScaleFactor;
-			for (float x = fmodf(origin.x, GRID_STEP); x < canvas_sz.x; x += GRID_STEP)
+			for (float x = fmodf(origin.x * canvasScaleFactor, GRID_STEP); x < canvas_sz.x; x += GRID_STEP)
 			{
 				draw_list->AddLine(
-					ImVec2(canvas_p0.x + x, canvas_p0.y),
-					ImVec2(canvas_p0.x + x, canvas_p1.y),
+					ImVec2(canvas_p0.x + x + (canvasScaleFactor - 1) * ImGui::GetStyle().WindowPadding.x, canvas_p0.y),
+					ImVec2(canvas_p0.x + x + (canvasScaleFactor - 1) * ImGui::GetStyle().WindowPadding.x, canvas_p1.y),
 					IM_COL32(200, 200, 200, 119));
 			}
-			for (float y = fmodf(origin.y, GRID_STEP); y < canvas_sz.y; y += GRID_STEP)
+			for (float y = fmodf(origin.y * canvasScaleFactor, GRID_STEP); y < canvas_sz.y; y += GRID_STEP)
 			{
 				draw_list->AddLine(
-					ImVec2(canvas_p0.x, canvas_p0.y + y),
-					ImVec2(canvas_p1.x, canvas_p0.y + y),
+					ImVec2(canvas_p0.x, canvas_p0.y + y + (canvasScaleFactor - 1) * ImGui::GetStyle().WindowPadding.y),
+					ImVec2(canvas_p1.x, canvas_p0.y + y + (canvasScaleFactor - 1) * ImGui::GetStyle().WindowPadding.y),
 					IM_COL32(200, 200, 200, 119));
 			}
 		}
@@ -587,46 +592,72 @@ namespace EditorMathModel
 		// canvas is drag'n'drop reciever
 		if (ImGui::BeginDragDropTarget())
 		{
+			//int Element = *(int*)ImGui::GetDragDropPayload()->Data;
+			//ImVec2 mousePosition = io.MousePos;
+			//float x = mousePosition.x - origin.x - TextureLoader.GetTextureByIndex(Element).imageWidth / 2;
+			////int x = io.MousePos.x - origin.x - TextureLoader.GetTextureByIndex(ElementNum).imageWidth / 2;
+			////int y = io.MousePos.y - origin.y - TextureLoader.GetTextureByIndex(ElementNum).imageHeight / 2;
+			//float y = mousePosition.y - origin.y - TextureLoader.GetTextureByIndex(Element).imageHeight / 2;
+			//ImGui::GetForegroundDrawList()->AddImage(TextureLoader.GetTextureByIndex(*(int*)ImGui::GetDragDropPayload()->Data).myTexture,
+			//	{ (origin.x + x) * canvasScaleFactor, (origin.y + y) * canvasScaleFactor },
+			//	{ (origin.x + x + TextureLoader.GetTextureByIndex(Element).imageWidth) * canvasScaleFactor, (origin.y + y + TextureLoader.GetTextureByIndex(Element).imageHeight) * canvasScaleFactor },
+			//	ImVec2(0,0), ImVec2(1, 1), IM_COL32(255,255,255,100));
+			//auto payload = ImGui::AcceptDragDropPayload("Element");
+			//if (payload != NULL)
+			//{
+			//	int ElementNum = *(int*)payload->Data;
+			//	
+			//	if (x < 0)
+			//	{
+			//		x = 0;
+			//		mousePosition.x = origin.x + TextureLoader.GetTextureByIndex(ElementNum).imageWidth / 2;
+			//	}
+			//	if (y < 0)
+			//	{
+			//		y = 0;
+			//		mousePosition.y = origin.y + TextureLoader.GetTextureByIndex(ElementNum).imageHeight / 2;
+			//	}
+			//	else
+			//	{
+			//		y -= topBarHeight;
+			//	}
+			//	mousePosition.x -= origin.x;
+			//	mousePosition.y -= origin.y;
+			//	mousePosition.y -= topBarHeight;
+			//	//std::string elemName = TextureLoader.GetTextureNameByIndex(ElementNum);
+			//	//CanvasElements.push_back({ elemName, ElementNum, ImVec2(x, y), mousePosition });
+			//	CanvasElements.push_back({ ElementNum, (short)(15), ImVec2(x, y), mousePosition });
+			//}
 
+
+			int Element = *(int*)ImGui::GetDragDropPayload()->Data;
+			ImVec2 mousePosition = io.MousePos;
+			float x = (mousePosition.x) / canvasScaleFactor - origin.x - TextureLoader.GetTextureByIndex(Element).imageWidth / 2;
+			float y = (mousePosition.y) / canvasScaleFactor - origin.y - TextureLoader.GetTextureByIndex(Element).imageHeight / 2;
+			x = max(ImGui::GetStyle().WindowPadding.x / canvasScaleFactor,x);
+			y = max((topBarHeight + ImGui::GetStyle().WindowPadding.y) / canvasScaleFactor, y);
+			ImVec2 Center { x + (TextureLoader.GetTextureByIndex(Element).imageWidth / 2), y + (TextureLoader.GetTextureByIndex(Element).imageHeight / 2) - topBarHeight / canvasScaleFactor };
+			ImGui::GetForegroundDrawList()->AddImage(TextureLoader.GetTextureByIndex(*(int*)ImGui::GetDragDropPayload()->Data).myTexture,
+				{ (origin.x + x) * canvasScaleFactor, (origin.y + y) * canvasScaleFactor },
+				{ (origin.x + x + TextureLoader.GetTextureByIndex(Element).imageWidth) * canvasScaleFactor, (origin.y + y + TextureLoader.GetTextureByIndex(Element).imageHeight) * canvasScaleFactor },
+				ImVec2(0, 0), ImVec2(1, 1), ColorData.CanvasElementPreview);
 			auto payload = ImGui::AcceptDragDropPayload("Element");
 			if (payload != NULL)
 			{
 				int ElementNum = *(int*)payload->Data;
-				ImVec2 mousePosition = io.MousePos;
-				int x = mousePosition.x - origin.x - TextureLoader.GetTextureByIndex(ElementNum).imageWidth / 2;
-				//int x = io.MousePos.x - origin.x - TextureLoader.GetTextureByIndex(ElementNum).imageWidth / 2;
-				//int y = io.MousePos.y - origin.y - TextureLoader.GetTextureByIndex(ElementNum).imageHeight / 2;
-				int y = mousePosition.y - origin.y - TextureLoader.GetTextureByIndex(ElementNum).imageHeight / 2;
-				if (x < 0)
-				{
-					x = 0;
-					mousePosition.x = origin.x + TextureLoader.GetTextureByIndex(ElementNum).imageWidth / 2;
-				}
-				if (y < 0)
-				{
-					y = 0;
-					mousePosition.y = origin.y + TextureLoader.GetTextureByIndex(ElementNum).imageHeight / 2;
-				}
-				else
-				{
-					y -= topBarHeight;
-				}
-				mousePosition.x -= origin.x;
-				mousePosition.y -= origin.y;
-				mousePosition.y -= topBarHeight;
-				//std::string elemName = TextureLoader.GetTextureNameByIndex(ElementNum);
-				//CanvasElements.push_back({ elemName, ElementNum, ImVec2(x, y), mousePosition });
-				CanvasElements.push_back({ ElementNum, (short)(15), ImVec2(x, y), mousePosition });
+				CanvasElements.push_back({ EditorMMHashGenerator::GenerateHash(0), ElementNum, (short)(15), ImVec2(x, y - topBarHeight / canvasScaleFactor), Center });
 			}
+
+
 			ImGui::EndDragDropTarget();
 		}
+		CanvasDrawSchemes();
+		CanvasAddSchemesButtons();
 		CanvasDrawLinkingPoints();
 		CurrentHoveredLinkingPointElementIndex = -1;
 		CurrentHoveredLinkingPointPinIndex = -1;
 		CanvasAddLinkingPointsButtons();
 		CanvasDrawLinks();
-		CanvasDrawSchemes();
-		CanvasAddSchemesButtons();
 		CanvasDrawElements(io);
 		CanvasCenterRectangle();
 		ImGui::End();
@@ -680,7 +711,7 @@ namespace EditorMathModel
 				ImVec2(UsedTexture.imageWidth * canvasScaleFactor, UsedTexture.imageHeight * canvasScaleFactor),
 				ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
 			ImGui::SetItemAllowOverlap();
-			if ((CurrentHoveredElementIndex == -1 || CurrentHoveredElementIndex == i) && currentState < 8)
+			if ((CurrentHoveredElementIndex == -1 || CurrentHoveredElementIndex == i) && (currentState < 8 || currentState == 12 || currentState == 16 || currentState == 18))
 			{
 				if (ImGui::IsItemHovered())
 				{
@@ -758,10 +789,33 @@ namespace EditorMathModel
 		{
 			for (int j = 1; j < CanvasLinks[i].linkDots.size(); j++)
 			{
-				ImVec2 FirstPoint{ CanvasLinks[i].linkDots[j - 1].x + origin.x, CanvasLinks[i].linkDots[j - 1].y + origin.y };
-				ImVec2 SecondPoint{ CanvasLinks[i].linkDots[j].x + origin.x, CanvasLinks[i].linkDots[j].y + origin.y };
+				ImVec2 FirstPoint{ 
+					(CanvasLinks[i].linkDots[j - 1].x + origin.x ) * canvasScaleFactor,
+					(CanvasLinks[i].linkDots[j - 1].y + origin.y - topBarHeight) * canvasScaleFactor + topBarHeight};
+				ImVec2 SecondPoint{ 
+					(CanvasLinks[i].linkDots[j].x + origin.x) * canvasScaleFactor,
+					(CanvasLinks[i].linkDots[j].y + origin.y - topBarHeight) * canvasScaleFactor + topBarHeight };
 				draw_list->AddLine(FirstPoint, SecondPoint, IM_COL32(255, 255, 255, 255));
 			}
+		}
+	}
+	void CanvasDrawSelectedScheme()
+	{
+		if (CurrentHoveredSchemeIndex != -1)
+		{
+
+			draw_list->AddRect(
+				{ (Schemes[CurrentHoveredSchemeIndex].Pos.x + origin.x) * canvasScaleFactor,
+				(Schemes[CurrentHoveredSchemeIndex].Pos.y + origin.y) * canvasScaleFactor + topBarHeight },
+				{ (Schemes[CurrentHoveredSchemeIndex].Pos.x + origin.x + Schemes[CurrentHoveredSchemeIndex].imageWidth) * canvasScaleFactor,
+				(Schemes[CurrentHoveredSchemeIndex].Pos.y + origin.y + Schemes[CurrentHoveredSchemeIndex].imageHeight) * canvasScaleFactor + topBarHeight },
+				ColorData.CanvasSchemeHoverColorRect);
+			draw_list->AddRectFilled(
+				{ (Schemes[CurrentHoveredSchemeIndex].Pos.x + origin.x) * canvasScaleFactor,
+				(Schemes[CurrentHoveredSchemeIndex].Pos.y + origin.y) * canvasScaleFactor + topBarHeight },
+				{ (Schemes[CurrentHoveredSchemeIndex].Pos.x + origin.x + Schemes[CurrentHoveredSchemeIndex].imageWidth) * canvasScaleFactor,
+				(Schemes[CurrentHoveredSchemeIndex].Pos.y + origin.y + Schemes[CurrentHoveredSchemeIndex].imageHeight) * canvasScaleFactor + topBarHeight },
+				ColorData.CanvasSchemeHoverColorRectFill);
 		}
 	}
 	void CanvasDrawSchemes()
@@ -1032,6 +1086,7 @@ namespace EditorMathModel
 			{
 				if (CanvasElements[i].isSelected)
 				{
+					CanvasElementDeleteLinks(CanvasElements[i].UUID);
 					CanvasElements.erase(CanvasElements.begin() + i);
 					countOfDeleteOperation--;
 					if (CurrentHoveredElementIndex == i)
@@ -1042,7 +1097,6 @@ namespace EditorMathModel
 				}
 			}
 		}
-
 	}
 	void CanvasElementsDragByValue(float xDelta, float yDelta)
 	{
@@ -1050,11 +1104,18 @@ namespace EditorMathModel
 		{
 			if (CanvasElements[i].isSelected)
 			{
-				CanvasElements[i].position.x = CanvasElements[i].position.x + xDelta;
-				CanvasElements[i].position.y = CanvasElements[i].position.y + yDelta;
-				CanvasElements[i].centerPosition.x = CanvasElements[i].centerPosition.x + xDelta;
-				CanvasElements[i].centerPosition.y = CanvasElements[i].centerPosition.y + yDelta;
-				LinkRecalculate(&CanvasElements[i], ImVec2(xDelta, yDelta));
+				float actualxDelta, actualyDelta;
+				actualxDelta = CanvasElements[i].position.x + xDelta < ImGui::GetStyle().WindowPadding.x / canvasScaleFactor ?
+					ImGui::GetStyle().WindowPadding.x / canvasScaleFactor - CanvasElements[i].position.x :
+					xDelta;
+				actualyDelta = CanvasElements[i].position.y + yDelta < (ImGui::GetStyle().WindowPadding.y) / canvasScaleFactor ?
+					(ImGui::GetStyle().WindowPadding.y) / canvasScaleFactor - CanvasElements[i].position.y:
+					yDelta;
+				CanvasElements[i].position.x = CanvasElements[i].position.x + actualxDelta;
+				CanvasElements[i].position.y = CanvasElements[i].position.y + actualyDelta;
+				CanvasElements[i].centerPosition.x = CanvasElements[i].centerPosition.x + actualxDelta;
+				CanvasElements[i].centerPosition.y = CanvasElements[i].centerPosition.y + actualyDelta;
+				LinkRecalculate(&CanvasElements[i], ImVec2(actualxDelta, actualyDelta));
 			}
 		}
 	}
@@ -1109,7 +1170,7 @@ namespace EditorMathModel
 #pragma region Helper function for linking point location (definition)
 	ImVec2 GetLinkingPointLocation(int Elem, int Point)
 	{
-		static const float Spacing = 0.25; // counted from texture height/width. (spacing = times from def. texture / height)
+		static const float LinkingDotsSpacing = 0.25; // counted from texture height/width. (spacing = times from def. texture / height)
 		// 0 = up linking point
 		// 1 = right
 		// 2 = down
@@ -1122,18 +1183,18 @@ namespace EditorMathModel
 		{
 		case 0: return ImVec2(
 			(origin.x + CanvasElements[Elem].position.x + Width / 2.0f) * canvasScaleFactor,
-			topBarHeight + (origin.y + CanvasElements[Elem].position.y - Height * Spacing) * canvasScaleFactor
+			topBarHeight + (origin.y + CanvasElements[Elem].position.y - Height * LinkingDotsSpacing) * canvasScaleFactor
 		); break;
 		case 1: return ImVec2(
-			(origin.x + CanvasElements[Elem].position.x + Width + Width * Spacing) * canvasScaleFactor,
+			(origin.x + CanvasElements[Elem].position.x + Width + Width * LinkingDotsSpacing) * canvasScaleFactor,
 			topBarHeight + (origin.y + CanvasElements[Elem].position.y + Height / 2.0f) * canvasScaleFactor
 		); break;
 		case 2: return ImVec2(
 			(origin.x + CanvasElements[Elem].position.x + Width / 2.0f) * canvasScaleFactor,
-			topBarHeight + (origin.y + CanvasElements[Elem].position.y + Height + Height * Spacing) * canvasScaleFactor
+			topBarHeight + (origin.y + CanvasElements[Elem].position.y + Height + Height * LinkingDotsSpacing) * canvasScaleFactor
 		); break;
 		case 3: return ImVec2(
-			(origin.x + CanvasElements[Elem].position.x - Width * Spacing) * canvasScaleFactor,
+			(origin.x + CanvasElements[Elem].position.x - Width * LinkingDotsSpacing) * canvasScaleFactor,
 			topBarHeight + (origin.y + CanvasElements[Elem].position.y + Height / 2.0f) * canvasScaleFactor
 		); break;
 		}
@@ -1180,14 +1241,34 @@ namespace EditorMathModel
 	void CanvasCreateLink(int first_element, int first_pin, int second_element, int second_pin)
 	{
 		CanvasLink NewLink;
-		NewLink.first = &CanvasElements[first_element];
-		NewLink.second = &CanvasElements[second_element];
+		NewLink.firstElementUUID = CanvasElements[first_element].UUID;
+		NewLink.secondElementUUID = CanvasElements[second_element].UUID;
+
+		ImVec2 FirstElemDrawPos = GetLinkingPointLocation(first_element, first_pin);
+		ImVec2 SecondElemDrawPos = GetLinkingPointLocation(second_element, second_pin);
+
+		FirstElemDrawPos.x = FirstElemDrawPos.x / canvasScaleFactor - origin.x;
+		FirstElemDrawPos.y = (FirstElemDrawPos.y - topBarHeight) / canvasScaleFactor - origin.y + topBarHeight;
+		SecondElemDrawPos.x = SecondElemDrawPos.x / canvasScaleFactor - origin.x;
+		SecondElemDrawPos.y = (SecondElemDrawPos.y - topBarHeight) / canvasScaleFactor - origin.y + topBarHeight;
 
 		// linking dots - dummy code
-		NewLink.linkDots.push_back(GetLinkingPointLocation(first_element, first_pin));
-		NewLink.linkDots.push_back(GetLinkingPointLocation(second_element, second_pin));
+		NewLink.linkDots.push_back(FirstElemDrawPos);
+		NewLink.linkDots.push_back(SecondElemDrawPos);
 
 		CanvasLinks.push_back(NewLink);
+	}
+	void CanvasElementDeleteLinks(std::string UUID)
+	{
+		for (int i = 0; i < CanvasLinks.size(); i++)
+		{
+			if (CanvasLinks[i].firstElementUUID == UUID || CanvasLinks[i].secondElementUUID == UUID)
+			{
+				CanvasLinks.erase(CanvasLinks.begin() + i);
+				i--;
+				continue;
+			}
+		}
 	}
 	void CanvasDrawLineFromPointToMouse(ImVec2 point)
 	{
@@ -1317,12 +1398,12 @@ namespace EditorMathModel
 	{
 		for (int i = 0; i < CanvasLinks.size(); i++)
 		{
-			if (CanvasLinks[i].first == element)
+			if (CanvasLinks[i].firstElementUUID == element->UUID)
 			{
 				CanvasLinks[i].linkDots[0].x += delta.x;
 				CanvasLinks[i].linkDots[0].y += delta.y;
 			}
-			if (CanvasLinks[i].second == element)
+			if (CanvasLinks[i].secondElementUUID == element->UUID)
 			{
 				CanvasLinks[i].linkDots[CanvasLinks[i].linkDots.size() - 1].x += delta.x;
 				CanvasLinks[i].linkDots[CanvasLinks[i].linkDots.size() - 1].y += delta.y;
