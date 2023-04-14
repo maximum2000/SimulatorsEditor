@@ -106,6 +106,7 @@ namespace EditorMathModel
 	void CanvasAddLinkingPointsButton(int elem, int pin, const char* label, ImVec2 position);
 	void CanvasCreateLink(int first_element, int first_pin, int second_element, int second_pin);
 	void CanvasElementDeleteLinks(std::string UUID);
+	void CanvasClearLinkUUIDFromElems(std::string LinkUUID);
 	void CanvasDrawLineFromPointToMouse(ImVec2 point);
 #pragma region Helper functions for schemes (declaration)
 	void CanvasSchemeResize();
@@ -512,7 +513,9 @@ namespace EditorMathModel
 				ImGui::Separator();
 				if (ImGui::MenuItem("Load image"))
 				{
-					Schemes.LoadFileToStorage(EditorFileDialog::OpenFileDialog(0), { -origin.x, -origin.y });
+					Schemes.LoadFileToStorage(EditorFileDialog::OpenFileDialog(0), 
+						{ -origin.x + ImGui::GetStyle().WindowPadding.x / canvasScaleFactor, 
+						  -origin.y + ImGui::GetStyle().WindowPadding.y / canvasScaleFactor });
 				}
 				ImGui::EndMenu();
 			}
@@ -645,7 +648,12 @@ namespace EditorMathModel
 			if (payload != NULL)
 			{
 				int ElementNum = *(int*)payload->Data;
-				CanvasElements.push_back({ EditorMMHashGenerator::GenerateHash(0), ElementNum, (short)(15), ImVec2(x, y - topBarHeight / canvasScaleFactor), Center });
+				std::vector<std::string> DefaultLinksUUIDs;
+				for (int i = 0; i < 4; i++)
+				{
+					DefaultLinksUUIDs.push_back("");
+				}
+				CanvasElements.push_back({ EditorMMHashGenerator::GenerateHash(0), ElementNum, (short)(15), ImVec2(x, y - topBarHeight / canvasScaleFactor), Center, DefaultLinksUUIDs });
 			}
 
 
@@ -1100,6 +1108,8 @@ namespace EditorMathModel
 	}
 	void CanvasElementsDragByValue(float xDelta, float yDelta)
 	{
+		xDelta /= canvasScaleFactor;
+		yDelta /= canvasScaleFactor;
 		for (int i = 0; i < CanvasElements.size(); i++)
 		{
 			if (CanvasElements[i].isSelected)
@@ -1241,6 +1251,7 @@ namespace EditorMathModel
 	void CanvasCreateLink(int first_element, int first_pin, int second_element, int second_pin)
 	{
 		CanvasLink NewLink;
+		NewLink.UUID = EditorMMHashGenerator::GenerateHash(0);
 		NewLink.firstElementUUID = CanvasElements[first_element].UUID;
 		NewLink.secondElementUUID = CanvasElements[second_element].UUID;
 
@@ -1256,6 +1267,8 @@ namespace EditorMathModel
 		NewLink.linkDots.push_back(FirstElemDrawPos);
 		NewLink.linkDots.push_back(SecondElemDrawPos);
 
+		CanvasElements[first_element].Links[first_pin] = NewLink.UUID;
+		CanvasElements[second_element].Links[second_pin] = NewLink.UUID;
 		CanvasLinks.push_back(NewLink);
 	}
 	void CanvasElementDeleteLinks(std::string UUID)
@@ -1264,9 +1277,30 @@ namespace EditorMathModel
 		{
 			if (CanvasLinks[i].firstElementUUID == UUID || CanvasLinks[i].secondElementUUID == UUID)
 			{
+				CanvasClearLinkUUIDFromElems(CanvasLinks[i].UUID);
 				CanvasLinks.erase(CanvasLinks.begin() + i);
 				i--;
 				continue;
+			}
+		}
+	}
+	void CanvasClearLinkUUIDFromElems(std::string LinkUUID)
+	{
+		int LeftToDelete = 2;
+		for (int i = 0; i < CanvasElements.size(); i++)
+		{
+			for (int j = 0; j < CanvasElements[i].Links.size(); j++)
+			{
+				if (CanvasElements[i].Links[j] == LinkUUID)
+				{
+					CanvasElements[i].Links[j] = "";
+					LeftToDelete--;
+					break;
+				}
+			}
+			if (LeftToDelete == 0)
+			{
+				break;
 			}
 		}
 	}
@@ -1279,8 +1313,8 @@ namespace EditorMathModel
 	void CanvasSchemeDragByValue(float xDelta, float yDelta)
 	{
 		Schemes[CurrentHoveredSchemeIndex].Pos = {
-				Schemes[CurrentHoveredSchemeIndex].Pos.x + xDelta / canvasScaleFactor,
-				Schemes[CurrentHoveredSchemeIndex].Pos.y + yDelta / canvasScaleFactor
+				max(ImGui::GetStyle().WindowPadding.x / canvasScaleFactor, Schemes[CurrentHoveredSchemeIndex].Pos.x + xDelta / canvasScaleFactor),
+				max(ImGui::GetStyle().WindowPadding.y / canvasScaleFactor, Schemes[CurrentHoveredSchemeIndex].Pos.y + yDelta / canvasScaleFactor)
 		};
 	}
 	void CanvasSchemeResize()

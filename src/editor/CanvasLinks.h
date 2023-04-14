@@ -11,7 +11,6 @@ struct CanvasLink
     std::vector<ImVec2> linkDots;
     std::string firstElementUUID;
     std::string secondElementUUID;
-    std::vector<std::string> Elements;
     bool isSelected = false;
     bool isBlockSelection = false;
 };
