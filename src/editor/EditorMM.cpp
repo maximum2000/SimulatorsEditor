@@ -100,6 +100,10 @@ namespace EditorMathModel
 #pragma endregion
 #pragma region Helper function for linking point location (definition)
 	ImVec2 GetLinkingPointLocation(int Elem, int Point);
+	ImVec2 GetMapLinkingPointLocation(int Elem, int Point, float Zoom, ImVec2 origin, float shift_x, float shift_y);
+#pragma endregion
+#pragma region Helper functions for elements calculation (declaration)
+	std::vector<ImVec2> GetCorners();
 #pragma endregion
 #pragma region Helper functions for links (declaration)
 	void CanvasAddLinkingPointsButtons();
@@ -126,7 +130,7 @@ namespace EditorMathModel
 	// Forward declarations of variables
 	bool show_elements_window = false;
 	bool show_canvas_map_window = false;
-	static ImVec2 mousePosition, origin;
+	static ImVec2 mousePosition, origin, canvas_size;
 	int selectedElementsCount = 0;
 	static int CurrentHoveredElementIndex = -1;
 	static int CurrentHoveredLinkingPointElementIndex = -1;
@@ -479,7 +483,94 @@ namespace EditorMathModel
 	}
 	void DrawCanvasMapWindow()
 	{
+		static const float Space = 500;
+		std::vector<ImVec2> Corners = GetCorners();
+		if (Corners[0].x < Space)
+		{
+			Corners[0].x = Space;
+		}
+		if (Corners[0].y < Space)
+		{
+			Corners[0].y = Space;
+		}
+		static const ImVec2 MapMinSize{ 600, 400 };
+		ImGui::SetNextWindowSizeConstraints(MapMinSize, ImVec2(FLT_MAX, FLT_MAX));
+		ImGui::Begin(u8"Canvas map", &show_canvas_map_window, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoScrollbar);
+		if (ImGui::IsWindowHovered())
+		{
+			StateMachineSetState(CanvasMapWindowSelection);
+		}
+		if (CanvasElements.size() == 0)
+		{
+			ImGui::End();
+			return;
+		}
 
+		ImVec2 OldCursorPos = ImGui::GetCursorPos();
+		ImDrawList* map_draw_list = ImGui::GetWindowDrawList();
+		float MapZoom = min(ImGui::GetWindowWidth() / (Corners[1].x - Corners[0].x + Space * 2), (ImGui::GetWindowHeight() - ImGui::GetFontSize() - ImGui::GetStyle().FramePadding.y * 2) / (Corners[1].y - Corners[0].y + Space * 2));
+		ImVec2 map_p0 = {
+			ImGui::GetWindowPos().x + (ImGui::GetWindowWidth() - (Corners[1].x - Corners[0].x + Space * 2) * MapZoom) / 2,
+			ImGui::GetWindowPos().y + (ImGui::GetWindowHeight() + ImGui::GetFontSize() + ImGui::GetStyle().FramePadding.y * 2 - (Corners[1].y - Corners[0].y + Space * 2) * MapZoom) / 2
+		};
+
+		map_draw_list->AddRectFilled(map_p0, { map_p0.x + (Corners[1].x - Corners[0].x + Space * 2) * MapZoom, map_p0.y + (Corners[1].y - Corners[0].y + Space * 2) * MapZoom }, ColorData.CanvasMapRegionColor);
+
+		ImGui::SetCursorPos({ map_p0.x - ImGui::GetWindowPos().x, map_p0.y - ImGui::GetWindowPos().y });
+		ImGui::InvisibleButton("##setviewfield", { (Corners[1].x - Corners[0].x + Space * 2) * MapZoom,(Corners[1].y - Corners[0].y + Space * 2) * MapZoom });
+		ImGui::SetCursorPos(OldCursorPos);
+		if (ImGui::IsItemActive())
+		{
+			ImVec2 NewOriginOnMap = ImGui::GetIO().MousePos;
+			NewOriginOnMap.x -= (canvas_size.x / canvasScaleFactor * MapZoom) / 2;
+			NewOriginOnMap.y -= (canvas_size.y / canvasScaleFactor * MapZoom) / 2;
+			NewOriginOnMap.x = min(NewOriginOnMap.x, (map_p0.x + (Corners[1].x - Corners[0].x + Space * 2) * MapZoom - canvas_size.x / canvasScaleFactor * MapZoom));
+			NewOriginOnMap.y = min(NewOriginOnMap.y, (map_p0.y + (Corners[1].y - Corners[0].y + Space * 2) * MapZoom - canvas_size.y / canvasScaleFactor * MapZoom));
+			NewOriginOnMap.x = max(NewOriginOnMap.x, map_p0.x);
+			NewOriginOnMap.y = max(NewOriginOnMap.y, map_p0.y);
+			origin.x = -((NewOriginOnMap.x - map_p0.x) / MapZoom - Space + Corners[0].x);
+			origin.y = -((NewOriginOnMap.y - map_p0.y) / MapZoom - Space + Corners[0].y);
+		}
+
+		for (int i = 0; i < CanvasElements.size(); i++)
+		{
+			EditorMMTextureLoader::LoadedTexture UsedTexture = TextureLoader.GetTextureByIndex(CanvasElements[i].elementDataNumber);
+			map_draw_list->AddImage(
+				(void*)UsedTexture.myTexture, ImVec2(map_p0.x + (CanvasElements[i].position.x - Corners[0].x + Space) * MapZoom, map_p0.y + (CanvasElements[i].position.y - Corners[0].y + Space) * MapZoom),
+				ImVec2(map_p0.x + (CanvasElements[i].position.x - Corners[0].x + Space + UsedTexture.imageWidth) * MapZoom , map_p0.y + (CanvasElements[i].position.y - Corners[0].y + Space + UsedTexture.imageHeight) * MapZoom));
+		}
+
+		for (int j = 0; j < CanvasLinks.size(); j++)
+		{
+			map_draw_list->AddLine(
+				ImVec2(map_p0.x + (CanvasLinks[j].linkDots[0].x - Corners[0].x + Space) * MapZoom, 
+					map_p0.y + (CanvasLinks[j].linkDots[0].y - topBarHeight- Corners[0].y + Space) * MapZoom),
+				ImVec2(map_p0.x + (CanvasLinks[j].linkDots[CanvasLinks[j].linkDots.size() - 1].x - Corners[0].x + Space) * MapZoom, 
+					map_p0.y + (CanvasLinks[j].linkDots[CanvasLinks[j].linkDots.size() - 1].y - topBarHeight - Corners[0].y + Space) * MapZoom),
+				ColorData.CanvasMapLinksColor, 0.1f
+			);
+		}
+		
+		ImVec2 ScreenTopLeft = {
+			max(-origin.x, Corners[0].x - Space),
+			max(-origin.y, Corners[0].y - Space) };
+		ImVec2 ScreenBottomRight = {
+			min(-(origin.x) + (canvas_size.x) / canvasScaleFactor, Corners[1].x + Space),
+			min(-(origin.y) + (canvas_size.y) / canvasScaleFactor, Corners[1].y + Space)
+		};
+		if (ScreenTopLeft.x < ScreenBottomRight.x && ScreenTopLeft.y < ScreenBottomRight.y)
+		{
+			map_draw_list->AddRectFilled(
+				ImVec2(map_p0.x + (ScreenTopLeft.x - Corners[0].x + Space) * MapZoom, map_p0.y + (ScreenTopLeft.y - Corners[0].y + Space) * MapZoom),
+				ImVec2(map_p0.x + (ScreenBottomRight.x - Corners[0].x + Space) * MapZoom, map_p0.y + (ScreenBottomRight.y - Corners[0].y + Space) * MapZoom),
+				ColorData.CanvasMapViewSizeColorRectFill);
+			map_draw_list->AddRect(
+				ImVec2(map_p0.x + (ScreenTopLeft.x - Corners[0].x + Space) * MapZoom, map_p0.y + (ScreenTopLeft.y - Corners[0].y + Space) * MapZoom),
+				ImVec2(map_p0.x + (ScreenBottomRight.x - Corners[0].x + Space) * MapZoom, map_p0.y + (ScreenBottomRight.y - Corners[0].y + Space) * MapZoom),
+				ColorData.CanvasMapViewSizeColorRect);
+		}
+
+		ImGui::End();
 	}
 	void DrawTopBar()
 	{
@@ -559,6 +650,7 @@ namespace EditorMathModel
 		ImVec2 canvas_p0 = ImGui::GetCursorScreenPos();
 		ImVec2 canvas_sz = ImGui::GetContentRegionAvail();
 		ImVec2 canvas_p1 = ImVec2(canvas_p0.x + canvas_sz.x, canvas_p0.y + canvas_sz.y);
+		canvas_size = { canvas_p1.x + ImGui::GetStyle().WindowPadding.x, canvas_p1.y + ImGui::GetStyle().WindowPadding.y - topBarHeight};
 		draw_list = ImGui::GetWindowDrawList();
 		draw_list->AddRectFilled(canvas_p0, canvas_p1, IM_COL32(0, 0, 0, 0));
 		ImGui::InvisibleButton("canvas", canvas_sz,
@@ -1209,6 +1301,50 @@ namespace EditorMathModel
 		); break;
 		}
 		throw;
+	}
+	// Same, with overriding Zoom, origin, shift_x, shift_y
+	ImVec2 GetMapLinkingPointLocation(int Elem, int Point, float Zoom, ImVec2 origin, float shift_x, float shift_y)
+	{
+		int Width = TextureLoader.GetTextureWidthByIndex(CanvasElements[Elem].elementDataNumber);
+		int Height = TextureLoader.GetTextureHeightByIndex(CanvasElements[Elem].elementDataNumber);
+		switch (Point)
+		{
+		case 0: return ImVec2(
+			origin.x + (CanvasElements[Elem].position.x + shift_x) * Zoom + Width / 2.0f,
+			origin.y + (CanvasElements[Elem].position.y + shift_y) * Zoom
+		); break;
+		case 1: return ImVec2(
+			origin.x + (CanvasElements[Elem].position.x + shift_x) * Zoom + Width,
+			origin.y + (CanvasElements[Elem].position.y + shift_y) * Zoom + Height / 2.0f
+		); break;
+		case 2: return ImVec2(
+			origin.x + (CanvasElements[Elem].position.x + shift_x) * Zoom + Width / 2.0f,
+			origin.y + (CanvasElements[Elem].position.y + shift_y) * Zoom + Height
+		); break;
+		case 3: return ImVec2(
+			origin.x + (CanvasElements[Elem].position.x + shift_x) * Zoom,
+			origin.y + (CanvasElements[Elem].position.y + shift_y) * Zoom + Height / 2.0f
+		); break;
+		}
+		throw;
+	}
+#pragma endregion
+#pragma region Helper functions for elements calculation (definition)
+	std::vector<ImVec2> GetCorners()
+	{
+		std::vector<ImVec2> ret;
+		ImVec2 Min{ FLT_MAX, FLT_MAX };
+		ImVec2 Max{ -FLT_MAX, -FLT_MAX };
+		for (CanvasElement Elem : CanvasElements)
+		{
+			if (Elem.centerPosition.x < Min.x) Min.x = Elem.centerPosition.x;
+			if (Elem.centerPosition.y < Min.y) Min.y = Elem.centerPosition.y;
+			if (Elem.centerPosition.x > Max.x) Max.x = Elem.centerPosition.x;
+			if (Elem.centerPosition.y > Max.y) Max.y = Elem.centerPosition.y;
+		}
+		ret.push_back(Min);
+		ret.push_back(Max);
+		return ret;
 	}
 #pragma endregion
 #pragma region Helper functions for links (declaration)

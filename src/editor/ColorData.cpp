@@ -13,3 +13,7 @@ ImU32 ColorData::CanvasElementErrorColorRectFill = IM_COL32(204, 0, 0, 100);
 ImU32 ColorData::CanvasSchemeHoverColorRect = IM_COL32(150, 150, 255, 255);
 ImU32 ColorData::CanvasSchemeHoverColorRectFill = IM_COL32(100, 100, 200, 50);
 ImU32 ColorData::CanvasElementPreview = IM_COL32(255, 255, 255, 100);
+ImU32 ColorData::CanvasMapRegionColor = IM_COL32(255, 255, 255, 255);
+ImU32 ColorData::CanvasMapViewSizeColorRect = IM_COL32(0, 0, 0, 255);
+ImU32 ColorData::CanvasMapViewSizeColorRectFill = IM_COL32(150, 150, 150, 100);
+ImU32 ColorData::CanvasMapLinksColor = IM_COL32(0, 0, 0, 255);
