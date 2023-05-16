@@ -2,11 +2,12 @@
 using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
+using System.IO;
 
 public class MM10 : MonoBehaviour
 {
-    public int maxx = 80;
-    public int maxy = 80;
+    private int maxx = 80;
+    private int maxy = 80;
 
 
     public MyElementUI prefab;
@@ -84,11 +85,56 @@ public class MM10 : MonoBehaviour
 
     public void LoadScene()
     {
-        
+        string filename = Path.Combine(Application.streamingAssetsPath, "test.model");
+        if (File.Exists(filename) == false) return;
+
+
+        NewTable();
+
+
+        BinaryReader reader;
+        reader = new BinaryReader(File.Open(filename, FileMode.Open));
+
+        int i = 0;
+
+
+        while (reader.BaseStream.Position != reader.BaseStream.Length)
+        {
+            try
+            {
+                float r = reader.ReadSingle();
+                float g = reader.ReadSingle();
+                float b = reader.ReadSingle();
+                map2d[i].gameObject.GetComponent<SpriteRenderer>().color= new Color(r, g, b);
+                i++;
+            }
+            catch (EndOfStreamException e)
+            {
+
+            }
+            catch (System.ObjectDisposedException e)
+            {
+
+            }
+        }
+        reader.Close();
     }
+
     public void SaveScene()
     {
+        if (map2d == null) return;
 
+        BinaryWriter writer;
+        string filename = Path.Combine(Application.streamingAssetsPath, "test.model");
+        writer = new BinaryWriter(File.Open(filename, FileMode.Create));
+
+        for (int i = 0; i < maxx * maxy; i++)
+        {
+            writer.Write(map2d[i].gameObject.GetComponent<SpriteRenderer>().color.r);
+            writer.Write(map2d[i].gameObject.GetComponent<SpriteRenderer>().color.g);
+            writer.Write(map2d[i].gameObject.GetComponent<SpriteRenderer>().color.b);
+        }
+        writer.Close();
     }
 
 
