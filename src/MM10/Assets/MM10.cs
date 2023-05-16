@@ -82,6 +82,17 @@ public class MM10 : MonoBehaviour
         selectedType = ModeType.none;
     }
 
+    public void LoadScene()
+    {
+        
+    }
+    public void SaveScene()
+    {
+
+    }
+
+
+
     public void SelectGas()
     {
         selectedType = ModeType.gas;
@@ -117,8 +128,20 @@ public class MM10 : MonoBehaviour
 
     public void NewTable()
     {
-        
+        prefab.gameObject.SetActive(true);
 
+        //чистим
+        if (map2d != null)
+        {
+            for (int i = 0; i < maxx * maxy; i++)
+            {
+                Destroy(map2d[i].gameObject);
+            }
+            map2d.Clear();
+        }
+
+
+        //создаем
         map2d = new List<MyElementUI>();
 
         for (int x = 0; x < maxx; x++)
@@ -128,16 +151,11 @@ public class MM10 : MonoBehaviour
                 MyElementUI myclone = Instantiate(prefab);
                 myclone.gameObject.transform.localPosition = new Vector3(dx + x * 0.11f, dy + y * 0.11f, 0);
                 //myclone.gameObject.GetComponent<SpriteRenderer>().color = new Color((float)x/40f, (float)y/40f, 0);
-
                 // myclone.transform.parent = parent.transform;
-
                 myclone.gameObject.GetComponent<SpriteRenderer>().color = new Color(1f, 1f, 1f);
-
                 int index = x * maxx + y;
                 myclone.index = index;
                 map2d.Add( myclone );
-
-
             }
         }
         prefab.gameObject.SetActive(false);
