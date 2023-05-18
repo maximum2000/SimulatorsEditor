@@ -152,11 +152,7 @@ public class MM10 : MonoBehaviour
             CellEditorQ.text = map2d[editedCellIndex].data.components[z].Q.ToString();
 
             string temp = "";
-            if (map2d[editedCellIndex].data.components[z].type == myComponentType.gas) temp = "gas";
-            if (map2d[editedCellIndex].data.components[z].type == myComponentType.fluid) temp = "fluid";
-            if (map2d[editedCellIndex].data.components[z].type == myComponentType.solid) temp = "solid";
-            if (map2d[editedCellIndex].data.components[z].type == myComponentType.wall) temp = "wall";
-            if (map2d[editedCellIndex].data.components[z].type == myComponentType.none) temp = "none";
+            temp += map2d[editedCellIndex].data.components[z].type;            
             CellEditorType.text = temp;
         }
     }
