@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
 using System.IO;
+using UnityEngine.UI;
 
 public class MM10 : MonoBehaviour
 {
@@ -15,9 +16,19 @@ public class MM10 : MonoBehaviour
     public float dx;
     public float dy;
 
-    public TextMeshPro info_text;
+    public TextMeshProUGUI info_text;
 
     private List<MyElementUI> map2d;
+
+    int editedCellIndex = -1;
+    public GameObject CellEditor;
+    public TMP_Dropdown CellEditorComponentNum;
+    public TMP_InputField CellEditorM;
+    public TMP_InputField CellEditorRo;
+    public TMP_InputField CellEditorC;
+    public TMP_InputField CellEditorQ;
+    public TMP_InputField CellEditorType;
+
 
     public enum ModeType
     {
@@ -26,11 +37,29 @@ public class MM10 : MonoBehaviour
         gas,
         fluid,
         solid,
-        delete
+        delete,
+        edit
     }
 
     public ModeType selectedType;
-    
+
+
+
+    public void OneStep()
+    {
+        //иде€:
+        //зна€ объем €чейки определ€ем зан€тые объемы твердыми компонентами, потом жидкими... дл€ этого нужна плотность
+        //зна€ объем занимаемый газом, его массу.. теплоемкосьб газа и теплоту ... можем вычислить давление и температура газа
+        //зна€ массу жидких и твердых компонентов ... и их теплоемкость и теплоту... можем вычислить и их температуры
+        //потом осуществить теплоперенос и распределение теплоты дл€ стабильного состо€ни€ (температура всех компонентов выравниваетс€)
+
+        //иде€:
+        //зна€ векторную картину перемещений, можем оптимизировать пор€док выборки координат дл€ просчетов методом монтекарло
+        //т.е. будем старатьс€ чаще и вперед просчитывать области, активно отдающие массу дл€ ее скорейшего распределени€
+
+        
+    }
+
     public void CellClick(ref MyElementUI cell)
     {
         if (selectedType == ModeType.none)
@@ -90,8 +119,60 @@ public class MM10 : MonoBehaviour
             cell.data.Clear();
             cell.ManualUpdate();
         }
+        else if (selectedType == ModeType.edit)
+        {
+            editedCellIndex = cell.index;
+            CellEditor.SetActive(true);
+            EditorShowComponentValues(0);
+        }
 
-       
+
+    }
+
+
+    public void EditorShowComponentValues(int z)
+    {
+        if (editedCellIndex == -1) return;
+
+        CellEditorComponentNum.options.Clear();
+
+        if (map2d[editedCellIndex].data.components.Count > z)
+        {
+            List<string> all = new List<string>();
+            for (int i = 0; i < map2d[editedCellIndex].data.components.Count; i++)
+            {
+                all.Add(i.ToString("N0"));
+            }
+            CellEditorComponentNum.AddOptions(all);
+            CellEditorComponentNum.SetValueWithoutNotify(z);
+            
+            CellEditorM.text = map2d[editedCellIndex].data.components[z].m.ToString();
+            CellEditorRo.text = map2d[editedCellIndex].data.components[z].Ro.ToString();
+            CellEditorC.text = map2d[editedCellIndex].data.components[z].C.ToString();
+            CellEditorQ.text = map2d[editedCellIndex].data.components[z].Q.ToString();
+
+            string temp = "";
+            if (map2d[editedCellIndex].data.components[z].type == myComponentType.gas) temp = "gas";
+            if (map2d[editedCellIndex].data.components[z].type == myComponentType.fluid) temp = "fluid";
+            if (map2d[editedCellIndex].data.components[z].type == myComponentType.solid) temp = "solid";
+            if (map2d[editedCellIndex].data.components[z].type == myComponentType.wall) temp = "wall";
+            if (map2d[editedCellIndex].data.components[z].type == myComponentType.none) temp = "none";
+            CellEditorType.text = temp;
+        }
+    }
+
+    public void EditorComponentChange()
+    {
+        if (editedCellIndex == -1) return;
+        int z = CellEditorComponentNum.value;
+
+        if (map2d[editedCellIndex].data.components.Count > z)
+        {
+            map2d[editedCellIndex].data.components[z].m = float.Parse(CellEditorM.text);
+            map2d[editedCellIndex].data.components[z].Ro = float.Parse(CellEditorRo.text);
+            map2d[editedCellIndex].data.components[z].C = float.Parse(CellEditorC.text);
+            map2d[editedCellIndex].data.components[z].Q = float.Parse(CellEditorQ.text);
+        }
     }
 
     public void CellInfo(ref MyElementUI cell)
@@ -146,6 +227,7 @@ public class MM10 : MonoBehaviour
 
     public void ClearTable()
     {
+        CellEditor.SetActive(false);
         for (int t = 0; t < maxx * maxy; t++)
         {
             map2d[t].data.Clear();
@@ -155,6 +237,8 @@ public class MM10 : MonoBehaviour
 
     public void LoadScene()
     {
+        CellEditor.SetActive(false);
+
         string filename = Path.Combine(Application.streamingAssetsPath, "test.model");
         if (File.Exists(filename) == false) return;
 
@@ -283,6 +367,11 @@ public class MM10 : MonoBehaviour
     public void SelectDelete()
     {
         selectedType = ModeType.delete;
+    }
+
+    public void SelectEdit()
+    {
+        selectedType = ModeType.edit;
     }
 
 
