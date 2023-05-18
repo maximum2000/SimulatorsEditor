@@ -1437,6 +1437,10 @@ PrefabInstance:
       propertyPath: m_Delegates.Array.data[4].callback.m_PersistentCalls.m_Calls.Array.data[0].m_Target
       value: 
       objectReference: {fileID: 924901809}
+    - target: {fileID: 8594712022140690148, guid: 9f1505d4c3b549541a82200201e86405, type: 3}
+      propertyPath: m_Delegates.Array.data[4].callback.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
+      value: ClearTable
+      objectReference: {fileID: 0}
     - target: {fileID: 8594712022140690153, guid: 9f1505d4c3b549541a82200201e86405, type: 3}
       propertyPath: m_LocalScale.y
       value: 0.5693

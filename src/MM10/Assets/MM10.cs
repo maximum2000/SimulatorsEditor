@@ -30,8 +30,7 @@ public class MM10 : MonoBehaviour
     }
 
     public ModeType selectedType;
-
-
+    
     public void CellClick(ref MyElementUI cell)
     {
         if (selectedType == ModeType.none)
@@ -116,7 +115,9 @@ public class MM10 : MonoBehaviour
         text += "transferToUpRight:\t\t" + cell.data.transferToUpRight.ToString("n8").Replace(",", ".") + System.Environment.NewLine;
         text += "transferToDownLeft:\t" + cell.data.transferToDownLeft.ToString("n8").Replace(",", ".") + System.Environment.NewLine;
         text += "transferToDownRight:\t" + cell.data.transferToDownRight.ToString("n8").Replace(",", ".") + System.Environment.NewLine;
-        
+
+        text += "Count:\t" + cell.data.components.Count.ToString("N0").Replace(",", ".") + System.Environment.NewLine;
+
         if (cell.data.components.Count>0)
         {
             for (int i=0; i < cell.data.components.Count; i++)
@@ -139,6 +140,17 @@ public class MM10 : MonoBehaviour
     void Start()
     {
         selectedType = ModeType.none;
+
+        NewTable();
+    }
+
+    public void ClearTable()
+    {
+        for (int t = 0; t < maxx * maxy; t++)
+        {
+            map2d[t].data.Clear();
+            map2d[t].ManualUpdate();
+        }
     }
 
     public void LoadScene()
@@ -147,7 +159,8 @@ public class MM10 : MonoBehaviour
         if (File.Exists(filename) == false) return;
 
 
-        NewTable();
+        //NewTable();
+        ClearTable();
 
 
         BinaryReader reader;
@@ -155,15 +168,34 @@ public class MM10 : MonoBehaviour
 
         int i = 0;
 
-
         while (reader.BaseStream.Position != reader.BaseStream.Length)
         {
             try
             {
-                float r = reader.ReadSingle();
-                float g = reader.ReadSingle();
-                float b = reader.ReadSingle();
-                map2d[i].gameObject.GetComponent<SpriteRenderer>().color= new Color(r, g, b);
+                map2d[i].data.Clear();
+                map2d[i].data.V = reader.ReadSingle();
+                map2d[i].data.transferToUp = reader.ReadSingle();
+                map2d[i].data.transferToDown = reader.ReadSingle();
+                map2d[i].data.transferToLeft = reader.ReadSingle();
+                map2d[i].data.transferToRight = reader.ReadSingle();
+                map2d[i].data.transferToUpLeft = reader.ReadSingle();
+                map2d[i].data.transferToUpRight = reader.ReadSingle();
+                map2d[i].data.transferToDownLeft = reader.ReadSingle();
+                map2d[i].data.transferToDownRight = reader.ReadSingle();
+
+                int count = reader.ReadInt32();
+                for (int y = 0; y < count; y++)
+                {
+                    myComponent temp = new myComponent();
+                    temp.type = (myComponentType)reader.ReadInt32();
+                    temp.m = reader.ReadSingle();
+                    temp.C = reader.ReadSingle();
+                    temp.Q = reader.ReadSingle();
+                    temp.Ro = reader.ReadSingle();
+                    map2d[i].data.components.Add(temp);
+                }
+
+                map2d[i].ManualUpdate();
                 i++;
             }
             catch (EndOfStreamException e)
@@ -188,9 +220,35 @@ public class MM10 : MonoBehaviour
 
         for (int i = 0; i < maxx * maxy; i++)
         {
-            writer.Write(map2d[i].gameObject.GetComponent<SpriteRenderer>().color.r);
-            writer.Write(map2d[i].gameObject.GetComponent<SpriteRenderer>().color.g);
-            writer.Write(map2d[i].gameObject.GetComponent<SpriteRenderer>().color.b);
+            //writer.Write(map2d[i].gameObject.GetComponent<SpriteRenderer>().color.r);
+            //writer.Write(map2d[i].gameObject.GetComponent<SpriteRenderer>().color.g);
+            //writer.Write(map2d[i].gameObject.GetComponent<SpriteRenderer>().color.b);
+
+            //V
+            writer.Write(map2d[i].data.V);
+            //transfer
+            writer.Write(map2d[i].data.transferToUp);
+            writer.Write(map2d[i].data.transferToDown);
+            writer.Write(map2d[i].data.transferToLeft);
+            writer.Write(map2d[i].data.transferToRight);
+            writer.Write(map2d[i].data.transferToUpLeft);
+            writer.Write(map2d[i].data.transferToUpRight);
+            writer.Write(map2d[i].data.transferToDownLeft);
+            writer.Write(map2d[i].data.transferToDownRight);
+            //count
+            writer.Write(map2d[i].data.components.Count);
+            //
+            if (map2d[i].data.components.Count > 0)
+            {
+                for (int y = 0; y < map2d[i].data.components.Count; y++)
+                {
+                    writer.Write((int)map2d[i].data.components[y].type);
+                    writer.Write(map2d[i].data.components[y].m);
+                    writer.Write(map2d[i].data.components[y].C);
+                    writer.Write(map2d[i].data.components[y].Q);
+                    writer.Write(map2d[i].data.components[y].Ro);
+                }
+            }
         }
         writer.Close();
     }
@@ -230,11 +288,13 @@ public class MM10 : MonoBehaviour
 
 
 
-    public void NewTable()
+    private void NewTable()
     {
         prefab.gameObject.SetActive(true);
 
+
         //чистим
+        /*
         if (map2d != null)
         {
             for (int i = 0; i < maxx * maxy; i++)
@@ -243,6 +303,7 @@ public class MM10 : MonoBehaviour
             }
             map2d.Clear();
         }
+        */
 
 
         //создаем
