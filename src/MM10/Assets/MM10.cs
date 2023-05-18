@@ -40,23 +40,56 @@ public class MM10 : MonoBehaviour
         }
         else if (selectedType == ModeType.gas)
         {
-            cell.gameObject.GetComponent<SpriteRenderer>().color = new Color(1f,1f, 0f);
+            cell.data.Clear();
+            myComponent temp = new myComponent();
+            temp.type = myComponentType.gas;
+            temp.m = 1f;
+            temp.Ro = 1.2754f; //температуре 0 °С, давлении 100 кПа, нулевой влажности
+            temp.C = 1010f; //В интервале от -50 до 120°С ее величина практически не меняется — в этих условиях средняя теплоемкость воздуха равна 1010 Дж/(кг·град).
+            temp.Q = temp.C * temp.m * 273.15f;  //Дж
+            cell.data.components.Add(temp);
+            cell.ManualUpdate();
         }
         else if (selectedType == ModeType.fluid)
         {
-            cell.gameObject.GetComponent<SpriteRenderer>().color = new Color(0, 0f, 1f);
+            cell.data.Clear();
+            myComponent temp = new myComponent();
+            temp.type = myComponentType.fluid;
+            temp.m = 1f;
+            temp.Ro = 1000f; //кг\м3
+            temp.C = 4180.6f; //Удельная теплоёмкость воды, Дж/(кг·K)
+            temp.Q = temp.C * temp.m * 273.15f;  //Дж
+            cell.data.components.Add(temp);
+            cell.ManualUpdate();
         }
         else if (selectedType == ModeType.solid)
         {
-            cell.gameObject.GetComponent<SpriteRenderer>().color = new Color(0.5f, 0.5f, 0.5f);
+            cell.data.Clear();
+            myComponent temp = new myComponent();
+            temp.type = myComponentType.solid;
+            temp.m = 1f;
+            temp.Ro = 1700; //кг\м3
+            temp.C = 835f; //Удельная теплоёмкость воды, Дж/(кг·K)
+            temp.Q = temp.C * temp.m * 273.15f;  //Дж
+            cell.data.components.Add(temp);
+            cell.ManualUpdate();
         }
         else if (selectedType == ModeType.wall)
         {
-            cell.gameObject.GetComponent<SpriteRenderer>().color = new Color(0f, 0f, 0f);
+            cell.data.Clear();
+            myComponent temp = new myComponent();
+            temp.type = myComponentType.wall;
+            temp.m = 1f;
+            temp.Ro = 7800f; //кг\м3
+            temp.C = 460f; //Удельная теплоёмкость воды, Дж/(кг·K)
+            temp.Q = temp.C * temp.m * 273.15f;  //Дж
+            cell.data.components.Add(temp);
+            cell.ManualUpdate();
         }
         else if (selectedType == ModeType.delete)
         {
-            cell.gameObject.GetComponent<SpriteRenderer>().color = new Color(1f, 1f, 1f);
+            cell.data.Clear();
+            cell.ManualUpdate();
         }
 
        
@@ -71,7 +104,32 @@ public class MM10 : MonoBehaviour
         int xx = cell.index / maxx;
         int index_y = cell.index - (xx * maxx);
         int index_x = xx;
-        text += "x:" + index_x + "\ty:" + index_y;
+        text += "x:" + index_x + "\ty:" + index_y + System.Environment.NewLine; ;
+
+        //cell.data
+        text += "V:\t" + cell.data.V.ToString("n8").Replace(",", ".") + System.Environment.NewLine;
+        text += "transferToUp:\t\t" + cell.data.transferToUp.ToString("n8").Replace(",", ".") + System.Environment.NewLine;
+        text += "transferToDown:\t\t" + cell.data.transferToDown.ToString("n8").Replace(",", ".") + System.Environment.NewLine;
+        text += "transferToLeft:\t\t" + cell.data.transferToLeft.ToString("n8").Replace(",", ".") + System.Environment.NewLine;
+        text += "transferToRight:\t\t" + cell.data.transferToRight.ToString("n8").Replace(",", ".") + System.Environment.NewLine;
+        text += "transferToUpLeft:\t\t" + cell.data.transferToUpLeft.ToString("n8").Replace(",", ".") + System.Environment.NewLine;
+        text += "transferToUpRight:\t\t" + cell.data.transferToUpRight.ToString("n8").Replace(",", ".") + System.Environment.NewLine;
+        text += "transferToDownLeft:\t" + cell.data.transferToDownLeft.ToString("n8").Replace(",", ".") + System.Environment.NewLine;
+        text += "transferToDownRight:\t" + cell.data.transferToDownRight.ToString("n8").Replace(",", ".") + System.Environment.NewLine;
+        
+        if (cell.data.components.Count>0)
+        {
+            for (int i=0; i < cell.data.components.Count; i++)
+            {
+                text += System.Environment.NewLine;
+                text += "new component num:\t" + i.ToString("N0") + System.Environment.NewLine;
+                text += "type:\t" + cell.data.components[i].type + System.Environment.NewLine;
+                text += "m:\t" + cell.data.components[i].m.ToString("n8").Replace(",", ".") + System.Environment.NewLine;
+                text += "C:\t" + cell.data.components[i].C.ToString("n8").Replace(",", ".") + System.Environment.NewLine;
+                text += "Q:\t" + cell.data.components[i].Q.ToString("n8").Replace(",", ".") + System.Environment.NewLine;
+                text += "Ro:\t" + cell.data.components[i].Ro.ToString("n8").Replace(",", ".") + System.Environment.NewLine;
+            }
+        }
 
         info_text.text = text;
     }
@@ -201,6 +259,11 @@ public class MM10 : MonoBehaviour
                 myclone.gameObject.GetComponent<SpriteRenderer>().color = new Color(1f, 1f, 1f);
                 int index = x * maxx + y;
                 myclone.index = index;
+
+
+                myclone.data = new myElementData();
+                myclone.data.Clear();
+
                 map2d.Add( myclone );
             }
         }
