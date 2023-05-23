@@ -81,6 +81,8 @@ public class MM10 : MonoBehaviour
         List<myComponent> summSolid = new List<myComponent>();
         List<myComponent> summFluid = new List<myComponent>();
         List<myComponent> summGas = new List<myComponent>();
+        //счетчик объема
+        float summV = 0;
         //
         for (int ix = x - 1; ix <= x + 1; ix++)
         {
@@ -93,6 +95,8 @@ public class MM10 : MonoBehaviour
                 if (map2d[_index].data.components.Count>0)
                 {
                     bool isWall = false;
+
+                    //прохожу все компоненты в этой клетке
                     for (int i = 0; i < map2d[_index].data.components.Count; i++)
                     {
                         if (map2d[_index].data.components[i].type == myComponentType.gas)
@@ -107,11 +111,19 @@ public class MM10 : MonoBehaviour
                         {
                             summSolid.Add(map2d[_index].data.components[i]);
                         }
-                        else if (map2d[_index].data.components[i].type == myComponentType.wall)
+                        
+                        if (map2d[_index].data.components[i].type == myComponentType.wall)
                         {
                             isWall = true;
                         }
                     }
+
+                    //запоминаю доступный объем клеток
+                    if (isWall==false)
+                    {
+                        summV += map2d[_index].data.V;
+                    }
+
                     //очищаю клетку от данных
                     if (isWall==false)
                     {
@@ -125,6 +137,7 @@ public class MM10 : MonoBehaviour
         //Debug.Log("summSolid.count=" + summSolid.Count);
         //Debug.Log("summFluid.count=" + summFluid.Count);
         //Debug.Log("summGas.count=" + summGas.Count);
+        //Debug.Log("summV=" + summV;
         //конец суммирования
 
 
