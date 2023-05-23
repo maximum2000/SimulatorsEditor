@@ -1,3 +1,11 @@
+/***************************************************************************
+myElementUI.cs -  опичание ячейки модели GUI
+-------------------
+begin                : 24 май 2023
+copyright            : (C) 2023 by Гаммер Максим Дмитриевич (maximum2000)
+email                : maxim.gammer@yandex.ru
+***************************************************************************/
+
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;

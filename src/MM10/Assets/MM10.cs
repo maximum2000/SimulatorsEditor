@@ -1,4 +1,12 @@
-    using System.Collections;
+/***************************************************************************
+MM10.cs -  –асчет математической модели аппаратов
+-------------------
+begin                : 24 май 2023
+copyright            : (C) 2023 by √аммер ћаксим ƒмитриевич (maximum2000)
+email                : maxim.gammer@yandex.ru
+***************************************************************************/
+
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
@@ -84,6 +92,7 @@ public class MM10 : MonoBehaviour
                 //суммирую всю твердое и кидаю вниз
                 if (map2d[_index].data.components.Count>0)
                 {
+                    bool isWall = false;
                     for (int i = 0; i < map2d[_index].data.components.Count; i++)
                     {
                         if (map2d[_index].data.components[i].type == myComponentType.gas)
@@ -98,26 +107,33 @@ public class MM10 : MonoBehaviour
                         {
                             summSolid.Add(map2d[_index].data.components[i]);
                         }
+                        else if (map2d[_index].data.components[i].type == myComponentType.wall)
+                        {
+                            isWall = true;
+                        }
                     }
                     //очищаю клетку от данных
-                    map2d[_index].data.Clear();
-                    map2d[_index].ManualUpdate();
+                    if (isWall==false)
+                    {
+                        map2d[_index].data.Clear();
+                        map2d[_index].ManualUpdate();
+                    }
                 } 
             }
         }
         //
-        Debug.Log("summSolid.count=" + summSolid.Count);
-        Debug.Log("summFluid.count=" + summFluid.Count);
-        Debug.Log("summGas.count=" + summGas.Count);
+        //Debug.Log("summSolid.count=" + summSolid.Count);
+        //Debug.Log("summFluid.count=" + summFluid.Count);
+        //Debug.Log("summGas.count=" + summGas.Count);
         //конец суммировани€
 
 
 
         //проходим все 3 списка и сливаем "подобные с подобными" (сравнива€ плотности) и переспредел€€ количество теплоты
-            //т.е. из 3х записей про песок должна получитс€ одна результирующа€
-            ////причем если две жидкости имеют одну плотность считаю жидкость одинаковой и "сливаю" все такие компоненты в "1" с учетом перераспределени€ энергии
-            //т.е. сейчас плотность служит признаком вещества
-            //берем первый элемент и идем сравнивать от последнего к первому, если сливаем в первый, то удал€ем элемент
+        //т.е. из 3х записей про песок должна получитс€ одна результирующа€
+        ////причем если две жидкости имеют одну плотность считаю жидкость одинаковой и "сливаю" все такие компоненты в "1" с учетом перераспределени€ энергии
+        //т.е. сейчас плотность служит признаком вещества
+        //берем первый элемент и идем сравнивать от последнего к первому, если сливаем в первый, то удал€ем элемент
 
 
 
@@ -127,7 +143,7 @@ public class MM10 : MonoBehaviour
 
 
 
-
+        // онец OneStep
     }
 
     public void CellClick(ref MyElementUI cell)

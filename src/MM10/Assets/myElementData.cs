@@ -1,3 +1,11 @@
+/***************************************************************************
+myElementData.cs -  опичание ячейки модели
+-------------------
+begin                : 24 май 2023
+copyright            : (C) 2023 by Гаммер Максим Дмитриевич (maximum2000)
+email                : maxim.gammer@yandex.ru
+***************************************************************************/
+
 using System.Collections;
 using System.Collections.Generic;
 
@@ -11,6 +19,20 @@ public enum myComponentType
     solid
 }
 
+/*
+public enum myComponentTypeDetail
+{
+    none,
+    steel,
+    methan,
+    o2,
+    water,
+    oil,
+    sand,
+    concrete
+}
+*/
+
 
 public class myComponent
 {
@@ -18,6 +40,7 @@ public class myComponent
     public float m=0;
     //тип компонента
     public myComponentType type = myComponentType.none;
+    //public myComponentTypeDetail typeDetail = myComponentTypeDetail.none;
     //теплоемкость
     //Теплоёмкость — количество теплоты, поглощаемой (выделяемой) телом в процессе нагревания (остывания) на 1 кельвин
     //удельной теплоёмкости (теплоёмкости единицы массы тела)
@@ -34,6 +57,8 @@ public class myComponent
     //зная объем занимаемый газом, его массу.. теплоемкосьб газа и теплоту ... можем вычислить давление и температура газа
     //зная массу жидких и твердых компонентов ... и их теплоемкость и теплоту... можем вычислить и их температуры
     //потом осуществить теплоперенос и распределение теплоты для стабильного состояния (температура всех компонентов выравнивается)
+
+    
 }
 
 public class myElementData
