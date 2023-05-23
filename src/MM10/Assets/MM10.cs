@@ -57,7 +57,77 @@ public class MM10 : MonoBehaviour
         //зная векторную картину перемещений, можем оптимизировать порядок выборки координат для просчетов методом монтекарло
         //т.е. будем стараться чаще и вперед просчитывать области, активно отдающие массу для ее скорейшего распределения
 
-        
+        //!!!
+
+        //0. Просто все ровно распределить, а именно
+        //1. Если есть место снизу то скинуть туда твердое
+        //   (скинуть все в порядке увеличения плотности в принципе)
+        //2. Если есть место снизу то скинуть туда жидкость
+        //3. Выровнять уровни слева\центр\справа для твердого и жидкого, т.е. перераспределить горизонтально
+        //4. Считаем свободное пространство и если оно есть, то распределяем газ ровно по свободному объему
+
+        int x = 27;
+        int y = 44;
+
+        //суммирую вообще все 3*3 в 3 списка (твердое, жидкое, газ) вместе со всеми их энергиями и т.д.
+        List<myComponent> summSolid = new List<myComponent>();
+        List<myComponent> summFluid = new List<myComponent>();
+        List<myComponent> summGas = new List<myComponent>();
+        //
+        for (int ix = x - 1; ix <= x + 1; ix++)
+        {
+            for (int iy = y + 1; iy >= y - 1; iy--)
+            {    
+                int _index = ix * maxx + iy;
+                //Debug.Log("ix=" + ix + " " + "iy=" + iy);
+                //Debug.Log("index1=" + _index + " " + "index2="  + map2d[_index].index);
+                //суммирую всю твердое и кидаю вниз
+                if (map2d[_index].data.components.Count>0)
+                {
+                    for (int i = 0; i < map2d[_index].data.components.Count; i++)
+                    {
+                        if (map2d[_index].data.components[i].type == myComponentType.gas)
+                        {
+                            summGas.Add(map2d[_index].data.components[i]);
+                        }
+                        else if (map2d[_index].data.components[i].type == myComponentType.fluid)
+                        {
+                            summFluid.Add(map2d[_index].data.components[i]);
+                        }
+                        else if (map2d[_index].data.components[i].type == myComponentType.solid)
+                        {
+                            summSolid.Add(map2d[_index].data.components[i]);
+                        }
+                    }
+                    //очищаю клетку от данных
+                    map2d[_index].data.Clear();
+                    map2d[_index].ManualUpdate();
+                } 
+            }
+        }
+        //
+        Debug.Log("summSolid.count=" + summSolid.Count);
+        Debug.Log("summFluid.count=" + summFluid.Count);
+        Debug.Log("summGas.count=" + summGas.Count);
+        //конец суммирования
+
+
+
+        //проходим все 3 списка и сливаем "подобные с подобными" (сравнивая плотности) и переспределяя количество теплоты
+            //т.е. из 3х записей про песок должна получится одна результирующая
+            ////причем если две жидкости имеют одну плотность считаю жидкость одинаковой и "сливаю" все такие компоненты в "1" с учетом перераспределения энергии
+            //т.е. сейчас плотность служит признаком вещества
+            //берем первый элемент и идем сравнивать от последнего к первому, если сливаем в первый, то удаляем элемент
+
+
+
+
+        //а теперь заполняю 3*3 сначала твердыми снизу ровно в один уровень, затем жидкими выше твердых в один уровень, затем оставшееся газом
+        //не забывая про энергию, теплоемкость и т.д.
+
+
+
+
     }
 
     public void CellClick(ref MyElementUI cell)
