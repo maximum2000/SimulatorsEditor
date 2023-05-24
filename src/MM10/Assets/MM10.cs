@@ -75,8 +75,8 @@ public class MM10 : MonoBehaviour
         //4. —читаем свободное пространство и если оно есть, то распредел€ем газ ровно по свободному объему
 
         //координаты центра свертки
-        const int x = 27;
-        const int y = 44;
+        const int x = 27; //27
+        const int y = 44; //44
 
         //свертка 3*3  ! только нечетные размеры
         const int width = 3;
@@ -136,7 +136,7 @@ public class MM10 : MonoBehaviour
                     if (isWall==false)
                     {
                         map2d[_index].data.Clear();
-                        map2d[_index].ManualUpdate();
+                        //map2d[_index].ManualUpdate();
                     }
                 } 
             }
@@ -248,20 +248,22 @@ public class MM10 : MonoBehaviour
                 //б) если полностью хватает места под распределение текущего компонента и место в слое закончилось,
                 //   то распредел€ю по слою и удал€ю компонент,
                 //   поднимаю слой выше - мен€ю  currentY (currentY++ если еще есть нераспределенные компоненты...
-                //   ...если нет места а компонент есть, то вываливаемс€ с ошибкой!)
+                //   ...если нет места  - это не ошибка (это эффект сжати€)
                 //в) если полностью занимаю весь слой текущим компонентом и еще компонент остаетс€
                 //   ,то распредел€ю слой полностью, вычитаю массу и энергию из компонента и 
                 //   поднимаю слой выше - мен€ю  currentY (currentY++ если еще есть нераспределенные компоненты...
-                //   ...если нет места а компонент есть, то вываливаемс€ с ошибкой!).
+                //  ...если нет места  - это не ошибка (это эффект сжати€)
                 //г) если места в слое вообще нет - пропускаю слой
                 //   поднимаю слой выше - мен€ю  currentY (currentY++ если еще есть нераспределенные компоненты...
-                //   ...если нет места а компонент есть, то вываливаемс€ с ошибкой!).
+                //  ...если нет места  - это не ошибка (это эффект сжати€)
 
                 //объем требуемый дл€ распределени€ текущего компонента
                 float Vcomponent = summSolid[0].m / summSolid[0].Ro;
 
                 //доступный объем в этом слое=
                 float freeLayerV = 0;
+                //€чеек доступно в этом слое
+                int availableCells = 0;
                 for (int ix = x - _w; ix <= x + _w; ix++)
                 {
                     int _index = ix * maxx + currentY;
@@ -277,7 +279,8 @@ public class MM10 : MonoBehaviour
                     }
 
                     if (isWall == true) continue;
-                       
+                    availableCells++;
+
                     freeLayerV += map2d[_index].data.V;
                     for (int i = 0; i<  map2d[_index].data.components.Count; i++) 
                     {
@@ -287,16 +290,67 @@ public class MM10 : MonoBehaviour
 
                 Debug.Log("Vcomponent=" + Vcomponent);
                 Debug.Log("freeLayerV=" + freeLayerV);
-                //
-                break;
+                Debug.Log("availableCells=" + availableCells);
+
+                //все, прохожу еще раз по слою и распредел€ю компонент в соотношении доступных €чеек 
+
+                if ((availableCells == 0)||(freeLayerV == 0))
+                {
+                    currentY++;
+                    if (currentY > y + _h)
+                    {
+                        Debug.Log("! error 1 !");
+                        break;
+                    }
+                    continue;
+                }
+
+                //if (freeLayerV >= Vcomponent)
+                {
+                    for (int ix = x - _w; ix <= x + _w; ix++)
+                    {
+                        int _index = ix * maxx + currentY;
+                        //
+                        myComponent temp = new myComponent();
+                        temp.type = myComponentType.solid;
+                        temp.m = summSolid[0].m / (float)availableCells;
+                        temp.Ro = summSolid[0].Ro; 
+                        temp.C = summSolid[0].C; 
+                        temp.Q = summSolid[0].Q / (float)availableCells; 
+                        map2d[_index].data.components.Add(temp);
+                    }
+                    summSolid.RemoveAt(0);
+
+                    if (freeLayerV == Vcomponent) currentY++;
+                    if (currentY > y + _h)
+                    {
+                        Debug.Log("! error 2 !");
+                        break;
+                    }
+
+                    continue;
+                }
+
+                //if (freeLayerV < Vcomponent)
 
 
 
-
-                
             }
-            
-        //конец распределени€
+
+
+
+            //конец распределени€
+        }
+
+
+        //отрисовка
+        for (int ix = x - _w; ix <= x + _w; ix++)
+        {
+            for (int iy = y + _h; iy >= y - _h; iy--)
+            {
+                int _index = ix * maxx + iy;
+                map2d[_index].ManualUpdate();
+            }
         }
 
 
