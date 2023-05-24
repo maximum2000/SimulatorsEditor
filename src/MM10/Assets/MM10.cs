@@ -134,9 +134,9 @@ public class MM10 : MonoBehaviour
             }
         }
         //
-        //Debug.Log("summSolid.count=" + summSolid.Count);
-        //Debug.Log("summFluid.count=" + summFluid.Count);
-        //Debug.Log("summGas.count=" + summGas.Count);
+        Debug.Log("summSolid.count=" + summSolid.Count);
+        Debug.Log("summFluid.count=" + summFluid.Count);
+        Debug.Log("summGas.count=" + summGas.Count);
         //Debug.Log("summV=" + summV;
         //конец суммирования
 
@@ -147,13 +147,85 @@ public class MM10 : MonoBehaviour
         ////причем если две жидкости имеют одну плотность считаю жидкость одинаковой и "сливаю" все такие компоненты в "1" с учетом перераспределения энергии
         //т.е. сейчас плотность служит признаком вещества
         //берем первый элемент и идем сравнивать от последнего к первому, если сливаем в первый, то удаляем элемент
+        {
+            if (summSolid.Count > 0)
+            {
+                for (int f = 0; f < summSolid.Count; f++)
+                {
+                    for (int b = summSolid.Count - 1; b > f; b--)
+                    {
+                        //!!!! добавить плотность в сравнение
+                        if (summSolid[f].type == summSolid[b].type)
+                        {
+                            summSolid[f].m += summSolid[b].m;
+                            summSolid[f].Q += summSolid[b].Q;
+                            summSolid.RemoveAt(b);
+                        }
+                    }
+                }
+            }
+
+            if (summFluid.Count > 0)
+            {
+                for (int f = 0; f < summFluid.Count; f++)
+                {
+                    for (int b = summFluid.Count - 1; b > f; b--)
+                    {
+                        //!!!! добавить плотность в сравнение
+                        if (summFluid[f].type == summFluid[b].type)
+                        {
+                            summFluid[f].m += summFluid[b].m;
+                            summFluid[f].Q += summFluid[b].Q;
+                            summFluid.RemoveAt(b);
+                        }
+                    }
+                }
+            }
+
+            if (summGas.Count > 0)
+            {
+                for (int f = 0; f < summGas.Count; f++)
+                {
+                    for (int b = summGas.Count - 1; b > f; b--)
+                    {
+                        //!!!! добавить плотность в сравнение
+                        if (summGas[f].type == summGas[b].type)
+                        {
+                            summGas[f].m += summGas[b].m;
+                            summGas[f].Q += summGas[b].Q;
+                            summGas.RemoveAt(b);
+                        }
+                    }
+                }
+            }
 
 
+            Debug.Log("summSolid.count=" + summSolid.Count);
+            //Debug.Log("summSolid.m=" + summSolid[0].m);
+            Debug.Log("summFluid.count=" + summFluid.Count);
+            Debug.Log("summGas.count=" + summGas.Count);
+        }
+        //конец слития
+
+        //сортируем по плотности все списки
+        {
+
+        }
 
 
         //а теперь заполняю 3*3 сначала твердыми снизу ровно в один уровень, затем жидкими выше твердых в один уровень, затем оставшееся газом
         //не забывая про энергию, теплоемкость и т.д.
+        {
+            //1. Зная массу и плотности твердых - считаем сколько клеток мы заполним, сколько полных слоев, сколько неполных, заполняем
+            //запоминаем полностью забитые клетки, в них уже ничего не добавить, клетки занимаем постойно, сначала одним твердым типом потом другим
+            //2. Зная массу жидкостии плотности жидкостей - считаем сколько клеток мы заполним, сколько полных слоев, сколько неполных, заполняем
+            //запоминаем полностью забитые клетки, в них уже ничего не добавить
+            //клетки занимаем постойно, сначала одной жидкостью потом другой, в соответствии с плотностью, т.е. сначала воду, потом нефть
+            //3. Считаем количество свободного объема, распределяем газ ровно по ячейкам и все, финиш
+            //причем все газы в отличие от твердых и жидких распределяем равномерно по одним и темже клеткам
 
+
+        }
 
 
         //Конец OneStep
