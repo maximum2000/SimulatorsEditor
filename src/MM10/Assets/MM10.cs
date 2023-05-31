@@ -276,7 +276,7 @@ public class MM10 : MonoBehaviour
 
 
 
-        /*
+        
         //а теперь заполняю 3*3 сначала твердыми снизу ровно в один уровень, затем жидкими выше твердых в один уровень, затем оставшееся газом
         //не забывая про энергию, теплоемкость и т.д.
         {
@@ -371,10 +371,10 @@ public class MM10 : MonoBehaviour
                         //
                         myComponent temp = new myComponent();
                         temp.type = myComponentType.solid;
-                        temp.m = summSolid[0].m / (double)availableCells;
+                        temp.m = summSolid[0].m / (float)availableCells;
                         temp.Ro = summSolid[0].Ro; 
                         temp.C = summSolid[0].C; 
-                        temp.Q = summSolid[0].Q / (double)availableCells; 
+                        temp.Q = summSolid[0].Q / (float)availableCells; 
                         map2d[_index].data.components.Add(temp);
                     }
                     summSolid.RemoveAt(0);
@@ -400,7 +400,7 @@ public class MM10 : MonoBehaviour
             //конец распределения
         }
 
-        */
+        
 
 
         //отрисовка
