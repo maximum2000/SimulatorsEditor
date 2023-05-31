@@ -90,17 +90,17 @@ public class MM10 : MonoBehaviour
         List<myComponent> summFluid = new List<myComponent>();
         List<myComponent> summGas = new List<myComponent>();
         //счетчик объема
-        float summV = 0;
+        double summV = 0;
         //
         for (int ix = x - _w; ix <= x + _w; ix++)
         {
             for (int iy = y + _h; iy >= y - _h; iy--)
-            {    
+            {
                 int _index = ix * maxx + iy;
                 //Debug.Log("ix=" + ix + " " + "iy=" + iy);
                 //Debug.Log("index1=" + _index + " " + "index2="  + map2d[_index].index);
                 //суммирую всю твердое и кидаю вниз
-                if (map2d[_index].data.components.Count>0)
+                if (map2d[_index].data.components.Count > 0)
                 {
                     bool isWall = false;
 
@@ -119,7 +119,7 @@ public class MM10 : MonoBehaviour
                         {
                             summSolid.Add(map2d[_index].data.components[i]);
                         }
-                        
+
                         if (map2d[_index].data.components[i].type == myComponentType.wall)
                         {
                             isWall = true;
@@ -127,18 +127,18 @@ public class MM10 : MonoBehaviour
                     }
 
                     //запоминаю доступный объем клеток
-                    if (isWall==false)
+                    if (isWall == false)
                     {
                         summV += map2d[_index].data.V;
                     }
 
                     //очищаю клетку от данных
-                    if (isWall==false)
+                    if (isWall == false)
                     {
                         map2d[_index].data.Clear();
                         //map2d[_index].ManualUpdate();
                     }
-                } 
+                }
             }
         }
         //
@@ -215,21 +215,80 @@ public class MM10 : MonoBehaviour
         }
         //конец слития
 
+
         //сортируем по плотности все списки
         {
 
         }
 
 
+
+
+        //вычисляем объем с учетом равенства силы (давления) между газом/жидкостью в фиксированном объеме
+        //summV - полный объем
+        double Vsolid = 0;
+        double C1 = 0;
+        double C2 = 0;
+        double Vfluid = 0;
+        double Vgas = 0;
+        {
+            // Vsolid = Summ (m/Ro)  - объем твердых не зависит от газа и воды
+            // Fг=Fж на границе раздела,
+            // Fг = Summ  (m*E) / Vг
+            // Fж = k * Summ (m/Ro) / Vж
+            // Fг = С1 / Vг
+            // Fж = С2 / Vж
+            // C1/Vг = C2/Vж
+            // Vг = с1/c2 * Vж
+            // Vж = (Vвсего - Vsoild) / (с1/с2+1) 
+            // Vг = Vвсего - Vsoild - Vж
+
+            //коэффициент сжатия жидкости общий
+            double k = 1000000.0;
+
+            for (int i = 0; i < summSolid.Count; i++)
+            {
+                Vsolid += summSolid[i].m / summSolid[i].Ro;
+            }
+
+            for (int i = 0; i < summGas.Count; i++)
+            {
+                C1 += summGas[i].m * summGas[i].Q;
+            }
+
+            for (int i = 0; i < summFluid.Count; i++)
+            {
+                C2 += k * summFluid[i].m / summFluid[i].Ro;
+            }
+
+            if (C2 > 0)
+            {
+                Vfluid = (summV - Vsolid) / (C1 / C2 + 1);
+            }
+            Vgas = summV - Vsolid - Vfluid;
+
+            Debug.Log("summV=" + summV);
+            Debug.Log("Vsolid=" + Vsolid);
+            Debug.Log("Vfluid=" + Vfluid);
+            Debug.Log("Vgas=" + Vgas);
+        }
+
+
+
+
+        /*
         //а теперь заполняю 3*3 сначала твердыми снизу ровно в один уровень, затем жидкими выше твердых в один уровень, затем оставшееся газом
         //не забывая про энергию, теплоемкость и т.д.
         {
-            //1. Зная массу и плотности твердых - считаем сколько клеток мы заполним, сколько полных слоев, сколько неполных, заполняем
-            //запоминаем полностью забитые клетки, в них уже ничего не добавить, клетки занимаем постойно, сначала одним твердым типом потом другим
-            //2. Зная массу жидкостии плотности жидкостей - считаем сколько клеток мы заполним, сколько полных слоев, сколько неполных, заполняем
+            //1. Зная Vsolid и массу/плотность твердых - считаем сколько клеток мы заполним, сколько полных слоев, сколько неполных, заполняем
+            //запоминаем полностью забитые клетки, в них уже ничего не добавить, клетки занимаем послойно, сначала одним твердым типом потом другим
+
+            //2. Зная Vfluid и массу жидкости и плотности жидкостей - считаем сколько клеток мы заполним, сколько полных слоев, сколько неполных, заполняем
             //запоминаем полностью забитые клетки, в них уже ничего не добавить
             //клетки занимаем постойно, сначала одной жидкостью потом другой, в соответствии с плотностью, т.е. сначала воду, потом нефть
-            //3. Считаем количество свободного объема, распределяем газ ровно по ячейкам и все, финиш
+            //и еще не забываем про давление, которое увеличивается на RoGH от верхних к нижним слоям / уменьшается на RoGH от нижних к верхним
+
+            //3. Зная  Vgas - количество свободного объема, распределяем газ ровно по ячейкам и все, финиш
             //причем все газы в отличие от твердых и жидких распределяем равномерно по одним и темже клеткам
 
             //пока есть нераспределенные твердые.....
@@ -239,7 +298,6 @@ public class MM10 : MonoBehaviour
             {
                 //иду снизу вверх слоями... 
                 //для каждого слоя считаю сколько можно в него записать....
-
 
                 //считаю сколько свободного места в этом слое.... потом
                 //а) если полностью хватает места под распределение текущего компонента и еще остается, то распределяю по слою
@@ -258,10 +316,10 @@ public class MM10 : MonoBehaviour
                 //  ...если нет места  - это не ошибка (это эффект сжатия)
 
                 //объем требуемый для распределения текущего компонента
-                float Vcomponent = summSolid[0].m / summSolid[0].Ro;
+                double Vcomponent = summSolid[0].m / summSolid[0].Ro;
 
                 //доступный объем в этом слое=
-                float freeLayerV = 0;
+                double freeLayerV = 0;
                 //ячеек доступно в этом слое
                 int availableCells = 0;
                 for (int ix = x - _w; ix <= x + _w; ix++)
@@ -313,10 +371,10 @@ public class MM10 : MonoBehaviour
                         //
                         myComponent temp = new myComponent();
                         temp.type = myComponentType.solid;
-                        temp.m = summSolid[0].m / (float)availableCells;
+                        temp.m = summSolid[0].m / (double)availableCells;
                         temp.Ro = summSolid[0].Ro; 
                         temp.C = summSolid[0].C; 
-                        temp.Q = summSolid[0].Q / (float)availableCells; 
+                        temp.Q = summSolid[0].Q / (double)availableCells; 
                         map2d[_index].data.components.Add(temp);
                     }
                     summSolid.RemoveAt(0);
@@ -341,6 +399,8 @@ public class MM10 : MonoBehaviour
 
             //конец распределения
         }
+
+        */
 
 
         //отрисовка
