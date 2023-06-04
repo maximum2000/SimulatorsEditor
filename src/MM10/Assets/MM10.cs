@@ -435,11 +435,16 @@ public class MM10 : MonoBehaviour
              *    m1 = (m_summ/V2) / (1/V1 + 1/V2 + g*Rom/k)
              *    
              *    Для случая 3
-             *    k * m1 / Rom / V1 + m1*g  == k * m2 / Rom / V2 
-             *    k * m2 / Rom / V2 + m2*g ==  k * m3 / Rom / V3 
-             *    m_summ = m1+m2+m3
+             *    m1 = m_summ * (v1/V_summ)
+             *    m2 = m_summ * (v2/V_summ)
+             *    m3 = m_summ * (v3/V_summ)
              *    
-             *    
+             *    minusM1 = m1*0.02;
+             *    m1 -= minusM1
+             *    m2 += minusM1
+             *    minusM2 = m2*0.01
+             *    m2 -= minusM2
+             *    m3 += minusM2
             */
 
             while (summFluid.Count > 0)
