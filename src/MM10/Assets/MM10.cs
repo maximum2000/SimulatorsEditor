@@ -231,6 +231,11 @@ public class MM10 : MonoBehaviour
 
         double Ffluid = 0;
         double Fgas = 0;
+
+        //коэффициент сжатия жидкости общий
+        double k = 1000000.0;
+
+
         {
             // Vsolid = Summ (m/Ro)  - объем твердых не зависит от газа и воды
             // Fг=Fж на границе раздела,
@@ -243,8 +248,7 @@ public class MM10 : MonoBehaviour
             // Vж = (Vвсего - Vsoild) / (с1/с2+1) 
             // Vг = Vвсего - Vsoild - Vж
 
-            //коэффициент сжатия жидкости общий
-            double k = 1000000.0;
+            
 
             for (int i = 0; i < summSolid.Count; i++)
             {
@@ -449,6 +453,7 @@ public class MM10 : MonoBehaviour
 
             if (summFluid.Count > 0)
             {
+                //рассчитываю среднюю плотность (как массу общую на объем общий)
                 double summM_fluid = 0;
                 for (int i = 0; i < summFluid.Count; i++)
                 {
@@ -458,17 +463,148 @@ public class MM10 : MonoBehaviour
                 Debug.Log("Vfluid=" + Vfluid);
                 double avgRo = summM_fluid / Vfluid;
                 Debug.Log("avgRo=" + avgRo);
+
+                //считаю количество слоев
+                //начинаю с слоя где закончились твердые компоненты и иду наверх считая свободный объем, пока не закончится....
+                //запоминаю доступный объем в каждом слое
+                //количество элементов в массиве - количество слоев
+                
+                List<double> freeLayerCount = new List<double>();
+                //currentY - на каком слое остановились на распределении твердых
+                bool isStop = false;
+                double VfluidCounterSumm = 0;
+                int currentY_old = currentY;
+                while (isStop == false)
+                {
+                    double VfluidCounter = 0;
+                    for (int ix = x - _w; ix <= x + _w; ix++)
+                    {
+                        int _index = ix * maxx + currentY;
+
+                        //если стена
+                        bool isWall = false;
+                        for (int i = 0; i < map2d[_index].data.components.Count; i++)
+                        {
+                            if (map2d[_index].data.components[i].type == myComponentType.wall)
+                            {
+                                isWall = true;
+                                break;
+                            }
+                        }
+                        if (isWall == true) continue;
+
+                        //считаем суммарный доступынй  объем
+                        VfluidCounter += map2d[_index].data.V;
+                        for (int i = 0; i < map2d[_index].data.components.Count; i++)
+                        {
+                            if (map2d[_index].data.components[i].type == myComponentType.solid)
+                            {
+                                VfluidCounter -= map2d[_index].data.components[i].m / map2d[_index].data.components[i].Ro;
+                            }
+                        }
+                    }
+                    
+                    if (VfluidCounterSumm + VfluidCounter > Vfluid)
+                    {
+                        isStop = true;
+                        freeLayerCount.Add(Vfluid - VfluidCounterSumm);
+                    }
+                    else
+                    {
+                        freeLayerCount.Add(VfluidCounter);
+                        VfluidCounterSumm += VfluidCounter;
+                        //переходим на верхний слой
+                        currentY++;
+                    }
+                }
+                //восстанавливаю границу с твердыми
+                currentY =  currentY_old;
+                //
+                Debug.Log("freeLayerCount.count=" + freeLayerCount.Count);
+                //снизу вверх
+                for (int i=0;i< freeLayerCount.Count; i++)
+                {
+                    Debug.Log("freeLayerCount[" + i + "]=" + freeLayerCount[i]);
+                }
+
+                //далее, если слоев для размещения жидкости == 1, то распределяем тупо всю массу (все компоненты) по слою
+                if (freeLayerCount.Count==1)
+                {
+                    Debug.Log("1!");
+                    Debug.Log("m1 = " + summM_fluid);
+                }
+
+                //если два .... то 
+                // или через + m * g(масса вниз)
+                // k * (m1 / Rom) / V1 + m1 * g == k * (m2 / Rom) / V2
+                // m1 = (m_summ / V2) / (1 / V1 + 1 / V2 + g * Rom / k)
+                if (freeLayerCount.Count == 2)
+                {
+                    double V1 = freeLayerCount[0];
+                    double V2 = freeLayerCount[1];
+                    double g = 9.81;
+
+                    double m1 = (summM_fluid / V2) / (1 / V1 + 1 / V2 + g * avgRo / k); //верхний слой
+                    double m2 = summM_fluid - m1; //нижний слой
+
+                    Debug.Log("2!");
+                    Debug.Log("m1 = " + m1);
+                    Debug.Log("m2 = " + m2);
+                }
+
+                //если три .... то 
+                if (freeLayerCount.Count == 3)
+                {
+                    
+                    double V1 = freeLayerCount[0]; //нижний слой
+                    double V2 = freeLayerCount[1];
+                    double V3 = freeLayerCount[2]; //верхний слой
+                    /*
+                    double g = 9.81;
+
+                    //double z = avgRo * 9.81 / k;
+                    double z = 0.01;
+                    double c1 = 1 / V1 + z + 1 / V2;
+                    double c2 = 1 / V2 + z + 1 / V3;
+
+                    double m2 = summM_fluid / (V3 * (C2 + (1/(V3*V2*(C1 - 1/V2)))));
+                    double m1 = m2 / (V2* (C1-1/V2));
+                    double m3 = summM_fluid - m1 - m2;
+                    */
+                    
+                    double m1 = summM_fluid * (V1 / Vfluid); //нижний слой
+                    double m2 = summM_fluid * (V2 / Vfluid); //средний
+                    double m3 = summM_fluid * (V3 / Vfluid); //верхний слой
+
+                    double minusM1 = m1 * 0.02;
+                    m1 -= minusM1;
+                    m2 += minusM1;
+                    double minusM2 = m2 * 0.01;
+                    m2 -= minusM2;
+                    m3 += minusM2;
+
+                    Debug.Log("3!");
+                    Debug.Log("m1 = " + m1);
+                    Debug.Log("m2 = " + m2);
+                    Debug.Log("m3 = " + m3);
+                }
+
+                // если ?....то
+                if ((freeLayerCount.Count > 3) || (freeLayerCount.Count==0))
+                {
+                    Debug.Log("Error 14346389265");
+                }
+
+
             }
 
 
-            while (summFluid.Count > 0)
-            {
-                summFluid.RemoveAt(0);
-            }
+            //while (summFluid.Count > 0)
+            //{
+            //    summFluid.RemoveAt(0);
+            //}
 
-            /*
-             *  определяем среднюю плотность Ro жидкости
-             */
+            
 
 
             //конец распределения жидкости
