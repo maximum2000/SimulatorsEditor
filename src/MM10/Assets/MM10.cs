@@ -469,6 +469,7 @@ public class MM10 : MonoBehaviour
                 //запоминаю доступный объем в каждом слое
                 //количество элементов в массиве - количество слоев
                 
+                //распределение объемов по слоям
                 List<double> freeLayerCount = new List<double>();
                 //currentY - на каком слое остановились на распределении твердых
                 bool isStop = false;
@@ -527,11 +528,17 @@ public class MM10 : MonoBehaviour
                     Debug.Log("freeLayerCount[" + i + "]=" + freeLayerCount[i]);
                 }
 
+
+                //распределение масс по слоям
+                List<double> MassLayerCount = new List<double>();
+
+
                 //далее, если слоев для размещения жидкости == 1, то распределяем тупо всю массу (все компоненты) по слою
                 if (freeLayerCount.Count==1)
                 {
                     Debug.Log("1!");
                     Debug.Log("m1 = " + summM_fluid);
+                    MassLayerCount.Add(summM_fluid);
                 }
 
                 //если два .... то 
@@ -550,6 +557,8 @@ public class MM10 : MonoBehaviour
                     Debug.Log("2!");
                     Debug.Log("m1 = " + m1);
                     Debug.Log("m2 = " + m2);
+                    MassLayerCount.Add(m2);
+                    MassLayerCount.Add(m1);
                 }
 
                 //если три .... то 
@@ -587,6 +596,10 @@ public class MM10 : MonoBehaviour
                     Debug.Log("m1 = " + m1);
                     Debug.Log("m2 = " + m2);
                     Debug.Log("m3 = " + m3);
+
+                    MassLayerCount.Add(m1);
+                    MassLayerCount.Add(m2);
+                    MassLayerCount.Add(m3);
                 }
 
                 // если ?....то
@@ -596,17 +609,118 @@ public class MM10 : MonoBehaviour
                 }
 
 
+                //Ну и собственно распределяем все компоненты жидкости по стоям в моответствии с полученными массами
+                for (int i=0; i < MassLayerCount.Count; i++)
+                {
+                    //i - номер слоя [от нижнего к верхнему]
+                    //MassLayerCount[i] - сколько массы положить в слой
+                    //граница с твердыми = currentY;
+                    //summM_fluid - всего массы для распределения
+
+                    //переходим все компоненты в summFluid[] и начинаем с нижнего слоя с наиболее плотных до наиболее легких
+                    //т.е. сначала распределяем наиболее плотные компоненты , потом легкие
+                    bool isNext = false;
+
+                    while ((summFluid.Count > 0)&&(isNext==false))
+                    {
+                        //распределяем MassLayerCount[i] килограмм на слой currentY
+                        //summFluid [summFluid.Count-1] - что распределяем []с конца
+
+                        //считаем сколько ячеек есть для распределения в этом слое (не стена) [если все стены - то поднимаемся на уровень выше currentY++]
+                        //проходим по всем компонентам, набираем необходимую массу и распределяем ее по установленному количеству ячеек
+                        //поднимаемся на уровень выше currentY++
+                        //summFluid.RemoveAt(summFluid.Count-1);
+
+                        int countCell = 0;
+                        for (int ix = x - _w; ix <= x + _w; ix++)
+                        {
+                            int _index = ix * maxx + currentY;
+                            //если стена
+                            bool isWall = false;
+                            for (int z = 0; z < map2d[_index].data.components.Count; z++)
+                            {
+                                if (map2d[_index].data.components[z].type == myComponentType.wall)
+                                {
+                                    isWall = true;
+                                    break;
+                                }
+                            }
+                            if (isWall == true) continue;
+                            countCell++;
+                        }
+                        
+                        //если нет ячеек для распределения на этом слое то идем выше
+                        if (countCell==0)
+                        {
+                            currentY++;
+                            continue;
+                        }
+
+                        //на каждую свободную ячейку в этом слое нужно распределить .... кг
+                        double massToOneCell = MassLayerCount[i] / (double)countCell;
+                        double massDistributed = 0;
+                        for (int ix = x - _w; ix <= x + _w; ix++)
+                        {
+                            int _index = ix * maxx + currentY;
+                            //если стена
+                            bool isWall = false;
+                            for (int z = 0; z < map2d[_index].data.components.Count; z++)
+                            {
+                                if (map2d[_index].data.components[z].type == myComponentType.wall)
+                                {
+                                    isWall = true;
+                                    break;
+                                }
+                            }
+                            if (isWall == true) continue;
+                            //распределяем massToOneCell из summFluid [summFluid.Count-1]
+                            {
+                                if (summFluid[summFluid.Count - 1].m > massToOneCell)
+                                {
+                                    //если хватает массы компонента
+                                    myComponent temp = new myComponent();
+                                    temp.type = myComponentType.fluid;
+                                    temp.m = (float)massToOneCell;
+                                    temp.Ro = summFluid[summFluid.Count - 1].Ro;
+                                    temp.Q = summFluid[summFluid.Count - 1].Q * ((float)massToOneCell/ summFluid[summFluid.Count - 1].m);
+                                    temp.C = summFluid[summFluid.Count - 1].C;
+                                    summFluid[summFluid.Count - 1].Q -= temp.Q;
+                                    summFluid[summFluid.Count - 1].m -= temp.m;
+                                    map2d[_index].data.components.Add(temp);
+                                    massDistributed += temp.m;
+                                    if (massDistributed >= MassLayerCount[i]*0.99f)
+                                    {
+                                        isNext = true;
+                                        currentY++;
+                                        break;
+                                    }
+                                }
+                                else
+                                {
+                                    //если нехватает, то выбрасываем компонет
+                                    myComponent temp = new myComponent();
+                                    temp.type = myComponentType.fluid;
+                                    temp.m = summFluid[summFluid.Count - 1].m;
+                                    temp.Ro = summFluid[summFluid.Count - 1].Ro;
+                                    temp.Q = summFluid[summFluid.Count - 1].Q;
+                                    temp.C = summFluid[summFluid.Count - 1].C;
+                                    summFluid.RemoveAt(summFluid.Count - 1);
+                                    map2d[_index].data.components.Add(temp);
+                                    massDistributed += temp.m;
+                                    if (massDistributed >= MassLayerCount[i])
+                                    {
+                                        isNext = true;
+                                        currentY++;
+                                        break;
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+                //конец распределения
             }
-
-
-            //while (summFluid.Count > 0)
-            //{
-            //    summFluid.RemoveAt(0);
-            //}
-
-            
-
-
             //конец распределения жидкости
 
 
