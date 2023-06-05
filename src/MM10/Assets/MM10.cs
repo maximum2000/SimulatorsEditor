@@ -548,8 +548,8 @@ public class MM10 : MonoBehaviour
                 // m1 = (m_summ / V2) / (1 / V1 + 1 / V2 + g * Rom / k)
                 if (freeLayerCount.Count == 2)
                 {
-                    double V1 = freeLayerCount[0];
-                    double V2 = freeLayerCount[1];
+                    double V1 = freeLayerCount[1];
+                    double V2 = freeLayerCount[0];
                     double g = 9.81;
 
                     double m1 = (summM_fluid / V2) / (1 / V1 + 1 / V2 + g * avgRo / k); //верхний слой
@@ -559,17 +559,17 @@ public class MM10 : MonoBehaviour
                     Debug.Log("m1 = " + m1);
                     Debug.Log("m2 = " + m2);
                     
-                    MassLayerCount.Add(m1);
                     MassLayerCount.Add(m2);
+                    MassLayerCount.Add(m1);
                 }
 
                 //если три .... то 
                 if (freeLayerCount.Count == 3)
                 {
                     
-                    double V1 = freeLayerCount[0]; //нижний слой
+                    double V1 = freeLayerCount[2]; //нижний слой
                     double V2 = freeLayerCount[1];
-                    double V3 = freeLayerCount[2]; //верхний слой
+                    double V3 = freeLayerCount[0]; //верхний слой
                     /*
                     double g = 9.81;
 
