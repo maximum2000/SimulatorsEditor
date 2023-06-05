@@ -505,10 +505,11 @@ public class MM10 : MonoBehaviour
                         }
                     }
                     
-                    if (VfluidCounterSumm + VfluidCounter > Vfluid)
+                    if (VfluidCounterSumm + VfluidCounter >= Vfluid)
                     {
                         isStop = true;
                         freeLayerCount.Add(Vfluid - VfluidCounterSumm);
+                        break;
                     }
                     else
                     {
@@ -557,8 +558,9 @@ public class MM10 : MonoBehaviour
                     Debug.Log("2!");
                     Debug.Log("m1 = " + m1);
                     Debug.Log("m2 = " + m2);
-                    MassLayerCount.Add(m2);
+                    
                     MassLayerCount.Add(m1);
+                    MassLayerCount.Add(m2);
                 }
 
                 //если три .... то 
@@ -597,15 +599,15 @@ public class MM10 : MonoBehaviour
                     Debug.Log("m2 = " + m2);
                     Debug.Log("m3 = " + m3);
 
-                    MassLayerCount.Add(m1);
-                    MassLayerCount.Add(m2);
                     MassLayerCount.Add(m3);
+                    MassLayerCount.Add(m2);
+                    MassLayerCount.Add(m1);
                 }
 
                 // если ?....то
                 if ((freeLayerCount.Count > 3) || (freeLayerCount.Count==0))
                 {
-                    Debug.Log("Error 14346389265");
+                    Debug.Log("Error 14346389265=freeLayerCount.Count= "+ freeLayerCount.Count);
                 }
 
 
