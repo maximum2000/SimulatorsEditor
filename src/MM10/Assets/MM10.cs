@@ -732,13 +732,14 @@ public class MM10 : MonoBehaviour
             while (summGas.Count > 0)
             {
                 //заранее запоминаем сколько массы и энергии компонента мы должны сбросить на еденицу объема
-                double massPerVolume = summGas[0].m / Vgas;
-                double QPerVolume = summGas[0].Q / Vgas;
+                double massPerVolume = summGas[0].m / Mathf.Ceil((float)Vgas);
+                double QPerVolume = summGas[0].Q / Mathf.Ceil((float)Vgas);
                 bool done = false;
                 //
-                for (int ix = x - _w; ix <= x + _w; ix++)
+                
+                for (int iy = y + _h; iy >= y - _h; iy--)
                 {
-                    for (int iy = y + _h; iy >= y - _h; iy--)
+                    for (int ix = x - _w; ix <= x + _w; ix++)
                     {
                         int _index = ix * maxx + iy;
 
