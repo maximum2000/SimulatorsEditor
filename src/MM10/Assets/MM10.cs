@@ -447,10 +447,30 @@ public class MM10 : MonoBehaviour
              *    m3 += minusM2
             */
 
+            if (summFluid.Count > 0)
+            {
+                double summM_fluid = 0;
+                for (int i = 0; i < summFluid.Count; i++)
+                {
+                    summM_fluid += (double)summFluid[i].m;
+                }
+                Debug.Log("summM_fluid=" + summM_fluid);
+                Debug.Log("Vfluid=" + Vfluid);
+                double avgRo = summM_fluid / Vfluid;
+                Debug.Log("avgRo=" + avgRo);
+            }
+
+
             while (summFluid.Count > 0)
             {
                 summFluid.RemoveAt(0);
             }
+
+            /*
+             *  определяем среднюю плотность Ro жидкости
+             */
+
+
             //конец распределения жидкости
 
 
