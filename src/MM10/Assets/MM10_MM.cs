@@ -48,6 +48,12 @@ public partial  class MM10 : MonoBehaviour
                     //прохожу все компоненты в этой клетке
                     for (int i = 0; i < map2d[_index].data.components.Count; i++)
                     {
+                        if (map2d[_index].data.components[i].type == myComponentType.wall)
+                        {
+                            isWall = true;
+                            break;
+                        }
+
                         if (map2d[_index].data.components[i].type == myComponentType.gas)
                         {
                             summGas.Add(map2d[_index].data.components[i]);
@@ -61,10 +67,7 @@ public partial  class MM10 : MonoBehaviour
                             summSolid.Add(map2d[_index].data.components[i]);
                         }
 
-                        if (map2d[_index].data.components[i].type == myComponentType.wall)
-                        {
-                            isWall = true;
-                        }
+                        
                     }
                 }
                 //запоминаю доступный объем клеток
@@ -736,7 +739,8 @@ public partial  class MM10 : MonoBehaviour
         //конец распределени€ газа
     }
 
-    public void OneStep()
+
+    private void Shot(int x, int y)
     {
         //расчет свертки 3*3
 
@@ -745,8 +749,8 @@ public partial  class MM10 : MonoBehaviour
         //т.е. будем старатьс€ чаще и вперед просчитывать области, активно отдающие массу дл€ ее скорейшего распределени€
 
         //координаты центра свертки
-        const int x = 27; //27
-        const int y = 44; //44
+        //const int x = 27; //27
+        //const int y = 44; //44
 
         //свертка 3*3  ! только нечетные размеры
         const int width = 3;
@@ -755,7 +759,7 @@ public partial  class MM10 : MonoBehaviour
         int _h = (height - 1) / 2;
         //
 
-        Step1(x,y, _w, _h);     //суммирую вообще все 3*3 в 3 списка (твердое, жидкое, газ) вместе со всеми их энерги€ми и т.д.
+        Step1(x, y, _w, _h);     //суммирую вообще все 3*3 в 3 списка (твердое, жидкое, газ) вместе со всеми их энерги€ми и т.д.
         Step2();                //проходим все 3 списка и сливаем "подобные с подобными" (сравнива€ плотности) и переспредел€€ количество теплоты
         Step3();                //вычисл€ем объемы с учетом равенства силы (давлени€) между газом/жидкостью в фиксированном объеме
         Step4(x, y, _w, _h);    //заполн€ю сначала твердыми снизу ровно в один уровень
@@ -772,8 +776,19 @@ public partial  class MM10 : MonoBehaviour
                 map2d[_index].ManualUpdate();
             }
         }
-
         // онец OneStep
+    }
+
+    public void OneStep()
+    {
+        //Shot(27, 44);
+
+        for (int i = 0; i < 100; i++)
+        {
+            int rx = (int)Random.Range(27f, 41f);
+            int ry = (int)Random.Range(42f, 48f);
+            Shot(rx, ry);
+        }
     }
 
 }
