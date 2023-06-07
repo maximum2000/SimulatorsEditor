@@ -21,7 +21,7 @@ public partial  class MM10 : MonoBehaviour
     private double Vfluid = 0;
     private double Vgas = 0;
     //коэффициент сжатия жидкости общий
-    private double k = 1000000.0;
+    private double k = 1000000000;//1000000.0;
     private int currentY = 0;
 
 
@@ -45,7 +45,7 @@ public partial  class MM10 : MonoBehaviour
                 bool isWall = false;
                 if (map2d[_index].data.components.Count > 0)
                 {
-                    //прохожу все компоненты в этой клетке
+                    //проверяю не стена ли это
                     for (int i = 0; i < map2d[_index].data.components.Count; i++)
                     {
                         if (map2d[_index].data.components[i].type == myComponentType.wall)
@@ -53,7 +53,12 @@ public partial  class MM10 : MonoBehaviour
                             isWall = true;
                             break;
                         }
+                    }
+                    if (isWall == true) continue;
 
+                    //прохожу все компоненты в этой клетке
+                    for (int i = 0; i < map2d[_index].data.components.Count; i++)
+                    {
                         if (map2d[_index].data.components[i].type == myComponentType.gas)
                         {
                             summGas.Add(map2d[_index].data.components[i]);
@@ -66,18 +71,13 @@ public partial  class MM10 : MonoBehaviour
                         {
                             summSolid.Add(map2d[_index].data.components[i]);
                         }
-
-                        
                     }
                 }
                 //запоминаю доступный объем клеток
                 if (isWall == false)
                 {
                     summV += map2d[_index].data.V;
-                }
-                //очищаю клетку от данных
-                if (isWall == false)
-                {
+                    //очищаю клетку от данных
                     map2d[_index].data.Clear();
                 }
                 //
@@ -310,33 +310,31 @@ public partial  class MM10 : MonoBehaviour
                     continue;
                 }
 
-                //if (freeLayerV >= Vcomponent)
+                //Доработать, тут сейчас все в 1 слой валится, что неправильно
+
+
+                for (int ix = x - _w; ix <= x + _w; ix++)
                 {
-                    for (int ix = x - _w; ix <= x + _w; ix++)
-                    {
-                        int _index = ix * maxx + currentY;
-                        //
-                        myComponent temp = new myComponent();
-                        temp.type = myComponentType.solid;
-                        temp.m = summSolid[0].m / (float)availableCells;
-                        temp.Ro = summSolid[0].Ro;
-                        temp.C = summSolid[0].C;
-                        temp.Q = summSolid[0].Q / (float)availableCells;
-                        map2d[_index].data.components.Add(temp);
-                    }
-                    summSolid.RemoveAt(0);
-
-                    if (freeLayerV == Vcomponent) currentY++;
-                    if (currentY > y + _h)
-                    {
-                        Debug.Log("! error 2 !");
-                        break;
-                    }
-
-                    continue;
+                    int _index = ix * maxx + currentY;
+                    //если это не стена (там или чисто или стена)
+                    if (map2d[_index].data.components.Count>0) continue;
+                    //если это не стена, тогда заливаем
+                    myComponent temp = new myComponent();
+                    temp.type = myComponentType.solid;
+                    temp.m = summSolid[0].m / (float)availableCells;
+                    temp.Ro = summSolid[0].Ro;
+                    temp.C = summSolid[0].C;
+                    temp.Q = summSolid[0].Q / (float)availableCells;
+                    map2d[_index].data.components.Add(temp);
                 }
+                summSolid.RemoveAt(0);
 
-                //if (freeLayerV < Vcomponent)
+                if (freeLayerV == Vcomponent) currentY++;
+                if (currentY > y + _h)
+                {
+                    Debug.Log("! error 2 !");
+                    break;
+                }
             }
             //конец распределения твердых
         }
@@ -783,9 +781,12 @@ public partial  class MM10 : MonoBehaviour
     {
         //Shot(27, 44);
 
+       // Shot(26, 44);
+
+        if (true)
         for (int i = 0; i < 100; i++)
         {
-            int rx = (int)Random.Range(27f, 41f);
+            int rx = (int)Random.Range(26f, 41f);
             int ry = (int)Random.Range(42f, 48f);
             Shot(rx, ry);
         }
