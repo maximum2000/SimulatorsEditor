@@ -848,7 +848,7 @@ public partial  class MM10 : MonoBehaviour
         Step6(x, y, _w, _h);    //заполняю газами
 
 
-        //отрисовка
+        /* отрисовка
         for (int ix = x - _w; ix <= x + _w; ix++)
         {
             for (int iy = y + _h; iy >= y - _h; iy--)
@@ -857,6 +857,7 @@ public partial  class MM10 : MonoBehaviour
                 map2d[_index].ManualUpdate();
             }
         }
+        */
         //Конец OneStep
     }
 
@@ -864,8 +865,13 @@ public partial  class MM10 : MonoBehaviour
     {
         //Shot(27, 44);
 
-       // Shot(26, 44);
-       // ShowAllMass(26,41,43,48);
+        // Shot(26, 44);
+        // ShowAllMass(26,41,43,48);
+
+        System.DateTime datevalue1 = System.DateTime.Now;
+
+        
+
         if (true)
             for (int i = 0; i < 250; i++)
             {
@@ -876,7 +882,22 @@ public partial  class MM10 : MonoBehaviour
                 //Debug.LogWarning("Сгенерированный RX=" + rx + " ;Сгенерированный RY=" + ry);
                 Shot(rx, ry);
             }
+
+        System.DateTime datevalue2 = System.DateTime.Now;
+        double diff = (datevalue2 - datevalue1).TotalMilliseconds;
+
+        Debug.Log("calc mm millisec = " + diff);
+        Debug.Log("calc mm millisec / 250 = " + (int)diff/250);
+
         // ShowAllMass(26,41,43,48);
+        for (int t = 0; t < maxx * maxy; t++)
+        {
+            map2d[t].ManualUpdate();
+        }
+
+        diff = (System.DateTime.Now - datevalue2).TotalMilliseconds;
+
+        Debug.Log("repaint millisec = " + diff);
     }
 
     // private void ShowAllMass(int xMin,int xMax, int yMin,int yMax)
