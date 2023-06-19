@@ -7,3 +7,6 @@
 [submodule "src/OpenBLAS"]
 	path = src/OpenBLAS
 	url = https://github.com/xianyi/OpenBLAS.git
+[submodule "src/OpenCL-SDK"]
+	path = src/OpenCL-SDK
+	url = https://github.com/KhronosGroup/OpenCL-SDK.git
