@@ -10,3 +10,6 @@
 [submodule "src/OpenCL-SDK"]
 	path = src/OpenCL-SDK
 	url = https://github.com/KhronosGroup/OpenCL-SDK.git
+[submodule "src/glfw"]
+	path = src/glfw
+	url = https://github.com/glfw/glfw.git
