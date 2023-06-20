@@ -85,7 +85,7 @@ int test111() {
 		
 		std::cout << device[0].getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>() << std::endl;
 		std::cout << device[0].getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>() / 1024 / 1024 << std::endl;
-
+				
 		int num;
 		device[0].getInfo(CL_DEVICE_MAX_COMPUTE_UNITS, &num);
 		std::cout << num << std::endl;
