@@ -1,10 +1,13 @@
+#define CL_HPP_TARGET_OPENCL_VERSION 300
+
 #include <iostream>
 #include <vector>
 #include <string>
 #include<iostream>
 #include <fstream>
 
-#define __CL_ENABLE_EXCEPTIONS
+//#define __CL_ENABLE_EXCEPTIONS
+#define CL_HPP_ENABLE_EXCEPTIONS
 #include <CL/opencl.hpp>
 
 // Compute c = a + b.
@@ -78,6 +81,17 @@ int test111() {
 		}
 
 		std::cout << device[0].getInfo<CL_DEVICE_NAME>() << std::endl;
+		std::cout << device[0].getInfo<CL_DEVICE_VENDOR>() << std::endl;
+		
+		std::cout << device[0].getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>() << std::endl;
+		std::cout << device[0].getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>() / 1024 / 1024 << std::endl;
+
+		int num;
+		device[0].getInfo(CL_DEVICE_MAX_COMPUTE_UNITS, &num);
+		std::cout << num << std::endl;
+
+
+
 
 		// Create command queue.
 		cl::CommandQueue queue(context, device[0]);
