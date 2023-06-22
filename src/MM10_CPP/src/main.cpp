@@ -247,7 +247,7 @@ int main(int, char**)
                 for (int _y = 0; _y < 80; _y++)
                 {
                     float x = canvas_pos.x + _x * 10+20;
-                    float y = canvas_pos.y + _y *10  + 200;
+                    float y = canvas_pos.y + _y *10  + 180;
                     float c = (float) rand() / (float)RAND_MAX * 255.0f;
                     draw_list->AddRectFilledMultiColor(ImVec2(x, y), ImVec2(x + 9, y + 9), IM_COL32(c, c, c, 255), IM_COL32(255, 0, 0, 255), IM_COL32(255, 255, 0, 255), IM_COL32(0, 255, 0, 255));
                     //draw_list->AddRect(ImVec2(x + 100, y), ImVec2(x + 200, y + 100), IM_COL32(255, 0, 0, 255), 0);
