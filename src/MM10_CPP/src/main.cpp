@@ -46,7 +46,7 @@ static void ShowExampleAppCustomRendering()
     ImGui::Text("Primitives");
     static float sz = 36.0f;
     static float thickness = 4.0f;
-    static ImVec4 col = ImVec4(1.0f, 1.0f, 0.4f, 1.0f);
+    static ImVec4 col = ImVec4(0.0f, 0.0f, 1.0f, 1.0f);
     ImGui::DragFloat("Size", &sz, 0.2f, 2.0f, 72.0f, "%.0f");
     ImGui::DragFloat("Thickness", &thickness, 0.05f, 1.0f, 8.0f, "%.02f");
     ImGui::ColorEdit4("Color", &col.x);
@@ -239,9 +239,29 @@ int main(int, char**)
 
             ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
             
-            
-            
-            
+            ImDrawList* draw_list = ImGui::GetWindowDrawList();
+            ImVec2 canvas_pos = ImGui::GetWindowPos();
+
+            for (int _x = 0; _x < 80; _x++)
+            {
+                for (int _y = 0; _y < 80; _y++)
+                {
+                    float x = canvas_pos.x + _x * 10+20;
+                    float y = canvas_pos.y + _y *10  + 200;
+                    float c = (float) rand() / (float)RAND_MAX * 255.0f;
+                    draw_list->AddRectFilledMultiColor(ImVec2(x, y), ImVec2(x + 9, y + 9), IM_COL32(c, c, c, 255), IM_COL32(255, 0, 0, 255), IM_COL32(255, 255, 0, 255), IM_COL32(0, 255, 0, 255));
+                    //draw_list->AddRect(ImVec2(x + 100, y), ImVec2(x + 200, y + 100), IM_COL32(255, 0, 0, 255), 0);
+                }
+            }
+
+            //ImVec2 canvas_pos = ImGui::GetCursorScreenPos();            // ImDrawList API uses screen coordinates! 
+            //ImVec2 canvas_size = ImGui::GetContentRegionAvail();        // Resize canvas to what's available 
+            //if (canvas_size.x < 50.0f) canvas_size.x = 50.0f;
+            //if (canvas_size.y < 50.0f) canvas_size.y = 50.0f;
+            //draw_list->AddRectFilledMultiColor(canvas_pos, ImVec2(canvas_pos.x + canvas_size.x, canvas_pos.y + canvas_size.y), IM_COL32(50, 50, 50, 255), IM_COL32(50, 50, 60, 255), IM_COL32(60, 60, 70, 255), IM_COL32(50, 50, 60, 255));
+            //draw_list->AddRect(canvas_pos, ImVec2(canvas_pos.x + canvas_size.x, canvas_pos.y + canvas_size.y), IM_COL32(255, 255, 255, 255));
+            //draw_list->PushClipRect(canvas_pos, ImVec2(canvas_pos.x + canvas_size.x, canvas_pos.y + canvas_size.y), true);      // clip lines within the canvas (if we resize it, etc.) 
+            //draw_list->PopClipRect();
            
             
             
