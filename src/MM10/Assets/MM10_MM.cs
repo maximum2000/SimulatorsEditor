@@ -23,6 +23,7 @@ public partial  class MM10 : MonoBehaviour
     //коэффициент сжатия жидкости общий
     private double k = 1000000000;//1000000.0;
     private int currentY = 0;
+    private List<double> freeLayerCount;
 
 
     private void Step1(int x, int y, int _w, int _h)
@@ -123,7 +124,7 @@ public partial  class MM10 : MonoBehaviour
                     for (int b = summFluid.Count - 1; b > f; b--)
                     {
                         //!!!! добавить плотность в сравнение
-                        if (summFluid[f].type == summFluid[b].type)
+                        if (summFluid[f].type == summFluid[b].type && summFluid[f].Ro==summFluid[b].Ro)
                         {
                             summFluid[f].m += summFluid[b].m;
                             summFluid[f].Q += summFluid[b].Q;
@@ -140,7 +141,7 @@ public partial  class MM10 : MonoBehaviour
                     for (int b = summGas.Count - 1; b > f; b--)
                     {
                         //!!!! добавить плотность в сравнение
-                        if (summGas[f].type == summGas[b].type)
+                        if (summGas[f].type == summGas[b].type && summGas[f].Ro==summGas[b].Ro)
                         {
                             summGas[f].m += summGas[b].m;
                             summGas[f].Q += summGas[b].Q;
@@ -161,7 +162,38 @@ public partial  class MM10 : MonoBehaviour
 
         //сортируем по плотности все списки
         {
-
+            //Сортируем жидкости
+            {
+                myComponent temp;
+                for (int i = 0; i < summFluid.Count; i++)
+                {
+                    for (int j = i + 1; j < summFluid.Count; j++)
+                    {
+                        if (summFluid[i].Ro > summFluid[j].Ro)
+                        {
+                            temp = summFluid[i];
+                            summFluid[i] = summFluid[j];
+                            summFluid[j] = temp;
+                        }                   
+                    }            
+                }
+            }
+            //Сортируем газы
+            {
+                myComponent temp;
+                for (int i = 0; i < summGas.Count; i++)
+                {
+                    for (int j = i + 1; j < summGas.Count; j++)
+                    {
+                        if (summGas[i].Ro > summGas[j].Ro)
+                        {
+                            temp = summGas[i];
+                            summGas[i] = summGas[j];
+                            summGas[j] = temp;
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -439,7 +471,7 @@ public partial  class MM10 : MonoBehaviour
             //количество элементов в массиве - количество слоев
 
             //распределение объемов по слоям
-            List<double> freeLayerCount = new List<double>();
+            freeLayerCount = new List<double>();
             //currentY - на каком слое остановились на распределении твердых
             bool isStop = false;
             double VfluidCounterSumm = 0;
@@ -619,16 +651,22 @@ public partial  class MM10 : MonoBehaviour
                         if (isWall == true) continue;
                         countCell++;
                     }
-
                     //если нет ячеек для распределения на этом слое то идем выше
                     if (countCell == 0)
                     {
                         currentY++;
                         continue;
                     }
-
+                    double massToOneCell;
                     //на каждую свободную ячейку в этом слое нужно распределить .... кг
-                    double massToOneCell = MassLayerCount[i] / (double)countCell;
+                    if (MassLayerCount[i] < summFluid[summFluid.Count - 1].m)
+                    {
+                        massToOneCell = MassLayerCount[i] / (double)countCell;
+                    }
+                    else
+                    {
+                        massToOneCell = summFluid[summFluid.Count - 1].m / (double)countCell;
+                    }
                     double massDistributed = 0;
                     for (int ix = x - _w; ix <= x + _w; ix++)
                     {
@@ -657,8 +695,15 @@ public partial  class MM10 : MonoBehaviour
                                 temp.C = summFluid[summFluid.Count - 1].C;
                                 summFluid[summFluid.Count - 1].Q -= temp.Q;
                                 summFluid[summFluid.Count - 1].m -= temp.m;
+                                if (summFluid[summFluid.Count - 1].m < 0.00001 && ix==x+_w)//Проверка из-за деления на 3
+                                {
+                                    temp.m += summFluid[summFluid.Count - 1].m;
+                                    temp.Q += summFluid[summFluid.Count - 1].Q;
+                                    summFluid.RemoveAt(summFluid.Count-1);
+                                }
                                 map2d[_index].data.components.Add(temp);
                                 massDistributed += temp.m;
+                                
                                 if (massDistributed >= MassLayerCount[i] * 0.99f)
                                 {
                                     isNext = true;
@@ -678,7 +723,7 @@ public partial  class MM10 : MonoBehaviour
                                 summFluid.RemoveAt(summFluid.Count - 1);
                                 map2d[_index].data.components.Add(temp);
                                 massDistributed += temp.m;
-                                if (massDistributed >= MassLayerCount[i])
+                                if (massDistributed >= MassLayerCount[i]*0.99f)
                                 {
                                     isNext = true;
                                     currentY++;
@@ -688,6 +733,7 @@ public partial  class MM10 : MonoBehaviour
                             }
                         }
                     }
+                    MassLayerCount[i] -= massDistributed;
                 }
             }
             //конец распределения
@@ -699,16 +745,19 @@ public partial  class MM10 : MonoBehaviour
     {
         //3. Зная  Vgas, распределяем газ ровно по ячейкам и все, финиш
         //причем все газы в отличие от твердых и жидких распределяем равномерно по одним и темже клеткам
-
-        //пока есть нераспределенные газы.....
-        //currentY = y + _h;
-        while (summGas.Count > 0)
+        
+        //Ищем сначала доступные объемы в каждом слое и суммарный доступный объем.
+        List<float> gasMass = new List<float>();
+        //List<float> gasQ = new List<float>();
+        if (summGas.Count > 0)
         {
-            //заранее запоминаем сколько массы и энергии компонента мы должны сбросить на еденицу объема
-            //double massPerVolume = summGas[0].m / Mathf.Ceil((float)Vgas);
-            //double QPerVolume = summGas[0].Q / Mathf.Ceil((float)Vgas);
-            bool done = false;
-            //Ищем сначала доступные объемы в каждом слое и суммарный доступный объем.
+            float summGasMass = 0;
+           // float summGasQ = 0;
+            for (int i = 0; i < summGas.Count; i++)
+            {
+                summGasMass += summGas[i].m;
+               // summGasQ = summGas[i].Q;
+            }
             List<double> availableV = new List<double>();
             double summAvailableV = 0;
             for (int iy = y + _h; iy >= y - _h; iy--)
@@ -731,48 +780,77 @@ public partial  class MM10 : MonoBehaviour
                     if (isWall == true) continue;
                     foreach (var component in map2d[_index].data.components)
                     {
-                        if (component.type == myComponentType.fluid)
-                        {
-                            thisLayerV-=(Vfluid*component.m/summM_fluid);
-                        }
-                        else if (component.type == myComponentType.solid)
+                        // if (component.type == myComponentType.fluid)
+                        // {
+                        //     thisLayerV-=(Vfluid*component.m/summM_fluid);
+                        // }
+                        if (component.type == myComponentType.solid)
                         {
                             thisLayerV -= (component.m / component.Ro);
                         }
                     }
                 }
+                //Вычитаем объем жидкости в данном слое
+                if (iy == y + _h && freeLayerCount.Count == 3)
+                    thisLayerV -= freeLayerCount[2];
+                else if (iy == y && freeLayerCount.Count >= 2)
+                    thisLayerV -= freeLayerCount[1];
+                else if (iy == y - _h && freeLayerCount.Count >= 1)
+                    thisLayerV -= freeLayerCount[0];
                 availableV.Add(thisLayerV);
                 summAvailableV += thisLayerV;
             }
             //Находим доли объема на каждый слой и соответственно считаем массу газа которую на этот слой кинуть надо.
-            List<float> gasMass = new List<float>();
-            List<float> gasQ = new List<float>();
-            for (int ind = 0; ind < availableV.Count; ind++)
-            {
-                availableV[ind] = availableV[ind] / summAvailableV;
-                gasMass.Add((float)availableV[ind]*summGas[0].m);
-                gasQ.Add((float)availableV[ind]*summGas[0].Q);
-            }
-
-            for (int iy = y + _h; iy >= y - _h; iy--)
-            {
-                //Ищем количество доступных ячеек
-                int availableCells = 2 * _w + 1;
-                for (int ix = x - _w; ix <= x + _w; ix++)
+            if(availableV.Count!=0)
+                for (int ind = availableV.Count - 1; ind >= 0; ind--)
                 {
-                    int _index = ix * maxx + iy;
-                    for (int i = 0; i < map2d[_index].data.components.Count; i++)
+                    availableV[ind] = availableV[ind] / summAvailableV;
+                    gasMass.Add((float)availableV[ind] * summGasMass);
+                    //gasQ.Add((float)availableV[ind] * summGasQ);
+                }
+        }
+
+        for (int index = 0; index < gasMass.Count; index++)
+        {
+            if(gasMass[index]==0) continue;
+            currentY = y - _h + index;
+            //Ищем количество доступных ячеек
+            int availableCells = 2 * _w + 1;
+            for (int ix = x - _w; ix <= x + _w; ix++)
+            {
+                int _index = ix * maxx + currentY;
+                for (int i = 0; i < map2d[_index].data.components.Count; i++)
+                {
+                    if (map2d[_index].data.components[i].type == myComponentType.wall)
                     {
-                        if (map2d[_index].data.components[i].type == myComponentType.wall)
-                        {
-                            availableCells--;
-                            break;
-                        }
+                        availableCells--;
+                        break;
                     }
                 }
+            }
+            if(availableCells==0) continue;
+            bool isNext = false;
+            while (summGas.Count > 0 && !isNext)
+            {
+                //заранее запоминаем сколько массы и энергии компонента мы должны сбросить на еденицу объема
+                //double massPerVolume = summGas[0].m / Mathf.Ceil((float)Vgas);
+                //double QPerVolume = summGas[0].Q / Mathf.Ceil((float)Vgas);
+                bool done = false;
+                float massToOneCell;
+                //на каждую свободную ячейку в этом слое нужно распределить .... кг
+                Debug.Log("GasMass="+gasMass[index]);
+                if (gasMass[index] < summGas[summGas.Count - 1].m)
+                {
+                    massToOneCell = gasMass[index] / (float)availableCells;
+                }
+                else
+                {
+                    massToOneCell = summGas[summGas.Count - 1].m / (float)availableCells;
+                }
+                float massDistributed = 0;
                 for (int ix = x - _w; ix <= x + _w; ix++)
                 {
-                    int _index = ix * maxx + iy;
+                    int _index = ix * maxx + currentY;
 
                     bool isWall = false;
                     for (int i = 0; i < map2d[_index].data.components.Count; i++)
@@ -786,36 +864,48 @@ public partial  class MM10 : MonoBehaviour
 
                     if (isWall == true) continue;
 
-                    //итак, есть ячейка, у нее есть объем, туда мы закидываем massPerVolume * на объем ячейки 
+                    //итак, есть ячейка, у нее есть объем
                     {
                         myComponent temp = new myComponent();
                         temp.type = myComponentType.gas;
-                       // temp.m = (float)massPerVolume * map2d[_index].data.V;
-                        temp.m = gasMass[0]/availableCells;
-                        temp.Ro = summGas[0].Ro;
-                        temp.C = summGas[0].C;
+                        // temp.m = (float)massPerVolume * map2d[_index].data.V;
+                        temp.m = massToOneCell;
+                        temp.Ro = summGas[summGas.Count - 1].Ro;
+                        temp.C = summGas[summGas.Count - 1].C;
                         //temp.Q = (float)QPerVolume * map2d[_index].data.V;
-                        temp.Q = gasQ[0]/availableCells;
+                        temp.Q = summGas[summGas.Count - 1].Q*massToOneCell/summGas[summGas.Count - 1].m;
+                        summGas[summGas.Count - 1].Q -= temp.Q;
+                        summGas[summGas.Count - 1].m -= temp.m;
+                        if (summGas[summGas.Count - 1].m < 0.00001 && ix==x+_w)//Проверка из-за деления на 3
+                        {
+                            temp.m += summGas[summGas.Count - 1].m;
+                            temp.Q += summGas[summGas.Count - 1].Q;
+                            summGas.RemoveAt(summGas.Count-1);
+                        }
                         map2d[_index].data.components.Add(temp);
+                        massDistributed += temp.m;
+                        if (massDistributed >= gasMass[index] * 0.99f)
+                        {
+                            isNext = true;
+                            break;
+                        }
                     }
-
-                    //убираем распределенный кусок массы
-                    //summGas[0].m -= (float)massPerVolume * map2d[_index].data.V;
-                    summGas[0].m-=gasMass[0]/availableCells;
+                    
                     //если все распределили, удаляем компонент и переходим к следующему
-                    if (summGas[0].m < 0.005f)
+                    if (summGas[summGas.Count - 1].m < 0.0001f)
                     {
-                        done = true;
+                        //done = true;
                         summGas.RemoveAt(0);
                         break;
                     }
 
                 }
-                gasMass.RemoveAt(0);
-                gasQ.RemoveAt(0);
-                if (done == true) break;
+                gasMass[index] -= massDistributed;
+                if (gasMass[index] <= 0.0001f)
+                {
+                    isNext = true;
+                }
             }
-            //
         }
         //конец распределения газа
     }
