@@ -451,7 +451,7 @@ public partial  class MM10 : MonoBehaviour
          *    m2 -= minusM2
          *    m3 += minusM2
         */
-
+        freeLayerCount = new List<double>();
         if (summFluid.Count > 0)
         {
             //рассчитываю среднюю плотность (как массу общую на объем общий)
@@ -471,7 +471,7 @@ public partial  class MM10 : MonoBehaviour
             //количество элементов в массиве - количество слоев
 
             //распределение объемов по слоям
-            freeLayerCount = new List<double>();
+            
             //currentY - на каком слое остановились на распределении твердых
             bool isStop = false;
             double VfluidCounterSumm = 0;
@@ -791,6 +791,7 @@ public partial  class MM10 : MonoBehaviour
                     }
                 }
                 //Вычитаем объем жидкости в данном слое
+                int sss = freeLayerCount.Count;
                 if (iy == y + _h && freeLayerCount.Count == 3)
                     thisLayerV -= freeLayerCount[2];
                 else if (iy == y && freeLayerCount.Count >= 2)
@@ -880,7 +881,7 @@ public partial  class MM10 : MonoBehaviour
                         {
                             temp.m += summGas[summGas.Count - 1].m;
                             temp.Q += summGas[summGas.Count - 1].Q;
-                            summGas.RemoveAt(summGas.Count-1);
+                            //summGas.RemoveAt(summGas.Count-1);
                         }
                         map2d[_index].data.components.Add(temp);
                         massDistributed += temp.m;
