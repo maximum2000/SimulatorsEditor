@@ -914,6 +914,53 @@ public partial  class MM10 : MonoBehaviour
     }
 
 
+    //теплообмен
+    private void Step7(int x, int y, int _w, int _h)
+    {
+        //Q-Джоули, теплота
+        //m - кг, масса
+        //с - Дж\(кг*Кельвин) - телоемкость
+
+        //1. Находим сумму всех телот (Qsumm)
+        //2.Находим сумму summ (m(i) * c(i)), т.е. сумму всех масс помноженных на теплоемкость
+        //3. Находим коэффициент распределения k = Qsumm \ summ (m(i) * c(i))
+        //4. Зная MC каждого компонента в каждой клетке распределяем телоту в соответствии Q_компонента_ячейка = mc_компонента_ячейки * k
+
+        //например:
+        //А) m=2 кг, q=10000 Дж, C= 1000 Дж\(кг*Кельвин)
+        //B) m=1 кг, q=5000 Дж , C= 2000 Дж\(кг*Кельвин)
+        //C) m=3 кг, q=1000 Дж , C= 3000 Дж\(кг*Кельвин)
+
+        //SummQ = Q1+Q2+Q3 = 16000 Дж
+        //summ(mc) = 2*1000 + 1*2000 + 3*3000 = 13000 Дж\Кельвин
+        //k = SummQ \ summ(mc) = 1.233
+        //Q1 = m1c1*1.233 = 2460 Дж
+        //Q2 = m2C2*1.233 = 2460 Дж
+        //Q3 = m3c3*1.233= 11000 Дж
+        //проверка Q1+Q2+Q3 = 16000. Все ок.
+
+        double summQ = 0;
+        double summMC = 0;
+
+        for (int iy = y + _h; iy >= y - _h; iy--)
+        {
+            for (int ix = x - _w; ix <= x + _w; ix++)
+            {
+                int _index = ix * maxx + iy;
+                foreach (var component in map2d[_index].data.components)
+                {
+                    summQ += component.Q;
+                    summMC += component.m * component.C; 
+                }
+            }
+        }
+
+
+
+
+    }
+
+
     private void Shot(int x, int y)
     {
         //расчет свертки 3*3
@@ -939,7 +986,7 @@ public partial  class MM10 : MonoBehaviour
         Step4(x, y, _w, _h);    //заполняю сначала твердыми снизу ровно в один уровень
         Step5(x, y, _w, _h);    //заполняю жидкими 
         Step6(x, y, _w, _h);    //заполняю газами
-
+        Step7(x, y, _w, _h);    //теплообмен
 
         /* отрисовка
         for (int ix = x - _w; ix <= x + _w; ix++)
