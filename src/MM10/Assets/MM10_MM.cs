@@ -231,7 +231,6 @@ public partial  class MM10 : MonoBehaviour
             {
                 Vsolid += summSolid[i].m / summSolid[i].Ro;
             }
-
             for (int i = 0; i < summGas.Count; i++)
             {
                 C1 += summGas[i].m * summGas[i].Q;
@@ -241,7 +240,6 @@ public partial  class MM10 : MonoBehaviour
             {
                 C2 += k * summFluid[i].m / summFluid[i].Ro;
             }
-
             if (C2 > 0)
             {
                 Vfluid = (summV - Vsolid) / (C1 / C2 + 1);
@@ -485,6 +483,8 @@ public partial  class MM10 : MonoBehaviour
 
                     //если стена
                     bool isWall = false;
+                    //Debug.Log("Count="+map2d.Count+"; index="+_index);
+                    //Debug.Log("x="+ix+"; y="+currentY);
                     for (int i = 0; i < map2d[_index].data.components.Count; i++)
                     {
                         if (map2d[_index].data.components[i].type == myComponentType.wall)
@@ -514,6 +514,8 @@ public partial  class MM10 : MonoBehaviour
                 }
                 else
                 {
+                    //Debug.Log("VfluidCounterSumm="+VfluidCounterSumm +"; VfluidCounter="+VfluidCounter);
+                    //Debug.Log("Vfluid="+Vfluid);
                     freeLayerCount.Add(VfluidCounter);
                     VfluidCounterSumm += VfluidCounter;
                     //переходим на верхний слой
@@ -839,7 +841,6 @@ public partial  class MM10 : MonoBehaviour
                 bool done = false;
                 float massToOneCell;
                 //на каждую свободную ячейку в этом слое нужно распределить .... кг
-                Debug.Log("GasMass="+gasMass[index]);
                 if (gasMass[index] < summGas[summGas.Count - 1].m)
                 {
                     massToOneCell = gasMass[index] / (float)availableCells;
@@ -848,6 +849,7 @@ public partial  class MM10 : MonoBehaviour
                 {
                     massToOneCell = summGas[summGas.Count - 1].m / (float)availableCells;
                 }
+                float QToOneCell = summGas[summGas.Count - 1].Q * massToOneCell / summGas[summGas.Count - 1].m;
                 float massDistributed = 0;
                 for (int ix = x - _w; ix <= x + _w; ix++)
                 {
@@ -874,7 +876,7 @@ public partial  class MM10 : MonoBehaviour
                         temp.Ro = summGas[summGas.Count - 1].Ro;
                         temp.C = summGas[summGas.Count - 1].C;
                         //temp.Q = (float)QPerVolume * map2d[_index].data.V;
-                        temp.Q = summGas[summGas.Count - 1].Q*massToOneCell/summGas[summGas.Count - 1].m;
+                        temp.Q = QToOneCell;
                         summGas[summGas.Count - 1].Q -= temp.Q;
                         summGas[summGas.Count - 1].m -= temp.m;
                         if (summGas[summGas.Count - 1].m < 0.00001 && ix==x+_w)//Проверка из-за деления на 3
@@ -896,7 +898,7 @@ public partial  class MM10 : MonoBehaviour
                     if (summGas[summGas.Count - 1].m < 0.0001f)
                     {
                         //done = true;
-                        summGas.RemoveAt(0);
+                        summGas.RemoveAt(summGas.Count-1);
                         break;
                     }
 
