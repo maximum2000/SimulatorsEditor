@@ -749,11 +749,11 @@ public partial  class MM10 : MonoBehaviour
         //причем все газы в отличие от твердых и жидких распределяем равномерно по одним и темже клеткам
         
         //Ищем сначала доступные объемы в каждом слое и суммарный доступный объем.
-        List<float> gasMass = new List<float>();
+        List<double> gasMass = new List<double>();
         //List<float> gasQ = new List<float>();
         if (summGas.Count > 0)
         {
-            float summGasMass = 0;
+            double summGasMass = 0;
            // float summGasQ = 0;
             for (int i = 0; i < summGas.Count; i++)
             {
@@ -839,18 +839,18 @@ public partial  class MM10 : MonoBehaviour
                 //double massPerVolume = summGas[0].m / Mathf.Ceil((float)Vgas);
                 //double QPerVolume = summGas[0].Q / Mathf.Ceil((float)Vgas);
                 bool done = false;
-                float massToOneCell;
+                double massToOneCell;
                 //на каждую свободную ячейку в этом слое нужно распределить .... кг
                 if (gasMass[index] < summGas[summGas.Count - 1].m)
                 {
-                    massToOneCell = gasMass[index] / (float)availableCells;
+                    massToOneCell = gasMass[index] / availableCells;
                 }
                 else
                 {
-                    massToOneCell = summGas[summGas.Count - 1].m / (float)availableCells;
+                    massToOneCell = summGas[summGas.Count - 1].m / availableCells;
                 }
-                float QToOneCell = summGas[summGas.Count - 1].Q * massToOneCell / summGas[summGas.Count - 1].m;
-                float massDistributed = 0;
+                double QToOneCell = summGas[summGas.Count - 1].Q * massToOneCell / summGas[summGas.Count - 1].m;
+                double  massDistributed = 0;
                 for (int ix = x - _w; ix <= x + _w; ix++)
                 {
                     int _index = ix * maxx + currentY;

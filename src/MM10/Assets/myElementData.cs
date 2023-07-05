@@ -37,7 +37,7 @@ public enum myComponentTypeDetail
 public class myComponent
 {
     //масса компонента
-    public float m=0;
+    public double m=0;
     //тип компонента
     public myComponentType type = myComponentType.none;
     //public myComponentTypeDetail typeDetail = myComponentTypeDetail.none;
@@ -45,12 +45,12 @@ public class myComponent
     //Теплоёмкость — количество теплоты, поглощаемой (выделяемой) телом в процессе нагревания (остывания) на 1 кельвин
     //удельной теплоёмкости (теплоёмкости единицы массы тела)
     //У нас - удельная теплоемкость, т.е. теплоёмкость единицы массы тела (килограмма)
-    public float C;
+    public double C;
     //Теплота (энергия) , джоуль
-    public float Q;
+    public double Q;
     //плотность (для жидкостей и твердых тел)
     //плотность — скалярная физическая величина, определяемая как отношение массы тела к занимаемому этим телом объёму, кг/м3
-    public float Ro;
+    public double Ro;
 
     //идея:
     //зная объем ячейки определяем занятые объемы твердыми компонентами, потом жидкими... для этого нужна плотность
@@ -66,17 +66,17 @@ public class myElementData
     //перечень компонентов в этой ячейке
     public List<myComponent> components;
     //объем ячейки, м3
-    public float V=1f;
+    public double V=1f;
 
     //вектор перехода массы их этого компонента [по схеме q9]
-    public float transferToUp = 0;
-    public float transferToDown = 0;
-    public float transferToLeft = 0;
-    public float transferToRight = 0;
-    public float transferToUpLeft = 0;
-    public float transferToUpRight = 0;
-    public float transferToDownLeft = 0;
-    public float transferToDownRight = 0;
+    public double transferToUp = 0;
+    public double transferToDown = 0;
+    public double transferToLeft = 0;
+    public double transferToRight = 0;
+    public double transferToUpLeft = 0;
+    public double transferToUpRight = 0;
+    public double transferToDownLeft = 0;
+    public double transferToDownRight = 0;
 
     //идея:
     //зная векторную картину перемещений, можем оптимизировать порядок выборки координат для просчетов методом монтекарло
@@ -86,7 +86,7 @@ public class myElementData
     public void Clear()
     {
         components = new List<myComponent>();
-        V = 1f;
+        V = 1;
         transferToUp = 0f;
         transferToDown = 0;
         transferToLeft = 0;

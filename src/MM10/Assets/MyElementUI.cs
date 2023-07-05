@@ -54,10 +54,10 @@ public class MyElementUI : MonoBehaviour
         float G = 1f;
         float B = 1f;
 
-        float Gas = 0;
-        float Fluid = 0;
-        float Solid = 0;
-        float Wall = 0;
+        double Gas = 0;
+        double Fluid = 0;
+        double Solid = 0;
+        double Wall = 0;
 
 
         if (data.components.Count > 0)
@@ -82,9 +82,9 @@ public class MyElementUI : MonoBehaviour
                 }
             }
 
-            R = Solid / (Gas + Fluid + Solid);
-            G = Gas / (Gas + Fluid + Solid);
-            B = Fluid / (Gas + Fluid + Solid);
+            R = (float) (Solid / (Gas + Fluid + Solid));
+            G = (float)(Gas / (Gas + Fluid + Solid));
+            B = (float)(Fluid / (Gas + Fluid + Solid));
 
             if (Wall>0)
             {

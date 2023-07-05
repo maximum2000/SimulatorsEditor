@@ -155,10 +155,10 @@ public partial  class MM10 : MonoBehaviour
 
         if (map2d[editedCellIndex].data.components.Count > z)
         {
-            map2d[editedCellIndex].data.components[z].m = float.Parse(CellEditorM.text);
-            map2d[editedCellIndex].data.components[z].Ro = float.Parse(CellEditorRo.text);
-            map2d[editedCellIndex].data.components[z].C = float.Parse(CellEditorC.text);
-            map2d[editedCellIndex].data.components[z].Q = float.Parse(CellEditorQ.text);
+            map2d[editedCellIndex].data.components[z].m = double.Parse(CellEditorM.text);
+            map2d[editedCellIndex].data.components[z].Ro = double.Parse(CellEditorRo.text);
+            map2d[editedCellIndex].data.components[z].C = double.Parse(CellEditorC.text);
+            map2d[editedCellIndex].data.components[z].Q = double.Parse(CellEditorQ.text);
         }
     }
 
@@ -197,6 +197,9 @@ public partial  class MM10 : MonoBehaviour
                 text += "C:\t" + cell.data.components[i].C.ToString("n8").Replace(",", ".") + System.Environment.NewLine;
                 text += "Q:\t" + cell.data.components[i].Q.ToString("n8").Replace(",", ".") + System.Environment.NewLine;
                 text += "Ro:\t" + cell.data.components[i].Ro.ToString("n8").Replace(",", ".") + System.Environment.NewLine;
+
+                double tT = cell.data.components[i].Q / cell.data.components[i].m / cell.data.components[i].C - 273.15;
+                text += "->T:\t" + tT.ToString("n8").Replace(",", ".") + System.Environment.NewLine;
             }
         }
 
@@ -244,25 +247,25 @@ public partial  class MM10 : MonoBehaviour
             try
             {
                 map2d[i].data.Clear();
-                map2d[i].data.V = reader.ReadSingle();
-                map2d[i].data.transferToUp = reader.ReadSingle();
-                map2d[i].data.transferToDown = reader.ReadSingle();
-                map2d[i].data.transferToLeft = reader.ReadSingle();
-                map2d[i].data.transferToRight = reader.ReadSingle();
-                map2d[i].data.transferToUpLeft = reader.ReadSingle();
-                map2d[i].data.transferToUpRight = reader.ReadSingle();
-                map2d[i].data.transferToDownLeft = reader.ReadSingle();
-                map2d[i].data.transferToDownRight = reader.ReadSingle();
+                map2d[i].data.V = reader.ReadDouble();
+                map2d[i].data.transferToUp = reader.ReadDouble();
+                map2d[i].data.transferToDown = reader.ReadDouble();
+                map2d[i].data.transferToLeft = reader.ReadDouble();
+                map2d[i].data.transferToRight = reader.ReadDouble();
+                map2d[i].data.transferToUpLeft = reader.ReadDouble();
+                map2d[i].data.transferToUpRight = reader.ReadDouble();
+                map2d[i].data.transferToDownLeft = reader.ReadDouble();
+                map2d[i].data.transferToDownRight = reader.ReadDouble();
 
                 int count = reader.ReadInt32();
                 for (int y = 0; y < count; y++)
                 {
                     myComponent temp = new myComponent();
                     temp.type = (myComponentType)reader.ReadInt32();
-                    temp.m = reader.ReadSingle();
-                    temp.C = reader.ReadSingle();
-                    temp.Q = reader.ReadSingle();
-                    temp.Ro = reader.ReadSingle();
+                    temp.m = reader.ReadDouble();
+                    temp.C = reader.ReadDouble();
+                    temp.Q = reader.ReadDouble();
+                    temp.Ro = reader.ReadDouble();
                     map2d[i].data.components.Add(temp);
                 }
 
