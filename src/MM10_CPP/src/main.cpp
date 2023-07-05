@@ -263,7 +263,32 @@ int main(int, char**)
             //draw_list->PushClipRect(canvas_pos, ImVec2(canvas_pos.x + canvas_size.x, canvas_pos.y + canvas_size.y), true);      // clip lines within the canvas (if we resize it, etc.) 
             //draw_list->PopClipRect();
            
-            
+
+
+            // Note the difference between BeginMainMenuBar() and BeginMenuBar():
+            // - BeginMenuBar() = menu-bar inside current window (which needs the ImGuiWindowFlags_MenuBar flag!)
+            // - BeginMainMenuBar() = helper to create menu-bar-sized window at the top of the main viewport + call BeginMenuBar() into it.
+
+            //Μενώ
+            if (ImGui::BeginMainMenuBar())
+            {
+                if (ImGui::BeginMenu("File"))
+                {
+                   // ShowExampleMenuFile();
+                    ImGui::EndMenu();
+                }
+                if (ImGui::BeginMenu("Edit"))
+                {
+                    if (ImGui::MenuItem("Undo", "CTRL+Z")) {}
+                    if (ImGui::MenuItem("Redo", "CTRL+Y", false, false)) {}  // Disabled item
+                    ImGui::Separator();
+                    if (ImGui::MenuItem("Cut", "CTRL+X")) {}
+                    if (ImGui::MenuItem("Copy", "CTRL+C")) {}
+                    if (ImGui::MenuItem("Paste", "CTRL+V")) {}
+                    ImGui::EndMenu();
+                }
+                ImGui::EndMainMenuBar();
+            }
             
             
             
