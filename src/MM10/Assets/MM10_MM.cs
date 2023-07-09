@@ -864,7 +864,7 @@ public partial  class MM10 : MonoBehaviour
                             break;
                         }
                     }
-
+                     
                     if (isWall == true) continue;
 
                     //итак, есть ячейка, у нее есть объем

@@ -13,3 +13,6 @@
 [submodule "src/glfw"]
 	path = src/glfw
 	url = https://github.com/glfw/glfw.git
+[submodule "src/LBM-SWE-Unity"]
+	path = src/LBM-SWE-Unity
+	url = https://github.com/kircher1/LBM-SWE-Unity.git
