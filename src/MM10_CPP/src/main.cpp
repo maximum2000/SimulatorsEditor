@@ -15,6 +15,11 @@
 
 #include "OpenCL_test.h"
 
+
+#include "./LBM/LBM.h"
+
+
+
 // [Win32] Our example includes a copy of glfw3.lib pre-compiled with VS2010 to maximize ease of testing and compatibility with old VS compilers.
 // To link with VS2010-era libraries, VS2015+ requires linking with legacy_stdio_definitions.lib, which we do using this pragma.
 // Your own project should not be affected, as you are likely to link with a newer binary of GLFW that is adequate for your version of Visual Studio.
@@ -143,6 +148,12 @@ int main(int, char**)
     test111();
 
 
+    //LBM
+    init();
+    //LBM
+    
+
+
     // Setup window
     glfwSetErrorCallback(glfw_error_callback);
     if (!glfwInit())
@@ -238,21 +249,69 @@ int main(int, char**)
             ImGui::Text("counter = %d", counter);
 
             ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-            
-            ImDrawList* draw_list = ImGui::GetWindowDrawList();
-            ImVec2 canvas_pos = ImGui::GetWindowPos();
 
-            for (int _x = 0; _x < 80; _x++)
+
+            //LBM
+            n++;
             {
-                for (int _y = 0; _y < 80; _y++)
+                evolution();
+                marco();
+                if (n % 100 == 0)
+                {
+                   //out << i << " " << j << " " << au[i][j][0] << " " << au[i][j][1] << " " << (double)arho[i][j] << endl;
+    
+                }
+                cout << n << endl;
+                //cout << "velocity_75,75_x " << u[75][75][0] << endl;
+                //cout << "velocity_75,75_y " << u[75][75][1] << endl;
+                //cout << arho[75][75] << endl;
+                //cout << endl;
+            }
+            //LBM
+            
+            
+            ImVec2 canvas_pos = ImGui::GetWindowPos();
+            ImDrawList* draw_list = ImGui::GetWindowDrawList();
+
+          
+
+            int currentChild = 0;
+            
+            ImVec2 wpos = ImGui::GetWindowPos();
+            ImVec2 backupPos = ImGui::GetCursorScreenPos();
+            ImGui::SetCursorScreenPos(wpos);
+
+            ImGui::BeginChild(currentChild++);
+
+            for (int _x = 0; _x < 150; _x++)
+            {
+                for (int _y = 0; _y < 150; _y++)
                 {
                     float x = canvas_pos.x + _x * 10+20;
                     float y = canvas_pos.y + _y *10  + 180;
-                    float c = (float) rand() / (float)RAND_MAX * 255.0f;
-                    draw_list->AddRectFilledMultiColor(ImVec2(x, y), ImVec2(x + 9, y + 9), IM_COL32(c, c, c, 255), IM_COL32(255, 0, 0, 255), IM_COL32(255, 255, 0, 255), IM_COL32(0, 255, 0, 255));
-                    //draw_list->AddRect(ImVec2(x + 100, y), ImVec2(x + 200, y + 100), IM_COL32(255, 0, 0, 255), 0);
+                    int i = _y;
+                    int j = _x;
+                   
+                    float c1 = (float)arho[i][j]*255.0f;
+                    float c2 = (float)brho[i][j] * 255.0f;
+                   
+                    float c3 = (float)u[i][j][0] *255.0f;
+                    float c4 = (float)u[i][j][1] * 255.0f;
+
+                    //float c = (float) rand() / (float)RAND_MAX * 255.0f;
+                   //draw_list->AddRectFilledMultiColor(ImVec2(x, y), ImVec2(x + 9, y + 9), IM_COL32(c, c, c, 255), IM_COL32(255, 0, 0, 255), IM_COL32(255, 255, 0, 255), IM_COL32(0, 255, 0, 255));
+                    draw_list->AddRect(ImVec2(x, y), ImVec2(x + 10, y + 10), IM_COL32(c1, c2, c3+c4, 255), 0);
+                    if (draw_list->_VtxCurrentIdx > 65536 - 8)
+                    {
+                        ImGui::EndChild();
+                        ImGui::SetCursorScreenPos(wpos);
+                        ImGui::BeginChild(currentChild++);
+                        draw_list = ImGui::GetWindowDrawList();
+                    }
                 }
             }
+            ImGui::EndChild();
+            ImGui::SetCursorScreenPos(backupPos);
 
             //ImVec2 canvas_pos = ImGui::GetCursorScreenPos();            // ImDrawList API uses screen coordinates! 
             //ImVec2 canvas_size = ImGui::GetContentRegionAvail();        // Resize canvas to what's available 
