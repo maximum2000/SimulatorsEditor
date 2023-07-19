@@ -300,7 +300,8 @@ int main(int, char**)
 
                     //float c = (float) rand() / (float)RAND_MAX * 255.0f;
                    //draw_list->AddRectFilledMultiColor(ImVec2(x, y), ImVec2(x + 9, y + 9), IM_COL32(c, c, c, 255), IM_COL32(255, 0, 0, 255), IM_COL32(255, 255, 0, 255), IM_COL32(0, 255, 0, 255));
-                    draw_list->AddRect(ImVec2(x, y), ImVec2(x + 10, y + 10), IM_COL32(c1, c2, c3+c4, 255), 0);
+                    //AddRectFilled
+                    draw_list->AddRect(ImVec2(x, y), ImVec2(x + 10, y + 10), IM_COL32(c1, 0, c2, 255), 0);
                     if (draw_list->_VtxCurrentIdx > 65536 - 8)
                     {
                         ImGui::EndChild();
