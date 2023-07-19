@@ -144,6 +144,7 @@
     <ClCompile Include="src\main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\LBM2\LBM2.h" />
     <ClInclude Include="src\LBM\LBM.h" />
     <ClInclude Include="src\OpenCL_test.h" />
   </ItemGroup>

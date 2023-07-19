@@ -50,5 +50,8 @@
     <ClInclude Include="src\LBM\LBM.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
+    <ClInclude Include="src\LBM2\LBM2.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
