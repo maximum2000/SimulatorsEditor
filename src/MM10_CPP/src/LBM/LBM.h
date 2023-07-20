@@ -70,7 +70,7 @@ void init()
         {
             arho[i][j] = 0;
             brho[i][j] = 1;
-            au[i][j][0] = 0;
+            au[i][j][0] = -0.3;
             au[i][j][1] = 0;
             bu[i][j][0] = 0;
             bu[i][j][1] = 0;
@@ -81,6 +81,15 @@ void init()
     for (i = 50; i <= 100; i++)
     {
         for (j = 50; j <= 100; j++)
+        {
+            arho[i][j] = 1;
+            brho[i][j] = 0;
+        }
+    }
+
+    for (i = 100; i <= 120; i++)
+    {
+        for (j = 100; j <= 120; j++)
         {
             arho[i][j] = 1;
             brho[i][j] = 0;

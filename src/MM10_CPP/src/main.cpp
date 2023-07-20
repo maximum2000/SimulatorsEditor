@@ -261,7 +261,7 @@ int main(int, char**)
                    //out << i << " " << j << " " << au[i][j][0] << " " << au[i][j][1] << " " << (double)arho[i][j] << endl;
     
                 }
-                cout << n << endl;
+                
                 //cout << "velocity_75,75_x " << u[75][75][0] << endl;
                 //cout << "velocity_75,75_y " << u[75][75][1] << endl;
                 //cout << arho[75][75] << endl;
