@@ -506,7 +506,7 @@ public partial  class MM10 : MonoBehaviour
                     }
                 }
 
-                if (VfluidCounterSumm + VfluidCounter >= Vfluid)
+                if (VfluidCounterSumm + VfluidCounter >= Vfluid - 0.000001)
                 {
                     isStop = true;
                     freeLayerCount.Add(Vfluid - VfluidCounterSumm);
