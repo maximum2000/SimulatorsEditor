@@ -124,7 +124,7 @@ public partial  class MM10 : MonoBehaviour
                     for (int b = summFluid.Count - 1; b > f; b--)
                     {
                         //!!!! добавить плотность в сравнение
-                        if (summFluid[f].type == summFluid[b].type && summFluid[f].Ro==summFluid[b].Ro)
+                        if (summFluid[f].type == summFluid[b].type && (float)summFluid[f].Ro==(float)summFluid[b].Ro)
                         {
                             summFluid[f].m += summFluid[b].m;
                             summFluid[f].Q += summFluid[b].Q;
@@ -141,7 +141,7 @@ public partial  class MM10 : MonoBehaviour
                     for (int b = summGas.Count - 1; b > f; b--)
                     {
                         //!!!! добавить плотность в сравнение
-                        if (summGas[f].type == summGas[b].type && summGas[f].Ro==summGas[b].Ro)
+                        if (summGas[f].type == summGas[b].type && (float)summGas[f].Ro==(float)summGas[b].Ro)
                         {
                             summGas[f].m += summGas[b].m;
                             summGas[f].Q += summGas[b].Q;
@@ -768,7 +768,6 @@ public partial  class MM10 : MonoBehaviour
                 for (int ix = x - _w; ix <= x + _w; ix++)
                 {
                     int _index = ix * maxx + iy;
-                    thisLayerV += map2d[_index].data.V;
                     bool isWall = false;
                     for (int i = 0; i < map2d[_index].data.components.Count; i++)
                     {
@@ -778,8 +777,9 @@ public partial  class MM10 : MonoBehaviour
                             break;
                         }
                     }
-
+                    
                     if (isWall == true) continue;
+                    thisLayerV += map2d[_index].data.V;
                     foreach (var component in map2d[_index].data.components)
                     {
                         // if (component.type == myComponentType.fluid)
