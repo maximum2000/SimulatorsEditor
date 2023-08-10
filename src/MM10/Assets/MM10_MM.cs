@@ -24,6 +24,7 @@ public partial  class MM10 : MonoBehaviour
     private double k = 1000000000;//1000000.0;
     private int currentY = 0;
     private List<double> freeLayerCount;
+    private Dictionary<double,double> overloadSolidRo = new Dictionary<double, double>();
 
 
     private void Step1(int x, int y, int _w, int _h)
@@ -124,7 +125,7 @@ public partial  class MM10 : MonoBehaviour
                     for (int b = summFluid.Count - 1; b > f; b--)
                     {
                         //!!!! добавить плотность в сравнение
-                        if (summFluid[f].type == summFluid[b].type && (float)summFluid[f].Ro==(float)summFluid[b].Ro)
+                        if (summFluid[f].type == summFluid[b].type && (Mathf.Abs((float)(summFluid[f].Ro - summFluid[b].Ro)) < 1e-9))
                         {
                             summFluid[f].m += summFluid[b].m;
                             summFluid[f].Q += summFluid[b].Q;
@@ -141,7 +142,7 @@ public partial  class MM10 : MonoBehaviour
                     for (int b = summGas.Count - 1; b > f; b--)
                     {
                         //!!!! добавить плотность в сравнение
-                        if (summGas[f].type == summGas[b].type && (float)summGas[f].Ro==(float)summGas[b].Ro)
+                        if (summGas[f].type == summGas[b].type && (Mathf.Abs((float)(summGas[f].Ro - summGas[b].Ro)) < 1e-9))
                         {
                             summGas[f].m += summGas[b].m;
                             summGas[f].Q += summGas[b].Q;
@@ -231,6 +232,12 @@ public partial  class MM10 : MonoBehaviour
             {
                 Vsolid += summSolid[i].m / summSolid[i].Ro;
             }
+            if (Vsolid >= summV)
+            {
+                if (summGas.Count > 0 || summFluid.Count > 0)
+                    Vsolid = summV - summV / 10;
+                else Vsolid = summV;
+            }
             for (int i = 0; i < summGas.Count; i++)
             {
                 C1 += summGas[i].m * summGas[i].Q;
@@ -270,7 +277,12 @@ public partial  class MM10 : MonoBehaviour
 
             //пока есть нераспределенные твердые.....
             currentY = y - _h;
-
+            //Если в 3*3 не хватит места для распрделения массы заполняем равномерно.
+            bool noSpace = false;
+            double summSolidm = 0;
+            if (summSolid.Count > 0)
+                summSolidm = summSolid[0].m;
+            overloadSolidRo.Clear();
             while (summSolid.Count > 0)
             {
                 //иду снизу вверх слоями... 
@@ -345,15 +357,14 @@ public partial  class MM10 : MonoBehaviour
                 
                 for (int ix = x - _w; ix <= x + _w; ix++)
                 {
-                    if (availableCells == 0 || freeLayerV == 0)
+                    if ((availableCells == 0 || freeLayerV == 0) && summSolid[0].m >= 1E-9)
                     {
-                        currentY++;
                         if (currentY > y + _h)
                         {
                             Debug.Log("! error 1 !");
                             break;
                         }
-                        continue;
+                        break;
                     }
                     int _index = ix * maxx + currentY;
                     //если это не стена (там или чисто или стена)
@@ -361,10 +372,29 @@ public partial  class MM10 : MonoBehaviour
                     //если это не стена, тогда заливаем
                     myComponent temp = new myComponent();
                     temp.type = myComponentType.solid;
-                    if (((summSolid[0].m/summSolid[0].Ro) / (float)availableCells) <= map2d[_index].data.V)
+                    //if ((summSolid[0].m / summSolid[0].Ro) >= (float)summV)
+                    //{
+                    //    temp.m = summSolid[0].m / (float)summV;
+                    //}
+                    if (!noSpace && ((summSolid[0].m / summSolid[0].Ro) / (float)availableCells) <= map2d[_index].data.V)
                         temp.m = summSolid[0].m / (float)availableCells;
-                    else
+                    else if (!noSpace && (summSolid[0].m / summSolid[0].Ro) < (float)summV)
                         temp.m = map2d[_index].data.V * summSolid[0].Ro;
+                    else
+                    {
+                        if (!noSpace)
+                        {
+                            overloadSolidRo[summSolid[0].Ro] = summSolid[0].m / (float)Vsolid;
+                            noSpace = true;
+                        }
+                        if (((summSolid[0].m / overloadSolidRo[summSolid[0].Ro]) / (float)availableCells) <= map2d[_index].data.V)
+                        {
+                            temp.m = summSolid[0].m / (float)availableCells;
+                        }
+                        else
+                            temp.m = map2d[_index].data.V * overloadSolidRo[summSolid[0].Ro];
+                        Debug.Log("1st" + overloadSolidRo[summSolid[0].Ro]);
+                    }
                     temp.Ro = summSolid[0].Ro;
                     temp.C = summSolid[0].C;
                     temp.Q = (temp.m / summSolid[0].m) * summSolid[0].Q;
@@ -376,10 +406,13 @@ public partial  class MM10 : MonoBehaviour
                     availableCells--;
                 }
                 //Добавил проверку, что все распределили, если нет, то переходим на след уровень.
-                if (summSolid[0].m == 0f)
+                if (summSolid[0].m <= 1e-9)
+                {
                     summSolid.RemoveAt(0);
-                else currentY++;
-                //if (freeLayerV == Vcomponent) currentY++;
+                    if (summSolid.Count > 0)
+                        summSolidm = summSolid[0].m;
+                }
+                else if (availableCells == 0 || freeLayerV == 0) currentY++;
                 if (currentY > y + _h)
                 {
                     Debug.Log("! error 2 !");
@@ -450,7 +483,7 @@ public partial  class MM10 : MonoBehaviour
          *    m3 += minusM2
         */
         freeLayerCount = new List<double>();
-        if (summFluid.Count > 0)
+        if (summFluid.Count > 0 && Vfluid != 0)
         {
             //рассчитываю среднюю плотность (как массу общую на объем общий)
             summM_fluid = 0;
@@ -474,6 +507,10 @@ public partial  class MM10 : MonoBehaviour
             bool isStop = false;
             double VfluidCounterSumm = 0;
             int currentY_old = currentY;
+            for (int i = y - _h; i < currentY; i++)
+            {
+                freeLayerCount.Add(0);
+            }
             while (isStop == false)
             {
                 double VfluidCounter = 0;
@@ -501,12 +538,17 @@ public partial  class MM10 : MonoBehaviour
                     {
                         if (map2d[_index].data.components[i].type == myComponentType.solid)
                         {
-                            VfluidCounter -= map2d[_index].data.components[i].m / map2d[_index].data.components[i].Ro;
+                            double Vsolid = map2d[_index].data.components[i].m / map2d[_index].data.components[i].Ro;
+                            if (!overloadSolidRo.ContainsKey(map2d[_index].data.components[i].Ro))
+                                VfluidCounter -= Vsolid;
+                            else
+                            {
+                                VfluidCounter -= map2d[_index].data.components[i].m / overloadSolidRo[map2d[_index].data.components[i].Ro]; // ЗДЕСЬ
+                            }
                         }
                     }
                 }
-
-                if (VfluidCounterSumm + VfluidCounter >= Vfluid - 0.000001)
+                if (VfluidCounterSumm + VfluidCounter > Vfluid - 1e-5)
                 {
                     isStop = true;
                     freeLayerCount.Add(Vfluid - VfluidCounterSumm);
@@ -538,7 +580,11 @@ public partial  class MM10 : MonoBehaviour
 
 
             //далее, если слоев для размещения жидкости == 1, то распределяем тупо всю массу (все компоненты) по слою
-            if (freeLayerCount.Count == 1)
+            if (
+                (freeLayerCount.Count == 1) ||
+                ((freeLayerCount.Count == 2) && (freeLayerCount[0] <= 1E-9)) ||
+                ((freeLayerCount.Count == 3) && (freeLayerCount[0] <= 1E-9) && (freeLayerCount[1]<=1E-9))
+                )
             {
                 Debug.Log("1!");
                 Debug.Log("m1 = " + summM_fluid);
@@ -549,10 +595,10 @@ public partial  class MM10 : MonoBehaviour
             // или через + m * g(масса вниз)
             // k * (m1 / Rom) / V1 + m1 * g == k * (m2 / Rom) / V2
             // m1 = (m_summ / V2) / (1 / V1 + 1 / V2 + g * Rom / k)
-            if (freeLayerCount.Count == 2)
+            else if ((freeLayerCount.Count == 2) || ((freeLayerCount.Count == 3) && (freeLayerCount[0] <= 1E-9)))
             {
-                double V1 = freeLayerCount[1];
-                double V2 = freeLayerCount[0];
+                double V1 = freeLayerCount[0] <=1E-9 ? freeLayerCount[2] : freeLayerCount[1];
+                double V2 = freeLayerCount[0] <= 1E-9 ? freeLayerCount[1] : freeLayerCount[0];
                 double g = 9.81;
 
                 double m1 = (summM_fluid / V2) / (1 / V1 + 1 / V2 + g * avgRo / k); //верхний слой
@@ -567,7 +613,7 @@ public partial  class MM10 : MonoBehaviour
             }
 
             //если три .... то 
-            if (freeLayerCount.Count == 3)
+            else if (freeLayerCount.Count == 3)
             {
 
                 double V1 = freeLayerCount[2]; //нижний слой
@@ -608,7 +654,7 @@ public partial  class MM10 : MonoBehaviour
             }
 
             // если ?....то
-            if ((freeLayerCount.Count > 3) || (freeLayerCount.Count == 0))
+            else if ((freeLayerCount.Count > 3) || (freeLayerCount.Count == 0))
             {
                 Debug.Log("Error 14346389265=freeLayerCount.Count= " + freeLayerCount.Count);
             }
@@ -751,7 +797,7 @@ public partial  class MM10 : MonoBehaviour
         //Ищем сначала доступные объемы в каждом слое и суммарный доступный объем.
         List<double> gasMass = new List<double>();
         //List<float> gasQ = new List<float>();
-        if (summGas.Count > 0)
+        if (summGas.Count > 0 && Vgas != 0)
         {
             double summGasMass = 0;
            // float summGasQ = 0;
@@ -788,7 +834,10 @@ public partial  class MM10 : MonoBehaviour
                         // }
                         if (component.type == myComponentType.solid)
                         {
-                            thisLayerV -= (component.m / component.Ro);
+                            double Vsolid = (component.m / component.Ro);
+                            if (!overloadSolidRo.ContainsKey(component.Ro))
+                                thisLayerV -= Vsolid;
+                            else thisLayerV -= (component.m / overloadSolidRo[component.Ro]);
                         }
                     }
                 }
@@ -803,8 +852,9 @@ public partial  class MM10 : MonoBehaviour
                 availableV.Add(thisLayerV);
                 summAvailableV += thisLayerV;
             }
-            //Находим доли объема на каждый слой и соответственно считаем массу газа которую на этот слой кинуть надо.
-            if(availableV.Count!=0)
+            if (summAvailableV <= 0) return;
+                //Находим доли объема на каждый слой и соответственно считаем массу газа которую на этот слой кинуть надо.
+            if (availableV.Count!=0)
                 for (int ind = availableV.Count - 1; ind >= 0; ind--)
                 {
                     availableV[ind] = availableV[ind] / summAvailableV;
@@ -1052,8 +1102,7 @@ public partial  class MM10 : MonoBehaviour
                 //int ry = (int)Random.Range(44f, 48f);
                 int rx = Random.Range(27, 41);
                 int ry=Random.Range(44, 48);
-                //Debug.LogWarning("Сгенерированный RX=" + rx + " ;Сгенерированный RY=" + ry);
-                Shot(rx, ry);
+                Shot(rx,ry);
             }
 
         System.DateTime datevalue2 = System.DateTime.Now;
