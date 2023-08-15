@@ -13,7 +13,7 @@ using TMPro;
 using System.IO;
 using UnityEngine.UI;
 
-public partial  class MM10 : MonoBehaviour
+public partial class MM10 : MonoBehaviour
 {
     private int maxx = 80;
     private int maxy = 80;
@@ -46,78 +46,305 @@ public partial  class MM10 : MonoBehaviour
         fluid,
         solid,
         delete,
-        edit
+        edit,
+        methane, // 7
+        air,
+        water,
+        oil,
+        sand,
+        paraffin
     }
 
     public ModeType selectedType;
 
     public void CellClick(ref MyElementUI cell)
     {
-        if (selectedType == ModeType.none)
+        //if (selectedType == ModeType.none)
+        //{
+        //    //cell.gameObject.GetComponent<SpriteRenderer>().color = new Color(1f, 0f, 0);
+        //}
+        //else if (selectedType == ModeType.gas)
+        //{
+        //    cell.data.Clear();
+        //    myComponent temp = new myComponent();
+        //    temp.type = myComponentType.gas;
+        //    temp.m = 1f;
+        //    temp.Ro = 1.2754f; //температуре 0 °С, давлении 100 кПа, нулевой влажности
+        //    temp.C = 1010f; //В интервале от -50 до 120°С ее величина практически не меняется — в этих условиях средняя теплоемкость воздуха равна 1010 Дж/(кг·град).
+        //    temp.Q = temp.C * temp.m * 273.15f;  //Дж
+        //    cell.data.components.Add(temp);
+        //    cell.ManualUpdate();
+        //}
+        //else if (selectedType == ModeType.fluid)
+        //{
+        //    cell.data.Clear();
+        //    myComponent temp = new myComponent();
+        //    temp.type = myComponentType.fluid;
+        //    temp.m = 1f;
+        //    temp.Ro = 1000f; //кг\м3
+        //    temp.C = 4180.6f; //Удельная теплоёмкость воды, Дж/(кг·K)
+        //    temp.Q = temp.C * temp.m * 273.15f;  //Дж
+        //    cell.data.components.Add(temp);
+        //    cell.ManualUpdate();
+        //}
+        //else if (selectedType == ModeType.solid)
+        //{
+        //    cell.data.Clear();
+        //    myComponent temp = new myComponent();
+        //    temp.type = myComponentType.solid;
+        //    temp.m = 1f;
+        //    temp.Ro = 1700; //кг\м3
+        //    temp.C = 835f; //Удельная теплоёмкость воды, Дж/(кг·K)
+        //    temp.Q = temp.C * temp.m * 273.15f;  //Дж
+        //    cell.data.components.Add(temp);
+        //    cell.ManualUpdate();
+        //}
+        //else if (selectedType == ModeType.wall)
+        //{
+        //    cell.data.Clear();
+        //    myComponent temp = new myComponent();
+        //    temp.type = myComponentType.wall;
+        //    temp.m = 1f;
+        //    temp.Ro = 7800f; //кг\м3
+        //    temp.C = 460f; //Удельная теплоёмкость воды, Дж/(кг·K)
+        //    temp.Q = temp.C * temp.m * 273.15f;  //Дж
+        //    cell.data.components.Add(temp);
+        //    cell.ManualUpdate();
+        //}
+        //else if (selectedType == ModeType.delete)
+        //{
+        //    cell.data.Clear();
+        //    cell.ManualUpdate();
+        //}
+        //else if (selectedType == ModeType.edit)
+        //{
+        //    editedCellIndex = cell.index;
+        //    CellEditor.SetActive(true);
+        //    EditorShowComponentValues(0);
+        //}
+        //else if (selectedType == ModeType.methane)
+        //{
+        //    cell.data.Clear();
+        //    myComponent temp = new myComponent();
+        //    temp.type = myComponentType.gas;
+        //    temp.m = 1f;
+        //    temp.Ro = 1.2754f; //температуре 0 °С, давлении 100 кПа, нулевой влажности
+        //    temp.C = 1010f; //В интервале от -50 до 120°С ее величина практически не меняется — в этих условиях средняя теплоемкость воздуха равна 1010 Дж/(кг·град).
+        //    temp.Q = temp.C * temp.m * 273.15f;  //Дж
+        //    cell.data.components.Add(temp);
+        //    cell.ManualUpdate();
+        //}
+        //else if (selectedType == ModeType.air)
+        //{
+        //    cell.data.Clear();
+        //    myComponent temp = new myComponent();
+        //    temp.type = myComponentType.gas;
+        //    temp.m = 1f;
+        //    temp.Ro = 1.2754f; //температуре 0 °С, давлении 100 кПа, нулевой влажности
+        //    temp.C = 1010f; //В интервале от -50 до 120°С ее величина практически не меняется — в этих условиях средняя теплоемкость воздуха равна 1010 Дж/(кг·град).
+        //    temp.Q = temp.C * temp.m * 273.15f;  //Дж
+        //    cell.data.components.Add(temp);
+        //    cell.ManualUpdate();
+        //}
+        //else if (selectedType == ModeType.water)
+        //{
+        //    cell.data.Clear();
+        //    myComponent temp = new myComponent();
+        //    temp.type = myComponentType.gas;
+        //    temp.m = 1f;
+        //    temp.Ro = 1.2754f; //температуре 0 °С, давлении 100 кПа, нулевой влажности
+        //    temp.C = 1010f; //В интервале от -50 до 120°С ее величина практически не меняется — в этих условиях средняя теплоемкость воздуха равна 1010 Дж/(кг·град).
+        //    temp.Q = temp.C * temp.m * 273.15f;  //Дж
+        //    cell.data.components.Add(temp);
+        //    cell.ManualUpdate();
+        //}
+        //else if (selectedType == ModeType.oil)
+        //{
+        //    cell.data.Clear();
+        //    myComponent temp = new myComponent();
+        //    temp.type = myComponentType.gas;
+        //    temp.m = 1f;
+        //    temp.Ro = 1.2754f; //температуре 0 °С, давлении 100 кПа, нулевой влажности
+        //    temp.C = 1010f; //В интервале от -50 до 120°С ее величина практически не меняется — в этих условиях средняя теплоемкость воздуха равна 1010 Дж/(кг·град).
+        //    temp.Q = temp.C * temp.m * 273.15f;  //Дж
+        //    cell.data.components.Add(temp);
+        //    cell.ManualUpdate();
+        //}
+        //else if (selectedType == ModeType.sand)
+        //{
+        //    cell.data.Clear();
+        //    myComponent temp = new myComponent();
+        //    temp.type = myComponentType.gas;
+        //    temp.m = 1f;
+        //    temp.Ro = 1.2754f; //температуре 0 °С, давлении 100 кПа, нулевой влажности
+        //    temp.C = 1010f; //В интервале от -50 до 120°С ее величина практически не меняется — в этих условиях средняя теплоемкость воздуха равна 1010 Дж/(кг·град).
+        //    temp.Q = temp.C * temp.m * 273.15f;  //Дж
+        //    cell.data.components.Add(temp);
+        //    cell.ManualUpdate();
+        //}
+        //else if (selectedType == ModeType.paraffin)
+        //{
+        //    cell.data.Clear();
+        //    myComponent temp = new myComponent();
+        //    temp.type = myComponentType.gas;
+        //    temp.m = 1f;
+        //    temp.Ro = 1.2754f; //температуре 0 °С, давлении 100 кПа, нулевой влажности
+        //    temp.C = 1010f; //В интервале от -50 до 120°С ее величина практически не меняется — в этих условиях средняя теплоемкость воздуха равна 1010 Дж/(кг·град).
+        //    temp.Q = temp.C * temp.m * 273.15f;  //Дж
+        //    cell.data.components.Add(temp);
+        //    cell.ManualUpdate();
+        //}
+        switch (selectedType)
         {
-            //cell.gameObject.GetComponent<SpriteRenderer>().color = new Color(1f, 0f, 0);
+            case ModeType.none:
+                {
+                    //cell.gameObject.GetComponent<SpriteRenderer>().color = new Color(1f, 0f, 0);
+                }
+                break;
+            case ModeType.gas:
+                {
+                    cell.data.Clear();
+                    myComponent temp = new myComponent();
+                    temp.type = myComponentType.gas;
+                    temp.m = 1f;
+                    temp.Ro = 1.2754f; //температуре 0 °С, давлении 100 кПа, нулевой влажности
+                    temp.C = 1010f; //В интервале от -50 до 120°С ее величина практически не меняется — в этих условиях средняя теплоемкость воздуха равна 1010 Дж/(кг·град).
+                    temp.Q = temp.C * temp.m * 273.15f;  //Дж
+                    cell.data.components.Add(temp);
+                    cell.ManualUpdate();
+                }
+                break;
+            case ModeType.fluid:
+                {
+                    cell.data.Clear();
+                    myComponent temp = new myComponent();
+                    temp.type = myComponentType.fluid;
+                    temp.m = 1f;
+                    temp.Ro = 1000f; //кг\м3
+                    temp.C = 4180.6f; //Удельная теплоёмкость воды, Дж/(кг·K)
+                    temp.Q = temp.C * temp.m * 273.15f;  //Дж
+                    cell.data.components.Add(temp);
+                    cell.ManualUpdate();
+                }
+                break;
+            case ModeType.solid:
+                {
+                    cell.data.Clear();
+                    myComponent temp = new myComponent();
+                    temp.type = myComponentType.solid;
+                    temp.m = 1f;
+                    temp.Ro = 1700; //кг\м3
+                    temp.C = 835f; //Удельная теплоёмкость воды, Дж/(кг·K)
+                    temp.Q = temp.C * temp.m * 273.15f;  //Дж
+                    cell.data.components.Add(temp);
+                    cell.ManualUpdate();
+                }
+                break;
+            case ModeType.wall:
+                {
+                    cell.data.Clear();
+                    myComponent temp = new myComponent();
+                    temp.type = myComponentType.wall;
+                    temp.m = 1f;
+                    temp.Ro = 7800f; //кг\м3
+                    temp.C = 460f; //Удельная теплоёмкость воды, Дж/(кг·K)
+                    temp.Q = temp.C * temp.m * 273.15f;  //Дж
+                    cell.data.components.Add(temp);
+                    cell.ManualUpdate();
+                }
+                break;
+            case ModeType.delete:
+                {
+                    cell.data.Clear();
+                    cell.ManualUpdate();
+                }
+                break;
+            case ModeType.edit:
+                {
+                    editedCellIndex = cell.index;
+                    CellEditor.SetActive(true);
+                    EditorShowComponentValues(0);
+                }
+                break;
+            case ModeType.methane:
+                {
+                    cell.data.Clear();
+                    myComponent temp = new myComponent();
+                    temp.type = myComponentType.gas;
+                    temp.m = 1f;
+                    temp.Ro = 0.7168f; //температуре 0 °С, давлении 100 кПа, нулевой влажности
+                    temp.C = 2165f;
+                    temp.Q = temp.C * temp.m * 273.15f;  //Дж
+                    cell.data.components.Add(temp);
+                    cell.ManualUpdate();
+                }
+                break;
+            case ModeType.air:
+                {
+                    cell.data.Clear();
+                    myComponent temp = new myComponent();
+                    temp.type = myComponentType.gas;
+                    temp.m = 1f;
+                    temp.Ro = 1.2754f; //температуре 0 °С, давлении 100 кПа, нулевой влажности
+                    temp.C = 1010f;
+                    temp.Q = temp.C * temp.m * 273.15f;  //Дж
+                    cell.data.components.Add(temp);
+                    cell.ManualUpdate();
+                }
+                break;
+            case ModeType.water:
+                {
+                    cell.data.Clear();
+                    myComponent temp = new myComponent();
+                    temp.type = myComponentType.fluid;
+                    temp.m = 1f;
+                    temp.Ro = 1000f; //температуре 0 °С, давлении 100 кПа, нулевой влажности
+                    temp.C = 4180.6f;
+                    temp.Q = temp.C * temp.m * 273.15f;  //Дж
+                    cell.data.components.Add(temp);
+                    cell.ManualUpdate();
+                }
+                break;
+            case ModeType.oil:
+                {
+                    cell.data.Clear();
+                    myComponent temp = new myComponent();
+                    temp.type = myComponentType.fluid;
+                    temp.m = 1f;
+                    temp.Ro = 910f; //температуре 0 °С, давлении 100 кПа, нулевой влажности
+                    temp.C = 1670f;
+                    temp.Q = temp.C * temp.m * 273.15f;  //Дж
+                    cell.data.components.Add(temp);
+                    cell.ManualUpdate();
+                }
+                break;
+            case ModeType.sand:
+                {
+                    cell.data.Clear();
+                    myComponent temp = new myComponent();
+                    temp.type = myComponentType.solid;
+                    temp.m = 1f;
+                    temp.Ro = 1700f; //температуре 0 °С, давлении 100 кПа, нулевой влажности
+                    temp.C = 835f;
+                    temp.Q = temp.C * temp.m * 273.15f;  //Дж
+                    cell.data.components.Add(temp);
+                    cell.ManualUpdate();
+                }
+                break;
+            case ModeType.paraffin:
+                {
+                    cell.data.Clear();
+                    myComponent temp = new myComponent();
+                    temp.type = myComponentType.solid;
+                    temp.m = 1f;
+                    temp.Ro = 900f; //температуре 0 °С, давлении 100 кПа, нулевой влажности
+                    temp.C = 2190f;
+                    temp.Q = temp.C * temp.m * 273.15f;  //Дж
+                    cell.data.components.Add(temp);
+                    cell.ManualUpdate();
+                }
+                break;
         }
-        else if (selectedType == ModeType.gas)
-        {
-            cell.data.Clear();
-            myComponent temp = new myComponent();
-            temp.type = myComponentType.gas;
-            temp.m = 1f;
-            temp.Ro = 1.2754f; //температуре 0 °С, давлении 100 кПа, нулевой влажности
-            temp.C = 1010f; //В интервале от -50 до 120°С ее величина практически не меняется — в этих условиях средняя теплоемкость воздуха равна 1010 Дж/(кг·град).
-            temp.Q = temp.C * temp.m * 273.15f;  //Дж
-            cell.data.components.Add(temp);
-            cell.ManualUpdate();
-        }
-        else if (selectedType == ModeType.fluid)
-        {
-            cell.data.Clear();
-            myComponent temp = new myComponent();
-            temp.type = myComponentType.fluid;
-            temp.m = 1f;
-            temp.Ro = 1000f; //кг\м3
-            temp.C = 4180.6f; //Удельная теплоёмкость воды, Дж/(кг·K)
-            temp.Q = temp.C * temp.m * 273.15f;  //Дж
-            cell.data.components.Add(temp);
-            cell.ManualUpdate();
-        }
-        else if (selectedType == ModeType.solid)
-        {
-            cell.data.Clear();
-            myComponent temp = new myComponent();
-            temp.type = myComponentType.solid;
-            temp.m = 1f;
-            temp.Ro = 1700; //кг\м3
-            temp.C = 835f; //Удельная теплоёмкость воды, Дж/(кг·K)
-            temp.Q = temp.C * temp.m * 273.15f;  //Дж
-            cell.data.components.Add(temp);
-            cell.ManualUpdate();
-        }
-        else if (selectedType == ModeType.wall)
-        {
-            cell.data.Clear();
-            myComponent temp = new myComponent();
-            temp.type = myComponentType.wall;
-            temp.m = 1f;
-            temp.Ro = 7800f; //кг\м3
-            temp.C = 460f; //Удельная теплоёмкость воды, Дж/(кг·K)
-            temp.Q = temp.C * temp.m * 273.15f;  //Дж
-            cell.data.components.Add(temp);
-            cell.ManualUpdate();
-        }
-        else if (selectedType == ModeType.delete)
-        {
-            cell.data.Clear();
-            cell.ManualUpdate();
-        }
-        else if (selectedType == ModeType.edit)
-        {
-            editedCellIndex = cell.index;
-            CellEditor.SetActive(true);
-            EditorShowComponentValues(0);
-        }
-
-
     }
 
 
@@ -136,14 +363,14 @@ public partial  class MM10 : MonoBehaviour
             }
             CellEditorComponentNum.AddOptions(all);
             CellEditorComponentNum.SetValueWithoutNotify(z);
-            
+
             CellEditorM.text = map2d[editedCellIndex].data.components[z].m.ToString();
             CellEditorRo.text = map2d[editedCellIndex].data.components[z].Ro.ToString();
             CellEditorC.text = map2d[editedCellIndex].data.components[z].C.ToString();
             CellEditorQ.text = map2d[editedCellIndex].data.components[z].Q.ToString();
 
             string temp = "";
-            temp += map2d[editedCellIndex].data.components[z].type;            
+            temp += map2d[editedCellIndex].data.components[z].type;
             CellEditorType.text = temp;
         }
     }
@@ -186,9 +413,9 @@ public partial  class MM10 : MonoBehaviour
 
         text += "Count:\t" + cell.data.components.Count.ToString("N0").Replace(",", ".") + System.Environment.NewLine;
 
-        if (cell.data.components.Count>0)
+        if (cell.data.components.Count > 0)
         {
-            for (int i=0; i < cell.data.components.Count; i++)
+            for (int i = 0; i < cell.data.components.Count; i++)
             {
                 text += System.Environment.NewLine;
                 text += "new component num:\t" + i.ToString("N0") + System.Environment.NewLine;
@@ -205,7 +432,7 @@ public partial  class MM10 : MonoBehaviour
 
         info_text.text = text;
     }
-    
+
 
     // Start is called before the first frame update
     void Start()
@@ -363,7 +590,10 @@ public partial  class MM10 : MonoBehaviour
     {
         selectedType = ModeType.edit;
     }
-
+    public void SelectElem(int elementNum)
+    {
+        selectedType = (ModeType)elementNum;
+    }
 
 
 
@@ -404,7 +634,7 @@ public partial  class MM10 : MonoBehaviour
                 myclone.data = new myElementData();
                 myclone.data.Clear();
 
-                map2d.Add( myclone );
+                map2d.Add(myclone);
             }
         }
         prefab.gameObject.SetActive(false);
@@ -413,6 +643,6 @@ public partial  class MM10 : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        
+
     }
 }
