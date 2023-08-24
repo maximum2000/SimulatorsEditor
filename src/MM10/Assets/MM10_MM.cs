@@ -981,6 +981,10 @@ public partial  class MM10 : MonoBehaviour
                         massDistributed += temp.m;
                         if (massDistributed >= gasMass[index] * 0.99f)
                         {
+                            if (summGas[summGas.Count - 1].m < 0.0001f)
+                            {
+                                summGas.RemoveAt(summGas.Count - 1);
+                            }
                             isNext = true;
                             break;
                         }
